@@ -28,6 +28,7 @@ as much about how the world gets built as about the world itself.
 | Version | What happened |
 |---|---|
 | brief | Milestone 1 brief: ocean, one seeded island, trees ([BRIEF.md](BRIEF.md)) |
+| v0.0.1 | Round 1, rejected: a square slab of sand, ocean hidden under the land, black void, flat grey plateau ([review](docs/reviews/v0.0.1.md)) |
 
 ## Run it
 
