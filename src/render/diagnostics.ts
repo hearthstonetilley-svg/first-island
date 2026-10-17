@@ -53,6 +53,7 @@ export interface DiagnosticReport {
   frames: FrameSample[];
   summary: FrameSummary | null;
   complete: boolean;
+  qualityChanges: Array<Record<string, unknown>>;
 }
 
 declare global { interface Window { __ISLAND_DEBUG__?: DiagnosticReport } }
@@ -63,8 +64,16 @@ export class FrameDiagnostics {
   private firstTimestamp: number | undefined;
 
   constructor(context: Record<string, unknown>, private readonly emit = true) {
-    this.report = { context, phasesMs: {}, scene: {}, timeToFirstFrameMs: null, frames: [], summary: null, complete: false };
+    this.report = { context, phasesMs: {}, scene: {}, timeToFirstFrameMs: null, frames: [], summary: null, complete: false, qualityChanges: [] };
     if (typeof window !== 'undefined') window.__ISLAND_DEBUG__ = this.report;
+  }
+
+  discontinuity(): void { this.previousTimestamp = undefined; }
+
+  qualityChange(atMs: number, change: { level: string; pixelRatio: number; aoEnabled: boolean; medianMs: number; elapsedMs: number }): void {
+    const event = { atMs, ...change };
+    this.report.qualityChanges.push(event);
+    if (this.emit) console.info('[island-debug] quality', JSON.stringify(event));
   }
 
   phase(name: string, milliseconds: number): void { this.report.phasesMs[name] = milliseconds; }

@@ -1,0 +1,281 @@
+{
+  "context": {
+    "seed": 2026,
+    "forceWebGL2": false,
+    "postEnabled": true,
+    "qualityLocked": false
+  },
+  "phasesMs": {
+    "worldGeneration": 63.29999998211861,
+    "rendererInit": 496.09999999403954,
+    "sceneBuild": 112.7999999821186,
+    "sceneCompile": 516.6999999880791,
+    "renderWarmup": 6261.699999988079
+  },
+  "scene": {
+    "backend": "WebGL2",
+    "viewport": [
+      1280,
+      800
+    ],
+    "pixelRatio": 0.75,
+    "initialPixelRatio": 1,
+    "shadowMap": [
+      2048,
+      2048
+    ],
+    "meshes": 21,
+    "triangles": 443494,
+    "treeDrawMeshes": 18,
+    "trees": 421,
+    "terrainVertices": 66564,
+    "oceanVertices": 50625,
+    "postEnabled": true,
+    "ao": false,
+    "bloom": true
+  },
+  "timeToFirstFrameMs": 7586.0999999940395,
+  "frames": [
+    {
+      "frame": 1,
+      "elapsedMs": 0,
+      "intervalMs": null,
+      "renderCpuMs": 4.4000000059604645,
+      "quality": "high"
+    },
+    {
+      "frame": 2,
+      "elapsedMs": 16.599999999999454,
+      "intervalMs": 16.599999999999454,
+      "renderCpuMs": 8.700000017881393,
+      "quality": "high"
+    },
+    {
+      "frame": 3,
+      "elapsedMs": 1383.1999999999998,
+      "intervalMs": 1366.6000000000004,
+      "renderCpuMs": 7.0999999940395355,
+      "quality": "high"
+    },
+    {
+      "frame": 4,
+      "elapsedMs": 2499.8,
+      "intervalMs": 1116.6000000000004,
+      "renderCpuMs": 4.399999976158142,
+      "quality": "balanced"
+    },
+    {
+      "frame": 5,
+      "elapsedMs": 3449.8,
+      "intervalMs": 950,
+      "renderCpuMs": 3.5,
+      "quality": "balanced"
+    },
+    {
+      "frame": 6,
+      "elapsedMs": 3483.0999999999995,
+      "intervalMs": 33.29999999999927,
+      "renderCpuMs": 3.100000023841858,
+      "quality": "balanced"
+    },
+    {
+      "frame": 7,
+      "elapsedMs": 4299.8,
+      "intervalMs": 816.7000000000007,
+      "renderCpuMs": 4.800000011920929,
+      "quality": "balanced"
+    },
+    {
+      "frame": 8,
+      "elapsedMs": 5016.400000000001,
+      "intervalMs": 716.6000000000004,
+      "renderCpuMs": 6.899999976158142,
+      "quality": "balanced"
+    },
+    {
+      "frame": 9,
+      "elapsedMs": 5749.7,
+      "intervalMs": 733.2999999999993,
+      "renderCpuMs": 3.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 10,
+      "elapsedMs": 6533.099999999999,
+      "intervalMs": 783.3999999999996,
+      "renderCpuMs": 3.100000023841858,
+      "quality": "low"
+    },
+    {
+      "frame": 11,
+      "elapsedMs": 7199.7,
+      "intervalMs": 666.6000000000004,
+      "renderCpuMs": 3.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 12,
+      "elapsedMs": 7799.7,
+      "intervalMs": 600,
+      "renderCpuMs": 3.2000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 13,
+      "elapsedMs": 8299.599999999999,
+      "intervalMs": 499.89999999999964,
+      "renderCpuMs": 3,
+      "quality": "low"
+    },
+    {
+      "frame": 14,
+      "elapsedMs": 8849.600000000002,
+      "intervalMs": 550.0000000000018,
+      "renderCpuMs": 3.199999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 15,
+      "elapsedMs": 9532.900000000001,
+      "intervalMs": 683.2999999999993,
+      "renderCpuMs": 2.5,
+      "quality": "low"
+    },
+    {
+      "frame": 16,
+      "elapsedMs": 10182.900000000001,
+      "intervalMs": 650,
+      "renderCpuMs": 4.199999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 17,
+      "elapsedMs": 10882.900000000001,
+      "intervalMs": 700,
+      "renderCpuMs": 2.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 18,
+      "elapsedMs": 11649.5,
+      "intervalMs": 766.5999999999985,
+      "renderCpuMs": 2.2999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 19,
+      "elapsedMs": 12332.8,
+      "intervalMs": 683.2999999999993,
+      "renderCpuMs": 4,
+      "quality": "low"
+    },
+    {
+      "frame": 20,
+      "elapsedMs": 13716.100000000002,
+      "intervalMs": 1383.300000000003,
+      "renderCpuMs": 3.2999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 21,
+      "elapsedMs": 13732.7,
+      "intervalMs": 16.599999999998545,
+      "renderCpuMs": 3,
+      "quality": "low"
+    },
+    {
+      "frame": 22,
+      "elapsedMs": 14532.7,
+      "intervalMs": 800,
+      "renderCpuMs": 3,
+      "quality": "low"
+    },
+    {
+      "frame": 23,
+      "elapsedMs": 15232.7,
+      "intervalMs": 700,
+      "renderCpuMs": 2.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 24,
+      "elapsedMs": 16032.600000000002,
+      "intervalMs": 799.9000000000015,
+      "renderCpuMs": 5.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 25,
+      "elapsedMs": 16732.600000000002,
+      "intervalMs": 700,
+      "renderCpuMs": 2.0999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 26,
+      "elapsedMs": 17332.600000000002,
+      "intervalMs": 600,
+      "renderCpuMs": 3.2999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 27,
+      "elapsedMs": 18032.5,
+      "intervalMs": 699.8999999999978,
+      "renderCpuMs": 3.600000023841858,
+      "quality": "low"
+    },
+    {
+      "frame": 28,
+      "elapsedMs": 18782.5,
+      "intervalMs": 750,
+      "renderCpuMs": 2.300000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 29,
+      "elapsedMs": 19482.5,
+      "intervalMs": 700,
+      "renderCpuMs": 2.4000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 30,
+      "elapsedMs": 20215.8,
+      "intervalMs": 733.2999999999993,
+      "renderCpuMs": 5,
+      "quality": "low"
+    }
+  ],
+  "summary": null,
+  "complete": false,
+  "qualityChanges": [
+    {
+      "atMs": 2499.8,
+      "level": "balanced",
+      "pixelRatio": 0.75,
+      "aoEnabled": true,
+      "medianMs": 1116.6000000000004,
+      "elapsedMs": 2499.8
+    },
+    {
+      "atMs": 5749.7,
+      "level": "low",
+      "pixelRatio": 0.75,
+      "aoEnabled": false,
+      "medianMs": 724.9499999999998,
+      "elapsedMs": 2299.8999999999996
+    }
+  ],
+  "capture": {
+    "viewport": [
+      1280,
+      800
+    ],
+    "deviceScaleFactor": 1,
+    "softwareRenderer": true,
+    "coldBrowserProfile": true,
+    "label": "seed 2026 · WebGL2",
+    "consoleErrors": []
+  }
+}

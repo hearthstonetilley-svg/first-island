@@ -28,6 +28,14 @@ describe('first-load frame diagnostics', () => {
     expect(report.summary?.settledFrame).toBeGreaterThan(2);
   });
 
+  it('does not count a hidden-tab gap as a rendered frame interval', () => {
+    const recorder = new FrameDiagnostics({}, false);
+    recorder.record(100, 2, 'high', 102);
+    recorder.discontinuity();
+    recorder.record(100000, 2, 'high', 100002);
+    expect(recorder.report.frames[1].intervalMs).toBeNull();
+  });
+
   it('reports no stability claim for fewer than 30 intervals', () => {
     const recorder = new FrameDiagnostics({}, false);
     recorder.record(100, 2, 'high', 102);

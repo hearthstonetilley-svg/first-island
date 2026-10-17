@@ -11,6 +11,7 @@ const { values } = parseArgs({ options: {
   step: { type: 'string' }, seed: { type: 'string', default: '1' },
   case: { type: 'string', default: '' }, post: { type: 'string', default: '1' },
   frames: { type: 'string', default: '600' },
+  quality: { type: 'string' }, shadow: { type: 'string' }, pixelRatio: { type: 'string' },
   renderer: { type: 'string', default: '' }, url: { type: 'string', default: 'http://localhost:5173/' },
   chrome: { type: 'string', default: join(homedir(), '.cache/ms-playwright/chromium-1228/chrome-linux64/chrome') },
 } });
@@ -34,6 +35,7 @@ const browser = spawn(values.chrome, [
 ], { stdio: ['ignore', 'ignore', 'ignore'] });
 let socket;
 const pending = new Map();
+const errors = [];
 let nextId = 1;
 function send(method, params = {}) {
   const id = nextId++;
@@ -60,12 +62,15 @@ try {
       if (!waiter) return;
       pending.delete(message.id);
       if (message.error) waiter.reject(new Error(JSON.stringify(message.error))); else waiter.resolve(message.result);
+    } else if (message.method === 'Runtime.exceptionThrown') {
+      errors.push(message.params.exceptionDetails.exception?.description ?? message.params.exceptionDetails.text);
     } else if (message.method === 'Runtime.consoleAPICalled') {
       const args = message.params.args.map((arg) => arg.value);
+      if (message.params.type === 'error') errors.push(message.params.args.map((arg) => arg.value ?? arg.description).join(' '));
       if (args[0] === '[island-debug] frame') {
         const frame = JSON.parse(args[1]);
         if (frame.frame % 100 === 0) process.stdout.write(`frame ${frame.frame}: ${frame.intervalMs?.toFixed(1)} ms (${frame.quality})\n`);
-      } else if (args[0] === '[island-debug] first frame' || args[0] === '[island-debug] summary') {
+      } else if (args[0] === '[island-debug] first frame' || args[0] === '[island-debug] summary' || args[0] === '[island-debug] quality') {
         process.stdout.write(`${args[0]} ${args[1]}\n`);
       }
     }
@@ -78,19 +83,21 @@ try {
   url.searchParams.set('debug', '1');
   url.searchParams.set('post', values.post);
   if (values.renderer) url.searchParams.set('renderer', values.renderer);
+  for (const key of ['quality', 'shadow', 'pixelRatio']) if (values[key]) url.searchParams.set(key, values[key]);
   await send('Page.navigate', { url: url.toString() });
   let report;
   let label = '';
   for (let seconds = 0; seconds < 1200; seconds += 1) {
     await delay(1000);
-    const evaluation = await send('Runtime.evaluate', { expression: `JSON.stringify({report:window.__ISLAND_DEBUG__,label:document.querySelector('.label')?.textContent})`, returnByValue: true });
+    const evaluation = await send('Runtime.evaluate', { expression: `JSON.stringify({report:window.__ISLAND_DEBUG__,label:document.querySelector('.label')?.textContent,fps:document.querySelector('.fps')?.textContent})`, returnByValue: true });
     const data = JSON.parse(evaluation.result.value ?? '{}');
     label = data.label ?? '';
-    if (/initialization (failed|timed out)|unavailable/.test(label)) throw new Error(label);
+    if (data.fps === 'renderer unavailable' || /initialization (failed|timed out)|warm-up timed out|unavailable/.test(label)) throw new Error(label);
+    if (data.report?.frames.length && seconds % 10 === 0) await writeFile(output, JSON.stringify(data.report, null, 2) + '\n');
     if (data.report?.frames.length >= targetFrames) { report = data.report; break; }
   }
   if (!report) throw new Error('Profile did not finish within 1200 polling attempts');
-  report.capture = { viewport: [1280, 800], deviceScaleFactor: 1, softwareRenderer: true, coldBrowserProfile: true, label };
+  report.capture = { viewport: [1280, 800], deviceScaleFactor: 1, softwareRenderer: true, coldBrowserProfile: true, label, consoleErrors: errors };
   await writeFile(output, JSON.stringify(report, null, 2) + '\n');
   const image = await send('Page.captureScreenshot', { format: 'png' });
   await writeFile(screenshot, Buffer.from(image.data, 'base64'));

@@ -15,6 +15,8 @@ import { sampleSlope, TreeData, TreeKind, WorldData } from '../world/generate';
 import { initializeRenderer } from './startup';
 import { createBroadleafParts, TreePart } from './broadleaf';
 import { FrameDiagnostics } from './diagnostics';
+import { QualityChange } from './quality';
+import { warmRenderer } from './warmup';
 
 const SUN_DIRECTION = new Vector3(-0.82, 0.22, -0.53).normalize();
 
@@ -235,13 +237,20 @@ function addSky(scene: Scene): void {
   scene.add(new Mesh(new SphereGeometry(900, 48, 24), material));
 }
 
-interface SceneOptions { postEnabled?: boolean; diagnostics?: FrameDiagnostics }
+interface SceneOptions {
+  postEnabled?: boolean;
+  diagnostics?: FrameDiagnostics;
+  onProgress?: (message: string) => void;
+  shadowMapSize?: number;
+  pixelRatio?: number;
+}
 
 export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldData, forceWebGL2 = false, options: SceneOptions = {}): Promise<{
   renderer: WebGPURenderer;
   label: string;
   render: (time: number) => void;
   resize: () => void;
+  setQuality: (change: QualityChange) => void;
 }> {
   // Keep pending WebGPU initialization off the displayed/fallback canvas. Its
   // adapter request cannot be cancelled and may finish after the timeout.
@@ -255,6 +264,7 @@ export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldD
   options.diagnostics?.phase('rendererInit', performance.now() - rendererStarted);
   const buildStarted = performance.now();
   canvas = renderer.domElement;
+  canvas.style.visibility = 'hidden';
   placeholder.replaceWith(canvas);
 
   const scene = new Scene();
@@ -332,7 +342,7 @@ export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldD
   const sun = new DirectionalLight('#ffe1a6', 3.2);
   sun.position.copy(SUN_DIRECTION).multiplyScalar(100);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.mapSize.set(options.shadowMapSize ?? 2048, options.shadowMapSize ?? 2048);
   sun.shadow.radius = 3;
   sun.shadow.bias = -0.00015;
   sun.shadow.normalBias = 0.035;
@@ -345,7 +355,7 @@ export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldD
   scene.add(sun);
 
   const label = (renderer.backend as { isWebGLBackend?: boolean }).isWebGLBackend ? 'WebGL2' : 'WebGPU';
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+  renderer.setPixelRatio(options.pixelRatio ?? Math.min(devicePixelRatio, 1.5));
   renderer.setSize(innerWidth, innerHeight);
   renderer.outputColorSpace = SRGBColorSpace;
   renderer.toneMapping = ACESFilmicToneMapping;
@@ -354,6 +364,8 @@ export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldD
 
   options.diagnostics?.phase('sceneBuild', performance.now() - buildStarted);
   let draw: () => void = () => { renderer.render(scene, camera); };
+  let drawWithoutAO = draw;
+  let compileScene = () => renderer.compileAsync(scene, camera);
   if (options.postEnabled !== false) {
     const post = new PostProcessing(renderer);
     const scenePass = pass(scene, camera);
@@ -366,8 +378,15 @@ export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldD
     occlusion.thickness.value = 1;
     // Gentle contact shading; HDR bloom is restricted to sun and water highlights.
     const shaded = sceneColor.mul(mix(float(1), occlusion.getTextureNode().r, float(0.35)));
-    post.outputNode = shaded.add(bloom(sceneColor, 0.16, 0.4, 1.5));
+    const glow = bloom(sceneColor, 0.16, 0.4, 1.5);
+    post.outputNode = shaded.add(glow);
+    const withoutAO = new PostProcessing(renderer);
+    // Share scene and bloom nodes; bypass GTAO entirely in the low quality graph.
+    withoutAO.outputNode = sceneColor.add(glow);
     draw = () => post.render();
+    drawWithoutAO = () => withoutAO.render();
+    // PassNode compiles the scene against its MRT target via renderer.compileAsync.
+    compileScene = () => scenePass.compileAsync(renderer);
   }
   if (options.diagnostics) {
     let meshes = 0;
@@ -381,15 +400,44 @@ export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldD
       triangles += (object.geometry.index?.count ?? object.geometry.attributes.position.count) / 3 * count;
     });
     options.diagnostics.report.scene = {
-      backend: label, viewport: [innerWidth, innerHeight], pixelRatio: renderer.getPixelRatio(),
+      backend: label, viewport: [innerWidth, innerHeight], pixelRatio: renderer.getPixelRatio(), initialPixelRatio: renderer.getPixelRatio(),
       shadowMap: [sun.shadow.mapSize.x, sun.shadow.mapSize.y], meshes, triangles, treeDrawMeshes,
       trees: world.trees.length, terrainVertices: (world.resolution + 2) ** 2, oceanVertices: 225 ** 2,
       postEnabled: options.postEnabled !== false, ao: options.postEnabled !== false, bloom: options.postEnabled !== false,
     };
   }
-  const initialRenderStarted = performance.now();
-  draw();
-  options.diagnostics?.phase('initialRender', performance.now() - initialRenderStarted);
+  let warmupStarted = 0;
+  await warmRenderer({
+    compile: async (isExpired) => {
+      options.onProgress?.('compiling scene…');
+      // Paint the loading status before compilation can occupy the main thread.
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      if (isExpired()) return;
+      const compileStarted = performance.now();
+      await compileScene();
+      if (isExpired()) return;
+      options.diagnostics?.phase('sceneCompile', performance.now() - compileStarted);
+      options.onProgress?.('warming lighting and post-processing…');
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      warmupStarted = performance.now();
+    },
+    // PostProcessing has no public compileAsync. Hidden renders compile its full
+    // graph, including shadows, AO, bloom and the output transform. Warm both
+    // quality graphs, then fence the GPU before revealing the final high frame.
+    draws: options.postEnabled !== false ? [drawWithoutAO, draw, draw] : [draw, draw],
+    waitForGPU: () => renderer.waitForGPU(),
+    dispose: () => renderer.dispose(),
+  });
+  options.diagnostics?.phase('renderWarmup', performance.now() - warmupStarted);
+  canvas.style.visibility = 'visible';
+
+  const setQuality = (change: QualityChange) => {
+    renderer.setPixelRatio(change.pixelRatio);
+    draw = change.aoEnabled ? draw : drawWithoutAO;
+    if (options.diagnostics) Object.assign(options.diagnostics.report.scene, {
+      pixelRatio: change.pixelRatio, ao: change.aoEnabled,
+    });
+  };
 
   const resize = () => {
     camera.aspect = innerWidth / innerHeight;
@@ -401,5 +449,5 @@ export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldD
     ocean.time.value = time * 0.001;
     draw();
   };
-  return { renderer, label, render, resize };
+  return { renderer, label, render, resize, setQuality };
 }
