@@ -32,6 +32,7 @@ as much about how the world gets built as about the world itself.
 | v0.0.2 | Round 2, rejected: ocean renders black (GLSL under WebGPU), every seed the same blob ([review](docs/reviews/v0.0.2.md)) |
 | v0.1.0 | Round 3, accepted: blue ocean, sky, coastline, deterministic seeds; weak spots noted ([review](docs/reviews/v0.1.0.md)) |
 | v0.1.1 | Round 4, rejected: FPS counter added, but a flat toy diorama, same silhouette, ghost slab ([review](docs/reviews/v0.1.1.md)) |
+| v0.1.2 | Round 5, changes requested: the big visual leap (peaks, distinct coastlines, foam, sky), but renderer start-up can hang; 21 iteration screenshots in docs/iterations ([review](docs/reviews/v0.1.2.md)) |
 
 ## Run it
 
