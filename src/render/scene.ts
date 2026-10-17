@@ -1,5 +1,5 @@
 import {
-  AmbientLight, Color, ConeGeometry, CylinderGeometry, DirectionalLight, Float32BufferAttribute, InstancedMesh, Matrix4, Mesh,
+  AmbientLight, Color, ConeGeometry, CylinderGeometry, DirectionalLight, Float32BufferAttribute, Fog, InstancedMesh, Matrix4, Mesh,
   MeshStandardMaterial, PerspectiveCamera, PlaneGeometry, Scene, ShaderMaterial,
   SRGBColorSpace, WebGLRenderer,
 } from 'three';
@@ -48,7 +48,7 @@ function addTrees(scene: Scene, world: WorldData): void {
 }
 
 function addOcean(scene: Scene): Mesh {
-  const geometry = new PlaneGeometry(90, 90, 80, 80);
+  const geometry = new PlaneGeometry(180, 180, 120, 120);
   geometry.rotateX(-Math.PI / 2);
   const material = new ShaderMaterial({
     uniforms: { time: { value: 0 } },
@@ -57,7 +57,7 @@ function addOcean(scene: Scene): Mesh {
     transparent: true,
   });
   const ocean = new Mesh(geometry, material);
-  ocean.position.y = -0.38;
+  ocean.position.y = 0;
   scene.add(ocean);
   return ocean;
 }
@@ -65,6 +65,7 @@ function addOcean(scene: Scene): Mesh {
 export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldData): Promise<{ renderer: Renderer; label: string; render: (time: number) => void }> {
   const scene = new Scene();
   scene.background = new Color('#a9d6dc');
+  scene.fog = new Fog('#a9d6dc', 38, 105);
   const camera = new PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 200);
   camera.position.set(18, 15, 20);
   camera.lookAt(0, 1, 0);

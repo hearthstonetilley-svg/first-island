@@ -1,10 +1,9 @@
 import './style.css';
-import { generateWorld } from './world/generate';
+import { generateWorld, parseSeed } from './world/generate';
 import { createIslandScene } from './render/scene';
 
 const params = new URLSearchParams(window.location.search);
-const parsedSeed = Number(params.get('seed'));
-const seed = Number.isFinite(parsedSeed) ? Math.trunc(parsedSeed) : 1;
+const seed = parseSeed(params.get('seed'));
 const app = document.querySelector<HTMLDivElement>('#app');
 if (!app) throw new Error('App root is missing');
 
