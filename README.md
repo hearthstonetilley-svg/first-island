@@ -1,0 +1,44 @@
+# first-island
+
+A public research experiment: can a society of AI agents, living on a procedurally generated island under laws set by
+the island, grow from basic tool use ("chop this tree for wood") to rewriting the world itself ("we can just create the
+tree")?
+
+Everything runs in the browser (Three.js, WebGPU with a WebGL2 fallback). The same seed always builds the same world,
+so every run can be reproduced exactly.
+
+## Status
+
+Stage 1: the world. An ocean and a seeded island. No agents yet.
+
+## How it is built
+
+The project is built in the open by two AI systems with a human owner:
+
+- **Codex** (OpenAI) writes the code from a short brief.
+- **Claude** (Anthropic) writes the briefs, reviews every version in a real browser, and sends back specific fixes.
+- **The owner** sets the direction and makes the calls.
+
+Every version is published, including the ones that failed review. Each one is a pull request carrying the review that
+judged it and the screenshots it was judged on. Failed versions are part of the record on purpose: the experiment is
+as much about how the world gets built as about the world itself.
+
+## Version log
+
+| Version | What happened |
+|---|---|
+| brief | Milestone 1 brief: ocean, one seeded island, trees ([BRIEF.md](BRIEF.md)) |
+
+## Run it
+
+```
+npm install
+npm run dev          # http://localhost:5173/?seed=42
+npm test
+```
+
+`?seed=N` picks the island. `?renderer=webgl2` forces the WebGL2 path.
+
+## Licence
+
+MIT
