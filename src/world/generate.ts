@@ -17,6 +17,14 @@ export interface WorldData {
   trees: TreeData[];
 }
 
+export const SEA_LEVEL = 0;
+
+export function parseSeed(value: string | null): number {
+  if (value === null || value.trim() === '') return 1;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.trunc(parsed) : 1;
+}
+
 class SeededRandom {
   private state: number;
 
@@ -76,13 +84,15 @@ export function generateWorld(seed = 1, resolution = 80, size = 24): WorldData {
     for (let column = 0; column < resolution; column += 1) {
       const nx = column / (resolution - 1) * 2 - 1;
       const nz = row / (resolution - 1) * 2 - 1;
-      const radial = Math.max(0, 1 - Math.pow(Math.hypot(nx, nz), 2.25));
+      const radius = Math.hypot(nx, nz);
+      const coastline = 0.84 + (fbm(noise, nx * 1.1 + 19, nz * 1.1 - 13) * 0.5 + 0.5) * 0.1;
+      const radial = 1 - Math.pow(radius / coastline, 2.4);
       const broad = fbm(noise, nx * 1.25 + 7, nz * 1.25 - 3) * 0.5 + 0.5;
       const detail = fbm(noise, nx * 3.2 - 11, nz * 3.2 + 5) * 0.5 + 0.5;
-      const height = Math.max(0, radial * (0.64 + broad * 0.24 + detail * 0.12));
+      const height = radial * (0.58 + broad * 0.18 + detail * 0.08) - 0.08;
       const index = row * resolution + column;
       heights[index] = height;
-      bands.push(height < 0.13 ? 'beach' : height > 0.57 ? 'rock' : 'grass');
+      bands.push(height < 0.08 ? 'beach' : height > 0.52 ? 'rock' : 'grass');
     }
   }
 
@@ -98,7 +108,7 @@ export function generateWorld(seed = 1, resolution = 80, size = 24): WorldData {
     const x = (random.next() - 0.5) * size * 0.9;
     const z = (random.next() - 0.5) * size * 0.9;
     const y = worldHeight(x, z);
-    if (y < 0.18 || y > 0.56) continue;
+    if (y < 0.1 || y > 0.52) continue;
     const slope = Math.abs(worldHeight(x + step, z) - worldHeight(x - step, z)) + Math.abs(worldHeight(x, z + step) - worldHeight(x, z - step));
     if (slope > 0.16) continue;
     const spacing = trees.every((tree) => Math.hypot(tree.x - x, tree.z - z) > 0.7);
