@@ -39,6 +39,8 @@ These archive numbers identify retained captures, not 21 historical code commits
 | [022](022.md) | Startup deadline and safe fallback only. All 12 normal loads show complete islands; forced WebGL2 succeeds; graphics-disabled capture shows a clear error. [Machine-readable results](022-startup.json). |
 | [023](023.md) | Muted rock colours and terrain-derived crevices, softer/narrower glitter, three branched broadleaf crown families. Six inspected captures include five seeds and forced WebGL2. [Capture metadata](023-captures.json). |
 
+| [024](024.md) | Brief 2.1: first-load diagnostics and baseline comparisons. |
+
 ## Next iteration
 
-Start with step `024`. Capture and inspect the screenshots, record what changed and what they show, and commit the code, note and images immediately, even if the result needs another fix. Complete that commit before starting another iteration. Multiple seeds from one code version can share a step prefix. Use a distinct step suffix for repeat captures of the same seed, such as `022-webgl2-seed-1.png`, and never overwrite earlier images. Never push; the owner pushes.
+Start with step `025`. Capture and inspect the screenshots, record what changed and what they show, and commit the code, note and images immediately, even if the result needs another fix. Complete that commit before starting another iteration. Multiple seeds from one code version can share a step prefix. Use a distinct step suffix for repeat captures of the same seed, such as `022-webgl2-seed-1.png`, and never overwrite earlier images. Never push; the owner pushes.
