@@ -1,0 +1,50 @@
+[
+  {
+    "seed": 1,
+    "forced_webgl2": false,
+    "image": "023-seed-1.png",
+    "label": "seed 1 \u00b7 WebGL2",
+    "bytes": 661707,
+    "ready": true
+  },
+  {
+    "seed": 42,
+    "forced_webgl2": false,
+    "image": "023-seed-42.png",
+    "label": "seed 42 \u00b7 WebGL2",
+    "bytes": 679192,
+    "ready": true
+  },
+  {
+    "seed": 7,
+    "forced_webgl2": false,
+    "image": "023-seed-7.png",
+    "label": "seed 7 \u00b7 WebGL2",
+    "bytes": 644814,
+    "ready": true
+  },
+  {
+    "seed": 99,
+    "forced_webgl2": false,
+    "image": "023-seed-99.png",
+    "label": "seed 99 \u00b7 WebGL2",
+    "bytes": 665429,
+    "ready": true
+  },
+  {
+    "seed": 2026,
+    "forced_webgl2": false,
+    "image": "023-seed-2026.png",
+    "label": "seed 2026 \u00b7 WebGL2",
+    "bytes": 679882,
+    "ready": true
+  },
+  {
+    "seed": 1,
+    "forced_webgl2": true,
+    "image": "023-webgl2-seed-1.png",
+    "label": "seed 1 \u00b7 WebGL2",
+    "bytes": 659274,
+    "ready": true
+  }
+]

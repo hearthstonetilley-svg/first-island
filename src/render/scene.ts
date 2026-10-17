@@ -6,13 +6,14 @@ import {
 } from 'three';
 import { MeshBasicNodeMaterial, MeshStandardNodeMaterial, Node, PostProcessing, WebGPURenderer } from 'three/webgpu';
 import {
-  cameraPosition, color, cos, dot, exp, float, max, mix, mrt, normalView, normalize, output,
+  attribute, cameraPosition, color, cos, dot, exp, float, max, mix, mrt, mx_noise_float, normalView, normalize, output,
   pass, positionLocal, positionWorld, pow, ShaderNodeObject, sin, smoothstep, texture, uniform, vec3,
 } from 'three/tsl';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
 import { sampleSlope, TreeData, TreeKind, WorldData } from '../world/generate';
 import { initializeRenderer } from './startup';
+import { createBroadleafParts, TreePart } from './broadleaf';
 
 const SUN_DIRECTION = new Vector3(-0.82, 0.22, -0.53).normalize();
 
@@ -26,8 +27,13 @@ function addTerrain(scene: Scene, world: WorldData): void {
   const wetSand = new ThreeColor('#988664');
   const drySand = new ThreeColor('#dfce9c');
   const grass = new ThreeColor('#67884b');
-  const rock = new ThreeColor('#a6a196');
   const shade = new ThreeColor();
+  const rockWeights = new Float32Array(positions.count);
+  const cavities = new Float32Array(positions.count);
+  const heightAt = (row: number, column: number) => world.heights[
+    Math.max(0, Math.min(world.resolution - 1, row)) * world.resolution
+    + Math.max(0, Math.min(world.resolution - 1, column))
+  ];
   for (let row = 0; row < count; row += 1) {
     for (let column = 0; column < count; column += 1) {
       const index = row * count + column;
@@ -44,20 +50,29 @@ function addTerrain(scene: Scene, world: WorldData): void {
       shade.lerp(grass, smooth(0.16, 0.38, height));
       const variation = Math.sin(x * 1.7 + Math.sin(z * 2.3)) * Math.cos(z * 1.4 - x * 0.6);
       shade.offsetHSL(variation * 0.018, 0, variation * 0.035);
-      const rocky = Math.max(smooth(1.45, 2.4, slope), smooth(4.8, 7, height) * 0.9);
-      shade.lerp(rock, rocky);
-      // Fine strata and erosion variation stay continuous across triangle boundaries.
-      const strata = Math.sin(height * 16 + x * 0.8 + Math.sin(z * 3)) * 0.025 * rocky;
-      shade.multiplyScalar(1 + strata);
+      rockWeights[index] = Math.max(smooth(1.45, 2.4, slope), smooth(5.6, 9, height) * 0.9);
+      // Positive curvature identifies actual hollows in the existing heightmap.
+      // Two radii pick up narrow fissures and the larger erosion channels.
+      const meanAt = (radius: number) => (heightAt(r - radius, c) + heightAt(r + radius, c)
+        + heightAt(r, c - radius) + heightAt(r, c + radius)) * 0.25;
+      cavities[index] = smooth(0.05, 0.9, Math.max(0, (meanAt(2) - height) * 2 + (meanAt(4) - height) * 0.3));
       colors.set([shade.r, shade.g, shade.b], index * 3);
     }
   }
   geometry.setAttribute('color', new Float32BufferAttribute(colors, 3));
+  geometry.setAttribute('rockWeight', new Float32BufferAttribute(rockWeights, 1));
+  geometry.setAttribute('cavity', new Float32BufferAttribute(cavities, 1));
   geometry.computeVertexNormals();
-  const material = new MeshStandardNodeMaterial({ vertexColors: true, roughness: 0.95 });
+  const material = new MeshStandardNodeMaterial({ roughness: 0.95 });
   const grain = sin(positionWorld.x.mul(6.3).add(sin(positionWorld.z.mul(4.7))))
     .mul(sin(positionWorld.z.mul(7.1).add(positionWorld.y.mul(9.3))));
-  material.colorNode = color('white').mul(grain.mul(0.045).add(1));
+  const minerals = mx_noise_float(positionWorld.mul(0.55)).mul(0.5).add(0.5);
+  const flecks = mx_noise_float(positionWorld.mul(3.1)).mul(0.5).add(0.5);
+  const stone = mix(color('#4f6267'), color('#8b806c'), smoothstep(0.2, 0.8, minerals));
+  const weathered = mix(stone, color('#a39779'), flecks.mul(0.2));
+  const creviceShade = mix(float(1), float(0.42), attribute('cavity', 'float'));
+  const surface = mix(attribute('color', 'vec3'), weathered.mul(creviceShade), attribute('rockWeight', 'float'));
+  material.colorNode = surface.mul(grain.mul(0.045).add(1));
   const mesh = new Mesh(geometry, material);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
@@ -72,7 +87,7 @@ function smooth(low: number, high: number, value: number): number {
 function treeMaterial(time: ReturnType<typeof uniform>): MeshStandardNodeMaterial {
   // Instance colours already contain the bark/leaf hue. A second dark base colour
   // would multiply it again and turn the trunks almost black.
-  const material = new MeshStandardNodeMaterial({ color: '#ffffff', roughness: 0.92 });
+  const material = new MeshStandardNodeMaterial({ color: '#ffffff', roughness: 0.92, vertexColors: true });
   const bend = max(positionLocal.y, float(0)).pow(2).mul(0.012);
   material.positionNode = positionLocal.add(vec3(
     sin(time.mul(1.2).add(positionWorld.x.mul(0.4))).mul(bend), 0,
@@ -85,11 +100,18 @@ function addTreeKind(scene: Scene, trees: TreeData[], kind: TreeKind, time: Retu
   const selected = trees.filter((tree) => tree.kind === kind);
   if (!selected.length) return;
   const material = treeMaterial(time);
-  const trunkHeight = kind === 'palm' ? 1.8 : kind === 'pine' ? 1.5 : 1.05;
+  if (kind === 'broadleaf') {
+    for (let variant = 0; variant < 3; variant += 1) {
+      const group = selected.filter((tree) => Math.min(2, Math.floor(tree.tint * 3)) === variant);
+      if (group.length) addTreeParts(scene, group, createBroadleafParts(variant), material);
+    }
+    return;
+  }
+  const trunkHeight = kind === 'palm' ? 1.8 : 1.5;
   // Geometry is rooted at y=0 so the same instance matrix joins every tree part.
   const trunkGeometry = new CylinderGeometry(0.065, 0.12, trunkHeight, 7);
   trunkGeometry.translate(0, trunkHeight / 2, 0);
-  const parts: Array<{ geometry: CylinderGeometry | ConeGeometry | SphereGeometry | PlaneGeometry; tint: string }> = [
+  const parts: TreePart[] = [
     { geometry: trunkGeometry, tint: '#99714c' },
   ];
   if (kind === 'pine') {
@@ -97,22 +119,6 @@ function addTreeKind(scene: Scene, trees: TreeData[], kind: TreeKind, time: Retu
       const canopy = new ConeGeometry(0.65 - layer * 0.15, 1.15 - layer * 0.15, 9);
       canopy.translate(0, 1.05 + layer * 0.48, 0);
       parts.push({ geometry: canopy, tint: ['#385c3e', '#48774b', '#5a8652'][layer] });
-    }
-  } else if (kind === 'broadleaf') {
-    for (let lobe = 0; lobe < 3; lobe += 1) {
-      const canopy = new SphereGeometry(0.57, 12, 9);
-      const vertices = canopy.attributes.position;
-      for (let i = 0; i < vertices.count; i += 1) {
-        const x = vertices.getX(i);
-        const y = vertices.getY(i);
-        const z = vertices.getZ(i);
-        const r = 1 + Math.sin(x * 13 + lobe) * Math.sin(z * 11 - y * 8) * 0.14;
-        vertices.setXYZ(i, x * r, y * r, z * r);
-      }
-      canopy.computeVertexNormals();
-      canopy.scale(1, 1.1, 0.85);
-      canopy.translate(Math.cos(lobe * 2.1) * 0.3, 1.45 + (lobe === 0 ? 0.3 : 0), Math.sin(lobe * 2.1) * 0.3);
-      parts.push({ geometry: canopy, tint: ['#668949', '#547f43', '#769751'][lobe] });
     }
   } else {
     // Curved tapered fronds replace the old solid umbrella cone.
@@ -133,15 +139,21 @@ function addTreeKind(scene: Scene, trees: TreeData[], kind: TreeKind, time: Retu
       parts.push({ geometry: leaf, tint: '#6b944e' });
     }
   }
+  if (kind === 'palm') material.side = DoubleSide;
+  addTreeParts(scene, selected, parts, material);
+}
+
+function addTreeParts(scene: Scene, selected: TreeData[], parts: TreePart[], material: MeshStandardNodeMaterial): void {
   for (const { geometry, tint } of parts) {
     const mesh = new InstancedMesh(geometry, material, selected.length);
-    if (kind === 'palm') material.side = DoubleSide;
     const matrix = new Matrix4();
     const quaternion = new Quaternion();
     selected.forEach((tree, index) => {
       quaternion.setFromEuler(new Euler(tree.lean, tree.rotation, tree.lean * 0.6));
+      const wide = tree.kind === 'broadleaf' ? 1 + Math.sin(tree.rotation * 2.7) * 0.18 : 1;
+      const deep = tree.kind === 'broadleaf' ? 1 + Math.cos(tree.rotation * 1.9) * 0.15 : 1;
       matrix.compose(new Vector3(tree.x, tree.y - 0.035, tree.z), quaternion,
-        new Vector3(tree.scale, tree.scale * (0.92 + tree.tint * 0.16), tree.scale));
+        new Vector3(tree.scale * wide, tree.scale * (0.92 + tree.tint * 0.16), tree.scale * deep));
       mesh.setMatrixAt(index, matrix);
       mesh.setColorAt(index, new ThreeColor(tint).offsetHSL((tree.tint - 0.5) * 0.055, (tree.tint - 0.5) * 0.1, (tree.tint - 0.5) * 0.07));
     });
@@ -195,9 +207,9 @@ function addOcean(scene: Scene, world: WorldData): { time: ReturnType<typeof uni
   const reflection = mix(color('#397da8'), color('#89b8cf'), fresnel);
   const reflected = mix(deepColor, reflection, fresnel.mul(0.65).add(0.06));
   const halfVector = normalize(vec3(SUN_DIRECTION).add(view));
-  const highlight = pow(max(dot(waterNormal, halfVector), float(0)), float(450));
-  const broadHighlight = pow(max(dot(waterNormal, halfVector), float(0)), float(40)).mul(0.06);
-  const glints = color('#fff1ce').mul(highlight.mul(2.5).add(broadHighlight));
+  const highlight = pow(max(dot(waterNormal, halfVector), float(0)), float(1200));
+  const broadHighlight = pow(max(dot(waterNormal, halfVector), float(0)), float(120)).mul(0.012);
+  const glints = color('#fff1ce').mul(highlight.mul(0.75).add(broadHighlight));
   // Depth is sampled per fragment, not interpolated across a huge ocean triangle.
   const shore = float(1).sub(smoothstep(0.06, 0.42, depth));
   const breaker = sin(depth.mul(15).sub(time.mul(2.4)).add(sin(positionWorld.x.mul(8)).mul(0.45)))
