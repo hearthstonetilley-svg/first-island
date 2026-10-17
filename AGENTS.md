@@ -1,11 +1,13 @@
-# Island project workflow
+# Working rules for coding agents in this repo
 
-## Owner rule: every iteration is a documented version
+This is a public research experiment. The build process is part of the record, so follow these rules exactly.
 
-> New rule from the owner, effective now: every iteration is a documented version. After each screenshot check, commit immediately (even if not finished) with a message saying what you changed and what the screenshot showed, and copy that iteration's screenshots into docs/iterations/ (tracked, not gitignored) named <commit-step>-seed-N.png. Also add the screenshots you already took this run to docs/iterations/ in your next commit, in order. Never push; I push.
-
-- After each screenshot check, commit the current code, its screenshots and a short iteration note immediately, including incomplete or failed results. Do this before making further code changes or starting the next iteration.
-- The commit message must describe both the changes and the screenshot findings. Record remaining visual problems honestly.
-- Track the images in `docs/iterations/` as `<commit-step>-seed-N.png`. Use increasing, zero-padded step identifiers and preserve capture order. For repeated seeds/backend variants, use a unique step suffix. Never overwrite a previous iteration’s images.
-- Read `docs/iterations/README.md` and the existing filenames before allocating the next step.
-- Keep commits local. Never push; the owner pushes.
+1. Work only from the current brief in `docs/briefs/` and the latest review in `docs/reviews/`.
+2. Every iteration is a documented version. After each screenshot check, commit immediately, even if unfinished,
+   with a message saying what changed and what the screenshot showed.
+3. Save each iteration's screenshots to `docs/iterations/` (tracked) as `<step>-seed-<N>.png`, and add a
+   `docs/iterations/<step>.md` note. Keep the step numbers continuous across sessions.
+4. Verify visually before calling anything done: headless screenshots of several seeds plus `?renderer=webgl2`.
+   Tests passing is not enough; this project has shipped passing tests with a broken picture before.
+5. Never push, never add remotes, never open pull requests. The reviewer publishes every version through a pull request.
+6. No secrets or personal details in the repo.
