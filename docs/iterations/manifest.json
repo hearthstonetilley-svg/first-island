@@ -1,0 +1,233 @@
+[
+  {
+    "step": "001",
+    "file": "001-seed-1.png",
+    "source": "shots/seed-1.png",
+    "captured_at_utc": "2026-10-17T22:50:19.615789+00:00",
+    "scope": "pre-existing baseline",
+    "bytes": 317137,
+    "sha256": "2d4f2c35f2e6c04d8068ec4f24f7f01885a5385d97936c2963ae7324b620db3b",
+    "width": 1280,
+    "height": 800
+  },
+  {
+    "step": "002",
+    "file": "002-seed-42.png",
+    "source": "shots/seed-42.png",
+    "captured_at_utc": "2026-10-17T22:50:22.595789+00:00",
+    "scope": "pre-existing baseline",
+    "bytes": 343921,
+    "sha256": "c601b2d5c03947bba37d02ca91e5fc8be291dcdb8cdd944072a50fd92dd4c61c",
+    "width": 1280,
+    "height": 800
+  },
+  {
+    "step": "003",
+    "file": "003-seed-7.png",
+    "source": "shots/seed-7.png",
+    "captured_at_utc": "2026-10-17T22:50:25.771789+00:00",
+    "scope": "pre-existing baseline",
+    "bytes": 329082,
+    "sha256": "6ade8eaf2e2eeab4fe1597849dbcc6e9eae84c52e3823ed384148f5b5c24677b",
+    "width": 1280,
+    "height": 800
+  },
+  {
+    "step": "004",
+    "file": "004-seed-1.png",
+    "source": "shots/seed-1-webgl2.png",
+    "captured_at_utc": "2026-10-17T22:50:28.939789+00:00",
+    "scope": "pre-existing baseline",
+    "bytes": 317209,
+    "sha256": "96391e94da8da300ad007f286f55c58b4e1ad3fd26f1e4870259598efd88e3c9",
+    "width": 1280,
+    "height": 800
+  },
+  {
+    "step": "005",
+    "file": "005-seed-1.png",
+    "source": "shots/review3-seed-1-b.png",
+    "captured_at_utc": "2026-10-17T22:56:49.007789+00:00",
+    "scope": "intermediate / diagnostic",
+    "bytes": 631453,
+    "sha256": "acdb9398721b17656910f3bfb997ec26710dee652b5d5708ea9fcd54566fbcc5",
+    "width": 1280,
+    "height": 800
+  },
+  {
+    "step": "006",
+    "file": "006-seed-1.png",
+    "source": "shots/review3-seed-1-c.png",
+    "captured_at_utc": "2026-10-17T22:57:41.955789+00:00",
+    "scope": "intermediate / diagnostic",
+    "bytes": 669940,
+    "sha256": "422f51d54a89bdd522a4da13389a6133afafc022209660ca5313f81a07828d71",
+    "width": 1280,
+    "height": 800
+  },
+  {
+    "step": "007",
+    "file": "007-seed-42.png",
+    "source": "shots/review3-seed-42-d.png",
+    "captured_at_utc": "2026-10-17T22:58:33.267788+00:00",
+    "scope": "intermediate / diagnostic",
+    "bytes": 11498,
+    "sha256": "5c320ec7359d8de32602da71143d8f76e1115567e1f1d1e1279f2c3074d4a18a",
+    "width": 1280,
+    "height": 800
+  },
+  {
+    "step": "008",
+    "file": "008-seed-42.png",
+    "source": "shots/review3-seed-42-e.png",
+    "captured_at_utc": "2026-10-17T22:58:47.055788+00:00",
+    "scope": "intermediate / diagnostic",
+    "bytes": 11699,
+    "sha256": "1de7d7037f299ae4af466873e27cbe852d0271c26b83ebe2c15886965e921e94",
+    "width": 1280,
+    "height": 800
+  },
+  {
+    "step": "009",
+    "file": "009-seed-42.png",
+    "source": "shots/review3-seed-42-f.png",
+    "captured_at_utc": "2026-10-17T22:59:09.215788+00:00",
+    "scope": "intermediate / diagnostic",
+    "bytes": 730881,
+    "sha256": "3f0e185cb2ae218641d1a29de653030a2f76cc61466186ba9b0f9713edac75b9",
+    "width": 1280,
+    "height": 800
+  },
+  {
+    "step": "010",
+    "file": "010-seed-1.png",
+    "source": "shots/review3-webgpu-probe.png",
+    "captured_at_utc": "2026-10-17T22:59:12.611788+00:00",
+    "scope": "intermediate / diagnostic",
+    "bytes": 11467,
+    "sha256": "8ca8e60b2bf4c483a98fbb108820e99a90829ef4555171ad082a3277f768264d",
+    "width": 1280,
+    "height": 800
+  },
+  {
+    "step": "011",
+    "file": "011-seed-1.png",
+    "source": "shots/review3-webgpu-diagnostic.png",
+    "captured_at_utc": "2026-10-17T23:00:04.527788+00:00",
+    "scope": "intermediate / diagnostic",
+    "bytes": 11467,
+    "sha256": "8ca8e60b2bf4c483a98fbb108820e99a90829ef4555171ad082a3277f768264d",
+    "width": 1280,
+    "height": 800
+  },
+  {
+    "step": "012",
+    "file": "012-seed-7.png",
+    "source": "shots/review3-seed-7-g.png",
+    "captured_at_utc": "2026-10-17T23:00:23.719788+00:00",
+    "scope": "intermediate / diagnostic",
+    "bytes": 11342,
+    "sha256": "9c8a18fed04b084e52ee556f6591aedc9bb0f170e6afe94bcb2f48ba0e3a76b1",
+    "width": 1280,
+    "height": 800
+  },
+  {
+    "step": "013",
+    "file": "013-seed-1.png",
+    "source": "shots/review3-webgpu-lvp.png",
+    "captured_at_utc": "2026-10-17T23:00:25.207788+00:00",
+    "scope": "intermediate / diagnostic",
+    "bytes": 11467,
+    "sha256": "8ca8e60b2bf4c483a98fbb108820e99a90829ef4555171ad082a3277f768264d",
+    "width": 1280,
+    "height": 800
+  },
+  {
+    "step": "014",
+    "file": "014-seed-99.png",
+    "source": "shots/review3-seed-99-g.png",
+    "captured_at_utc": "2026-10-17T23:00:31.475788+00:00",
+    "scope": "intermediate / diagnostic",
+    "bytes": 701768,
+    "sha256": "6b4a3d6844e07b09d4a77aaea0cf9f36d1ed71d7c0db387303f732fa4c76b918",
+    "width": 1280,
+    "height": 800
+  },
+  {
+    "step": "015",
+    "file": "015-seed-1.png",
+    "source": "shots/review3-webgpu-wait.png",
+    "captured_at_utc": "2026-10-17T23:01:13.679789+00:00",
+    "scope": "intermediate / diagnostic",
+    "bytes": 10949,
+    "sha256": "0e6cbdb7180e37b47a06e29ae4c16b80b7c5bbd0ec6dcb33dbc0a7dc6508d19c",
+    "width": 1280,
+    "height": 800
+  },
+  {
+    "step": "016",
+    "file": "016-seed-7.png",
+    "source": "shots/review3-seed-7-h.png",
+    "captured_at_utc": "2026-10-17T23:01:36.767788+00:00",
+    "scope": "intermediate / diagnostic",
+    "bytes": 702246,
+    "sha256": "17c4e9231b0ea3cf145a16bbb37a5a193955ecea48be38d467c15165b3fa6fd1",
+    "width": 1280,
+    "height": 800
+  },
+  {
+    "step": "017",
+    "file": "017-seed-1.png",
+    "source": "shots/review3-seed-1.png",
+    "captured_at_utc": "2026-10-17T23:06:00.211789+00:00",
+    "scope": "final dd061d6",
+    "bytes": 703671,
+    "sha256": "e63d0c07192abca13e40b292703612e2c89a4c603647f75b98e2c81315f683e6",
+    "width": 1280,
+    "height": 800
+  },
+  {
+    "step": "018",
+    "file": "018-seed-42.png",
+    "source": "shots/review3-seed-42.png",
+    "captured_at_utc": "2026-10-17T23:06:08.603789+00:00",
+    "scope": "final dd061d6",
+    "bytes": 711664,
+    "sha256": "0d0b36552c435883ffbf12a47f28aa7610232cfa398c63742835e0f733cff6bd",
+    "width": 1280,
+    "height": 800
+  },
+  {
+    "step": "019",
+    "file": "019-seed-7.png",
+    "source": "shots/review3-seed-7.png",
+    "captured_at_utc": "2026-10-17T23:06:17.303789+00:00",
+    "scope": "final dd061d6",
+    "bytes": 683362,
+    "sha256": "7d4fbd32e60078b81786ee8f5542fbbee879537e7bac414ed3f895ac4049db1b",
+    "width": 1280,
+    "height": 800
+  },
+  {
+    "step": "020",
+    "file": "020-seed-99.png",
+    "source": "shots/review3-seed-99.png",
+    "captured_at_utc": "2026-10-17T23:06:25.419789+00:00",
+    "scope": "final dd061d6",
+    "bytes": 704960,
+    "sha256": "508624cd3e754144a0fcdaffc2534d22c84c93ff88703c1415f361119fca3238",
+    "width": 1280,
+    "height": 800
+  },
+  {
+    "step": "021",
+    "file": "021-seed-1.png",
+    "source": "shots/review3-seed-1-webgl2.png",
+    "captured_at_utc": "2026-10-17T23:06:34.235789+00:00",
+    "scope": "final dd061d6",
+    "bytes": 705976,
+    "sha256": "71d289843082276c76f002420f5feab237d2ccb74124cede3e9d0dd9896f68d0",
+    "width": 1280,
+    "height": 800
+  }
+]

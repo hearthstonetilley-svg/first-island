@@ -4,15 +4,15 @@ Implemented against BRIEF.md, BRIEF-1.5.md and REVIEW-3.md. Local only.
 
 ## Images inspected before commit
 
-All five final 1280×800 screenshots were opened and visually inspected. Both HUD labels are visible. The images are local, under gitignored `shots/`.
+All five final 1280×800 screenshots were opened and visually inspected. Both HUD labels are visible. Tracked, byte-identical copies are archived in [docs/iterations/](docs/iterations/README.md); the original scratch captures remain under gitignored `shots/`.
 
 | Screenshot | Observed shape | Peak elevation | Trees / palms |
 | --- | --- | ---: | ---: |
-| [Seed 1](shots/review3-seed-1.png) | Long two-lobed island with a low sandy connection and a dominant rear peak | 11.38 | 299 / 16 |
-| [Seed 42](shots/review3-seed-42.png) | Broad foreground mountain, rear headland and recessed western shore | 10.04 | 331 / 46 |
-| [Seed 7](shots/review3-seed-7.png) | Crescent around an open bay, with a broken ridge behind it | 9.69 | 483 / 42 |
-| [Seed 99](shots/review3-seed-99.png) | Main island with a separate small offshore islet | 10.76 | 422 / 29 |
-| [Forced WebGL2, seed 1](shots/review3-seed-1-webgl2.png) | Same land and vegetation as seed 1; moving foam and reflection patterns differ | 11.38 | 299 / 16 |
+| [Seed 1](docs/iterations/017-seed-1.png) | Long two-lobed island with a low sandy connection and a dominant rear peak | 11.38 | 299 / 16 |
+| [Seed 42](docs/iterations/018-seed-42.png) | Broad foreground mountain, rear headland and recessed western shore | 10.04 | 331 / 46 |
+| [Seed 7](docs/iterations/019-seed-7.png) | Crescent around an open bay, with a broken ridge behind it | 9.69 | 483 / 42 |
+| [Seed 99](docs/iterations/020-seed-99.png) | Main island with a separate small offshore islet | 10.76 | 422 / 29 |
+| [Forced WebGL2, seed 1](docs/iterations/021-seed-1.png) | Same land and vegetation as seed 1; moving foam and reflection patterns differ | 11.38 | 299 / 16 |
 
 ## Checks against each review point
 
@@ -36,6 +36,8 @@ These checks were applied to every image above, including the forced WebGL2 imag
 ## Capture and verification limits
 
 The installed headless Chromium uses SwiftShader, not the desktop GPU. Default renderer selection fell back to WebGL2. The separate `?renderer=webgl2` image exercises explicit backend selection. Native WebGPU probes could not produce a usable displayed frame in this environment (including a Chromium shared-image backing failure); those blank captures were rejected. **Native WebGPU rendering and desktop 60 fps are not verified.** TSL node materials and Three.js's built-in WebGPU-to-WebGL2 fallback are retained; there is no custom GLSL or racing renderer-initialization timeout.
+
+The following command documents the original capture setup. New captures must follow the versioned screenshot and immediate-commit rule in AGENTS.md.
 
 Some virtual-time captures ended during asynchronous adapter startup. Final default-path captures disable unavailable WebGPU browser features, letting the application's built-in fallback initialize before the capture budget expires:
 
