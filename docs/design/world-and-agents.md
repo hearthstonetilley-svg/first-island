@@ -1,6 +1,6 @@
 # Design: the world and its agents
 
-Status: draft 1, 18 Oct 2026. This is the design the stage 2 briefs are cut from. Open questions are listed at the end.
+Status: draft 2, 18 Oct 2026 (adds the system as an evolving eval). This is the design the stage 2 briefs are cut from. Open questions are listed at the end.
 
 ## 1. The research question
 
@@ -52,6 +52,10 @@ Layer 4 has two depths, and they are different in kind:
   some need chains of earlier discoveries (a hardened material that only forms from an ash of something heated with
   water).
 - The full table of elements and reactions is never shown to agents below layer 4.
+- **The chemistry is generated from the seed.** Every world gets its own elements, properties and reactions, drawn
+  from a generator with guaranteed structure (some easy reactions, some long chains, at least one buoyant material,
+  at least one durable building material). Nothing is fixed, so nothing can be memorised. This matters because the
+  repo is public: a fixed chemistry would end up in future models' training data. See section 11.
 
 ## 5. The agents
 
@@ -130,18 +134,63 @@ knowledge surviving across generations, structures built.
 - **Lineages:** a family tree for bodies, a spread tree for ideas.
 - Runs with different dials are compared side by side. That is where findings come from.
 
-## 11. Build order
+## 11. The system is an eval
 
+Strip the island away and the experiment measures something current benchmarks barely touch: how far a society of AI
+minds can climb from survival to science to rewriting its world, in a world where training knowledge does not supply
+the answers. So the system is designed as an eval from the start, and an evolving one.
+
+### 11.1 Three kinds of eval
+1. **Build evals: does the software work?** Run on every pull request: every seed loads (no hang), frames are not
+   black or empty, warm-up frame times stay inside a budget, the same seed gives an identical world, the simulation
+   replays identically from its event log.
+2. **Society evals: how far did they get?** Measured on every run (section 11.3).
+3. **Leak evals: is the discovery real?** Minds' outputs are scanned for concepts their society has not earned: an
+   Earth name for something nobody has named yet, a reaction used before it was observed, an element property stated
+   without a test that could reveal it. Every leak is logged against the mind that made it. A society's score only
+   counts discoveries with a clean trail of observations behind them.
+
+### 11.2 Why it must evolve
+- **Fixed evals get memorised.** A public, fixed world leaks into training data. Generated chemistry per seed means
+  there is nothing to memorise.
+- **Fixed evals saturate.** Once a world is mastered it stops measuring anything. The director (section 8) makes the
+  world harder as the society masters it, so the eval grows with its subjects (related work: POET, OMNI-EPIC, where
+  environments and agents co-evolve).
+
+### 11.3 Scoring: the climb
+A run is scored on how far up the layers the society gets, and how fast:
+- **Layer reached**, with evidence: 1 survives generations; 2 names things and predicts outcomes before testing them;
+  3 makes things on purpose from multi-step recipes; 4 reads or edits a definition (only if the gate exists in that run).
+- **Milestone times** in simulated generations: first tool, first shelter, first fire, first boat, first record.
+- **Complexity score** (section 8), and **knowledge retention** across generations.
+- **Cost**: mind calls spent. A society that climbs as far for half the budget scores higher.
+- **Leak rate**: leaks per thousand mind calls. High leak rates void milestones that rest on them.
+
+### 11.4 Two tracks
+- **Held-out track:** a fixed list of seeds and dials kept off the public repo, so scores stay comparable across time
+  and uncontaminated. Only aggregate results are published.
+- **Open track:** public, evolving and ever harder. This is where the frontier is pushed and where runs are shown.
+
+### 11.5 Comparing minds
+The same held-out worlds can be run with different models as the minds (Claude, GPT, open models), with the same
+budget. The output is a leaderboard of civilisations, not answers: which society climbed highest, fastest and
+cleanest. Bodies, physics and chemistry stay identical, so the only variable is the mind.
+
+## 12. Build order
+
+- **Now: build evals.** The harness from 11.1, run on every pull request.
 - **2a: simulation core.** Worker with a fixed clock, world state, event log, replay from seed. Renderer reads state.
+  Replay determinism joins the build evals.
 - **2b: bodies.** Agents with needs, traits, life cycle and the verb set, driven by simple scripted behaviour (no AI
   model). Survival, death, reproduction and inheritance working and visible.
-- **2c: chemistry v1.** Six elements, materials, a handful of reactions, strike and combine giving real results.
+- **2c: chemistry v1.** The seeded chemistry generator (six elements per world), materials, reactions, strike and
+  combine giving real results.
 - **2d: building and exposure.** Build layer, support rules, weather and the exposure check. Shelters can now be found.
-- **2e: minds.** The AI model tier, with the senses-only view and a budget.
+- **2e: minds.** The AI model tier, with the senses-only view and a budget. Leak evals ship with it, not after.
 - **2f: knowledge.** Teaching, forgetting at death, records, the idea web.
 - Later: boats and other islands, rivals, the director, and the layer 4 gate.
 
-## 12. Open questions for the owner
+## 13. Open questions for the owner
 
 1. **The awakening gate.** What does it take to reach layer 4: a discovery (an instrument that reveals definitions),
    a threshold of understanding, or never by default? What does editing cost?
@@ -151,3 +200,5 @@ knowledge surviving across generations, structures built.
 4. **Death and pace.** How long is a generation in real time? This sets how fast evolution can be watched.
 5. **Our interventions.** May we (the owner, the director) change the world during a run, and is every intervention
    logged as an event?
+6. **The held-out track.** Where do the secret seeds live (a private repo, or a local file), and who may run them?
+7. **Comparing minds.** Is a cross-model leaderboard a goal for this project, or a later spin-off?
