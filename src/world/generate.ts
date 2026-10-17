@@ -1,4 +1,5 @@
 export type TerrainBand = 'beach' | 'grass' | 'rock';
+export type TreeKind = 'pine' | 'broadleaf' | 'palm';
 
 export interface TreeData {
   x: number;
@@ -6,6 +7,8 @@ export interface TreeData {
   z: number;
   scale: number;
   rotation: number;
+  kind: TreeKind;
+  tint: number;
 }
 
 export interface WorldData {
@@ -73,7 +76,7 @@ const fbm = (noise: (x: number, y: number) => number, x: number, y: number): num
   return sum / amplitudeTotal;
 };
 
-export function generateWorld(seed = 1, resolution = 80, size = 24): WorldData {
+export function generateWorld(seed = 1, resolution = 128, size = 24): WorldData {
   const random = new SeededRandom(seed);
   const noise = createNoise(seed);
   const heights = new Float32Array(resolution * resolution);
@@ -104,16 +107,48 @@ export function generateWorld(seed = 1, resolution = 80, size = 24): WorldData {
     return heights[row * resolution + column];
   };
 
-  for (let attempt = 0; attempt < 900; attempt += 1) {
-    const x = (random.next() - 0.5) * size * 0.9;
-    const z = (random.next() - 0.5) * size * 0.9;
+  const validTreeSite = (x: number, z: number) => {
     const y = worldHeight(x, z);
-    if (y < 0.1 || y > 0.62) continue;
+    if (y < 0.1 || y > 0.62) return null;
     const slope = Math.abs(worldHeight(x + step, z) - worldHeight(x - step, z)) + Math.abs(worldHeight(x, z + step) - worldHeight(x, z - step));
-    if (slope > 0.16) continue;
-    const spacing = trees.every((tree) => Math.hypot(tree.x - x, tree.z - z) > 0.7);
-    if (!spacing) continue;
-    trees.push({ x, y, z, scale: 0.75 + random.next() * 0.55, rotation: random.next() * Math.PI * 2 });
+    if (slope > 0.16) return null;
+    if (!trees.every((tree) => Math.hypot(tree.x - x, tree.z - z) > 1.05)) return null;
+    return y;
+  };
+
+  const groves: Array<{ x: number; z: number }> = [];
+  for (let groveIndex = 0; groveIndex < 6; groveIndex += 1) {
+    for (let attempt = 0; attempt < 80; attempt += 1) {
+      const x = (random.next() - 0.5) * size * 0.7;
+      const z = (random.next() - 0.5) * size * 0.7;
+      const y = worldHeight(x, z);
+      if (y > 0.16 && y < 0.5 && groves.every((grove) => Math.hypot(grove.x - x, grove.z - z) > 3.2)) {
+        groves.push({ x, z });
+        break;
+      }
+    }
+  }
+
+  for (const grove of groves) {
+    const count = 4 + Math.floor(random.next() * 5);
+    for (let treeIndex = 0; treeIndex < count; treeIndex += 1) {
+      const angle = random.next() * Math.PI * 2;
+      const radius = Math.sqrt(random.next()) * 2.8;
+      const x = grove.x + Math.cos(angle) * radius;
+      const z = grove.z + Math.sin(angle) * radius;
+      const y = validTreeSite(x, z);
+      if (y === null) continue;
+      const kind: TreeKind = y < 0.23 ? 'palm' : random.next() < 0.28 ? 'broadleaf' : 'pine';
+      trees.push({ x, y, z, scale: 0.8 + random.next() * 0.5, rotation: random.next() * Math.PI * 2, kind, tint: random.next() });
+    }
+  }
+
+  for (let attempt = 0; attempt < 80 && trees.length < 38; attempt += 1) {
+    const x = (random.next() - 0.5) * size * 0.85;
+    const z = (random.next() - 0.5) * size * 0.85;
+    const y = validTreeSite(x, z);
+    if (y === null || y > 0.25) continue;
+    trees.push({ x, y, z, scale: 0.75 + random.next() * 0.4, rotation: random.next() * Math.PI * 2, kind: 'palm', tint: random.next() });
   }
 
   return { seed, size, resolution, heights, bands, trees };
