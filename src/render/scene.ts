@@ -1,12 +1,13 @@
 import {
   AmbientLight, Color, ConeGeometry, CylinderGeometry, DirectionalLight, Float32BufferAttribute, Fog, InstancedMesh, Matrix4, Mesh,
-  MeshStandardMaterial, PerspectiveCamera, PlaneGeometry, Scene, ShaderMaterial,
-  SRGBColorSpace, WebGLRenderer,
+  MeshStandardMaterial, PerspectiveCamera, PlaneGeometry, Scene,
+  SRGBColorSpace,
 } from 'three';
-import { WebGPURenderer } from 'three/webgpu';
+import { MeshBasicNodeMaterial, WebGPURenderer } from 'three/webgpu';
+import { color, float, length, mix, positionLocal, positionWorld, sin, cos, smoothstep, uniform, vec3 } from 'three/tsl';
 import { WorldData } from '../world/generate';
 
-type Renderer = WebGPURenderer | WebGLRenderer;
+type Renderer = WebGPURenderer;
 
 const terrainMaterial = new MeshStandardMaterial({ vertexColors: true, roughness: 1 });
 
@@ -18,7 +19,7 @@ function addTerrain(scene: Scene, world: WorldData): void {
   const color = new Color();
   for (let index = 0; index < position.count; index += 1) {
     const height = world.heights[index];
-    position.setY(index, height * 4.2 - 0.35);
+    position.setY(index, height * 4.2);
     const band = world.bands[index];
     color.set(band === 'beach' ? '#d9bd76' : band === 'rock' ? '#757c71' : '#477747');
     colors[index * 3] = color.r;
@@ -47,22 +48,23 @@ function addTrees(scene: Scene, world: WorldData): void {
   scene.add(trunk, canopy);
 }
 
-function addOcean(scene: Scene): Mesh {
+function addOcean(scene: Scene): { mesh: Mesh; time: ReturnType<typeof uniform> } {
   const geometry = new PlaneGeometry(180, 180, 120, 120);
   geometry.rotateX(-Math.PI / 2);
-  const material = new ShaderMaterial({
-    uniforms: { time: { value: 0 } },
-    vertexShader: `varying vec3 vWorld; uniform float time; void main() { vec3 p = position; p.y += sin(p.x * 0.22 + time) * 0.08 + cos(p.z * 0.17 + time * 0.8) * 0.06; vec4 world = modelMatrix * vec4(p, 1.0); vWorld = world.xyz; gl_Position = projectionMatrix * viewMatrix * world; }`,
-    fragmentShader: `varying vec3 vWorld; void main() { float depth = smoothstep(4.0, 33.0, length(vWorld.xz)); vec3 shallow = vec3(0.13, 0.49, 0.54); vec3 deep = vec3(0.025, 0.13, 0.27); gl_FragColor = vec4(mix(shallow, deep, depth), 0.96); }`,
-    transparent: true,
-  });
+  const time = uniform(0);
+  const material = new MeshBasicNodeMaterial({ transparent: true, opacity: 0.96 });
+  const wave = sin(positionLocal.x.mul(0.22).add(time)).mul(0.08)
+    .add(cos(positionLocal.z.mul(0.17).add(time.mul(0.8))).mul(0.06));
+  material.positionNode = positionLocal.add(vec3(0, wave, 0));
+  const depth = smoothstep(float(4), float(70), length(positionWorld.xz));
+  material.colorNode = mix(color('#258f98'), color('#08294f'), depth);
   const ocean = new Mesh(geometry, material);
   ocean.position.y = 0;
   scene.add(ocean);
-  return ocean;
+  return { mesh: ocean, time };
 }
 
-export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldData): Promise<{ renderer: Renderer; label: string; render: (time: number) => void }> {
+export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldData, forceWebGL2 = false): Promise<{ renderer: Renderer; label: string; render: (time: number) => void }> {
   const scene = new Scene();
   scene.background = new Color('#a9d6dc');
   scene.fog = new Fog('#a9d6dc', 38, 105);
@@ -114,20 +116,18 @@ export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldD
   sun.position.set(-10, 25, 12);
   scene.add(sun);
 
-  let renderer: Renderer;
-  let label: string;
-  if ('gpu' in navigator) {
-    try {
-      const webgpu = new WebGPURenderer({ canvas, antialias: true });
-      await webgpu.init();
-      renderer = webgpu;
-      label = 'WebGPU';
-    } catch {
-      renderer = new WebGLRenderer({ canvas, antialias: true });
-      label = 'WebGL2';
-    }
-  } else {
-    renderer = new WebGLRenderer({ canvas, antialias: true });
+  let renderer = new WebGPURenderer({ canvas, antialias: true, forceWebGL: forceWebGL2 });
+  let label = forceWebGL2 ? 'WebGL2' : 'WebGPU';
+  const initialized = await Promise.race([
+    renderer.init().then(() => true),
+    new Promise<boolean>((resolve) => window.setTimeout(() => resolve(false), 1500)),
+  ]);
+  if (!initialized) {
+    renderer.dispose();
+    renderer = new WebGPURenderer({ canvas, antialias: true, forceWebGL: true });
+    await renderer.init();
+    label = 'WebGL2';
+  } else if ((renderer.backend as { isWebGLBackend?: boolean }).isWebGLBackend) {
     label = 'WebGL2';
   }
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -135,7 +135,7 @@ export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldD
   renderer.outputColorSpace = SRGBColorSpace;
 
   const render = (time: number) => {
-    (ocean.material as ShaderMaterial).uniforms.time.value = time * 0.001;
+    ocean.time.value = time * 0.001;
     renderer.render(scene, camera);
   };
   return { renderer, label, render };

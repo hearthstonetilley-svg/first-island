@@ -4,6 +4,7 @@ import { createIslandScene } from './render/scene';
 
 const params = new URLSearchParams(window.location.search);
 const seed = parseSeed(params.get('seed'));
+const forceWebGL2 = params.get('renderer') === 'webgl2';
 const app = document.querySelector<HTMLDivElement>('#app');
 if (!app) throw new Error('App root is missing');
 
@@ -14,7 +15,7 @@ label.textContent = `seed ${seed} · starting renderer…`;
 app.append(canvas, label);
 
 const world = generateWorld(seed);
-const island = await createIslandScene(canvas, world);
+const island = await createIslandScene(canvas, world, forceWebGL2);
 label.textContent = `seed ${seed} · ${island.label}`;
 
 const resize = () => island.renderer.setSize(window.innerWidth, window.innerHeight);
