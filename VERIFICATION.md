@@ -1,6 +1,6 @@
 # Review 3 verification
 
-Implemented against BRIEF.md, BRIEF-1.5.md and REVIEW-3.md. Local only.
+Historical visual verification of `dd061d6`, against BRIEF.md, BRIEF-1.5.md and REVIEW-3.md. Local only. The later REVIEW-4 startup blocker is fixed and verified in [iteration 022](docs/iterations/022.md); its visual points 2–4 are unchanged.
 
 ## Images inspected before commit
 
@@ -35,7 +35,7 @@ These checks were applied to every image above, including the forced WebGL2 imag
 
 ## Capture and verification limits
 
-The installed headless Chromium uses SwiftShader, not the desktop GPU. Default renderer selection fell back to WebGL2. The separate `?renderer=webgl2` image exercises explicit backend selection. Native WebGPU probes could not produce a usable displayed frame in this environment (including a Chromium shared-image backing failure); those blank captures were rejected. **Native WebGPU rendering and desktop 60 fps are not verified.** TSL node materials and Three.js's built-in WebGPU-to-WebGL2 fallback are retained; there is no custom GLSL or racing renderer-initialization timeout.
+The installed headless Chromium uses SwiftShader, not the desktop GPU. Default renderer selection fell back to WebGL2. The separate `?renderer=webgl2` image exercises explicit backend selection. Native WebGPU probes could not produce a usable displayed frame in this environment (including a Chromium shared-image backing failure); those blank captures were rejected. **Native WebGPU rendering and desktop 60 fps are not verified.** TSL node materials and Three.js's built-in WebGPU-to-WebGL2 fallback are retained; there is no custom GLSL. This version had unbounded renderer initialization; iteration 022 restores bounded startup with isolated fallback canvases.
 
 The following command documents the original capture setup. New captures must follow the versioned screenshot and immediate-commit rule in AGENTS.md.
 

@@ -1,0 +1,172 @@
+[
+  {
+    "case": "load1",
+    "seed": 1,
+    "screenshot": "docs/iterations/022-load1-seed-1.png",
+    "url": "http://localhost:5173/?seed=1",
+    "flags": [],
+    "label": "seed 1 \u00b7 WebGL2",
+    "bytes": 704702,
+    "passed": true,
+    "elapsed_seconds": 9.02,
+    "log": "/tmp/island-022-load1-seed-1.log"
+  },
+  {
+    "case": "load1",
+    "seed": 42,
+    "screenshot": "docs/iterations/022-load1-seed-42.png",
+    "url": "http://localhost:5173/?seed=42",
+    "flags": [],
+    "label": "seed 42 \u00b7 WebGL2",
+    "bytes": 711355,
+    "passed": true,
+    "elapsed_seconds": 8.07,
+    "log": "/tmp/island-022-load1-seed-42.log"
+  },
+  {
+    "case": "load1",
+    "seed": 7,
+    "screenshot": "docs/iterations/022-load1-seed-7.png",
+    "url": "http://localhost:5173/?seed=7",
+    "flags": [],
+    "label": "seed 7 \u00b7 WebGL2",
+    "bytes": 685109,
+    "passed": true,
+    "elapsed_seconds": 9.26,
+    "log": "/tmp/island-022-load1-seed-7.log"
+  },
+  {
+    "case": "load1",
+    "seed": 99,
+    "screenshot": "docs/iterations/022-load1-seed-99.png",
+    "url": "http://localhost:5173/?seed=99",
+    "flags": [],
+    "label": "seed 99 \u00b7 WebGL2",
+    "bytes": 706564,
+    "passed": true,
+    "elapsed_seconds": 8.13,
+    "log": "/tmp/island-022-load1-seed-99.log"
+  },
+  {
+    "case": "load2",
+    "seed": 1,
+    "screenshot": "docs/iterations/022-load2-seed-1.png",
+    "url": "http://localhost:5173/?seed=1",
+    "flags": [],
+    "label": "seed 1 \u00b7 WebGL2",
+    "bytes": 704064,
+    "passed": true,
+    "elapsed_seconds": 9.36,
+    "log": "/tmp/island-022-load2-seed-1.log"
+  },
+  {
+    "case": "load2",
+    "seed": 42,
+    "screenshot": "docs/iterations/022-load2-seed-42.png",
+    "url": "http://localhost:5173/?seed=42",
+    "flags": [],
+    "label": "seed 42 \u00b7 WebGL2",
+    "bytes": 713142,
+    "passed": true,
+    "elapsed_seconds": 8.84,
+    "log": "/tmp/island-022-load2-seed-42.log"
+  },
+  {
+    "case": "load2",
+    "seed": 7,
+    "screenshot": "docs/iterations/022-load2-seed-7.png",
+    "url": "http://localhost:5173/?seed=7",
+    "flags": [],
+    "label": "seed 7 \u00b7 WebGL2",
+    "bytes": 684881,
+    "passed": true,
+    "elapsed_seconds": 8.73,
+    "log": "/tmp/island-022-load2-seed-7.log"
+  },
+  {
+    "case": "load2",
+    "seed": 99,
+    "screenshot": "docs/iterations/022-load2-seed-99.png",
+    "url": "http://localhost:5173/?seed=99",
+    "flags": [],
+    "label": "seed 99 \u00b7 WebGL2",
+    "bytes": 704335,
+    "passed": true,
+    "elapsed_seconds": 7.6,
+    "log": "/tmp/island-022-load2-seed-99.log"
+  },
+  {
+    "case": "load3",
+    "seed": 1,
+    "screenshot": "docs/iterations/022-load3-seed-1.png",
+    "url": "http://localhost:5173/?seed=1",
+    "flags": [],
+    "label": "seed 1 \u00b7 WebGL2",
+    "bytes": 702064,
+    "passed": true,
+    "elapsed_seconds": 7.42,
+    "log": "/tmp/island-022-load3-seed-1.log"
+  },
+  {
+    "case": "load3",
+    "seed": 42,
+    "screenshot": "docs/iterations/022-load3-seed-42.png",
+    "url": "http://localhost:5173/?seed=42",
+    "flags": [],
+    "label": "seed 42 \u00b7 WebGL2",
+    "bytes": 714726,
+    "passed": true,
+    "elapsed_seconds": 9.1,
+    "log": "/tmp/island-022-load3-seed-42.log"
+  },
+  {
+    "case": "load3",
+    "seed": 7,
+    "screenshot": "docs/iterations/022-load3-seed-7.png",
+    "url": "http://localhost:5173/?seed=7",
+    "flags": [],
+    "label": "seed 7 \u00b7 WebGL2",
+    "bytes": 684757,
+    "passed": true,
+    "elapsed_seconds": 8.54,
+    "log": "/tmp/island-022-load3-seed-7.log"
+  },
+  {
+    "case": "load3",
+    "seed": 99,
+    "screenshot": "docs/iterations/022-load3-seed-99.png",
+    "url": "http://localhost:5173/?seed=99",
+    "flags": [],
+    "label": "seed 99 \u00b7 WebGL2",
+    "bytes": 706205,
+    "passed": true,
+    "elapsed_seconds": 8.41,
+    "log": "/tmp/island-022-load3-seed-99.log"
+  },
+  {
+    "case": "webgl2",
+    "seed": 1,
+    "screenshot": "docs/iterations/022-webgl2-seed-1.png",
+    "url": "http://localhost:5173/?seed=1&renderer=webgl2",
+    "flags": [],
+    "label": "seed 1 \u00b7 WebGL2",
+    "bytes": 705194,
+    "passed": true,
+    "elapsed_seconds": 8.24,
+    "log": "/tmp/island-022-webgl2-seed-1.log"
+  },
+  {
+    "case": "no-graphics",
+    "seed": 1,
+    "screenshot": "docs/iterations/022-no-graphics-seed-1.png",
+    "url": "http://localhost:5173/?seed=1",
+    "flags": [
+      "--disable-3d-apis"
+    ],
+    "label": "seed 1 \u00b7 WebGL2 initialization failed. Enable graphics acceleration and reload.",
+    "bytes": 15563,
+    "passed": true,
+    "elapsed_seconds": 0.96,
+    "log": "/tmp/island-022-no-graphics-seed-1.log"
+  }
+]

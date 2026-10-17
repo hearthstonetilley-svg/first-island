@@ -12,6 +12,7 @@ import {
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
 import { sampleSlope, TreeData, TreeKind, WorldData } from '../world/generate';
+import { initializeRenderer } from './startup';
 
 const SUN_DIRECTION = new Vector3(-0.82, 0.22, -0.53).normalize();
 
@@ -227,6 +228,17 @@ export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldD
   render: (time: number) => void;
   resize: () => void;
 }> {
+  // Keep pending WebGPU initialization off the displayed/fallback canvas. Its
+  // adapter request cannot be cancelled and may finish after the timeout.
+  const placeholder = canvas;
+  const renderer = await initializeRenderer((forceWebGL) => new WebGPURenderer({
+    canvas: placeholder.cloneNode(false) as HTMLCanvasElement,
+    antialias: true,
+    forceWebGL,
+  }), forceWebGL2);
+  canvas = renderer.domElement;
+  placeholder.replaceWith(canvas);
+
   const scene = new Scene();
   scene.background = new ThreeColor('#a6cedf');
   scene.fog = new FogExp2('#9bc5d9', 0.0018);
@@ -314,9 +326,6 @@ export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldD
   sun.shadow.camera.far = 180;
   scene.add(sun);
 
-  // WebGPURenderer performs its own WebGL2 fallback, including adapter/init failures.
-  const renderer = new WebGPURenderer({ canvas, antialias: true, forceWebGL: forceWebGL2 });
-  await renderer.init();
   const label = (renderer.backend as { isWebGLBackend?: boolean }).isWebGLBackend ? 'WebGL2' : 'WebGPU';
   renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
   renderer.setSize(innerWidth, innerHeight);

@@ -32,6 +32,12 @@ These archive numbers identify retained captures, not 21 historical code commits
 | 020 | [020-seed-99.png](020-seed-99.png) | `shots/review3-seed-99.png` | final dd061d6 |
 | 021 | [021-seed-1.png](021-seed-1.png) | `shots/review3-seed-1-webgl2.png` | final dd061d6 |
 
+## Documented iterations
+
+| Step | Scope and screenshot findings |
+| --- | --- |
+| [022](022.md) | Startup deadline and safe fallback only. All 12 normal loads show complete islands; forced WebGL2 succeeds; graphics-disabled capture shows a clear error. [Machine-readable results](022-startup.json). |
+
 ## Next iteration
 
-Start with step `022`. Capture and inspect the screenshots, record what changed and what they show, and commit the code, note and images immediately, even if the result needs another fix. Complete that commit before starting another iteration. Multiple seeds from one code version can share a step prefix. Use a distinct step suffix for repeat captures of the same seed, such as `022-webgl2-seed-1.png`, and never overwrite earlier images. Never push; the owner pushes.
+Start with step `023`. Capture and inspect the screenshots, record what changed and what they show, and commit the code, note and images immediately, even if the result needs another fix. Complete that commit before starting another iteration. Multiple seeds from one code version can share a step prefix. Use a distinct step suffix for repeat captures of the same seed, such as `022-webgl2-seed-1.png`, and never overwrite earlier images. Never push; the owner pushes.
