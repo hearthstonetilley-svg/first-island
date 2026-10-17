@@ -1,181 +1,276 @@
 import {
-  ACESFilmicToneMapping, AmbientLight, BackSide, Color as ThreeColor, ConeGeometry, CylinderGeometry,
-  DirectionalLight, Float32BufferAttribute, Fog, HemisphereLight, InstancedMesh, Matrix4, Mesh,
-  MeshStandardMaterial, PerspectiveCamera, PlaneGeometry, Scene, SphereGeometry, SRGBColorSpace,
-  Vector3,
+  ACESFilmicToneMapping, BackSide, Color as ThreeColor, ConeGeometry, CylinderGeometry,
+  DataTexture, DirectionalLight, DoubleSide, Euler, Float32BufferAttribute, FloatType, FogExp2,
+  HemisphereLight, InstancedMesh, LinearFilter, Matrix4, Mesh, PerspectiveCamera, PlaneGeometry,
+  Quaternion, RedFormat, Scene, SphereGeometry, SRGBColorSpace, Vector3,
 } from 'three';
-import { MeshBasicNodeMaterial, MeshStandardNodeMaterial, WebGPURenderer } from 'three/webgpu';
+import { MeshBasicNodeMaterial, MeshStandardNodeMaterial, Node, PostProcessing, WebGPURenderer } from 'three/webgpu';
 import {
-  attribute, cameraPosition, color, cos, dot, float, max, mix, normalize, normalWorld,
-  positionLocal, positionWorld, pow, sin, smoothstep, uniform, vec3,
+  cameraPosition, color, cos, dot, exp, float, max, mix, mrt, normalView, normalize, output,
+  pass, positionLocal, positionWorld, pow, ShaderNodeObject, sin, smoothstep, texture, uniform, vec3,
 } from 'three/tsl';
-import { TreeData, TreeKind, WorldData } from '../world/generate';
+import { bloom } from 'three/addons/tsl/display/BloomNode.js';
+import { ao } from 'three/addons/tsl/display/GTAONode.js';
+import { sampleSlope, TreeData, TreeKind, WorldData } from '../world/generate';
 
-type Renderer = WebGPURenderer;
-
-const SUN_DIRECTION = new Vector3(-0.45, 0.8, 0.3).normalize();
+const SUN_DIRECTION = new Vector3(-0.82, 0.22, -0.53).normalize();
 
 function addTerrain(scene: Scene, world: WorldData): void {
-  const geometry = new PlaneGeometry(world.size, world.size, world.resolution - 1, world.resolution - 1);
+  // An extra submerged ring continues the seabed out past the view, with no square shelf.
+  const count = world.resolution + 2;
+  const geometry = new PlaneGeometry(world.size, world.size, count - 1, count - 1);
   geometry.rotateX(-Math.PI / 2);
-  const position = geometry.attributes.position;
-  const colors = new Float32Array(position.count * 3);
-  const terrainColor = new ThreeColor();
-  const wetSand = new ThreeColor('#a88755');
-  const drySand = new ThreeColor('#d9bd76');
-  const grass = new ThreeColor('#477747');
-  const rock = new ThreeColor('#73766e');
-  const heightAt = (row: number, column: number) => world.heights[Math.max(0, Math.min(world.resolution - 1, row)) * world.resolution + Math.max(0, Math.min(world.resolution - 1, column))];
-
-  for (let index = 0; index < position.count; index += 1) {
-    const row = Math.floor(index / world.resolution);
-    const column = index % world.resolution;
-    const height = world.heights[index];
-    const slope = Math.abs(heightAt(row, column + 1) - heightAt(row, column - 1)) + Math.abs(heightAt(row + 1, column) - heightAt(row - 1, column));
-    position.setY(index, height * 4.2);
-    if (height < 0.06) terrainColor.copy(wetSand);
-    else if (height < 0.16) terrainColor.copy(drySand);
-    else if (height > 0.56 || slope > 0.18) terrainColor.copy(rock);
-    else terrainColor.copy(grass);
-    if (height > 0.2 && height < 0.5) terrainColor.offsetHSL((index % 7 - 3) * 0.004, 0, (index % 5 - 2) * 0.012);
-    const slopeRock = Math.max(0, Math.min(1, (slope - 0.12) * 4));
-    terrainColor.lerp(rock, slopeRock);
-    colors[index * 3] = terrainColor.r;
-    colors[index * 3 + 1] = terrainColor.g;
-    colors[index * 3 + 2] = terrainColor.b;
+  const positions = geometry.attributes.position;
+  const colors = new Float32Array(positions.count * 3);
+  const wetSand = new ThreeColor('#988664');
+  const drySand = new ThreeColor('#dfce9c');
+  const grass = new ThreeColor('#67884b');
+  const rock = new ThreeColor('#a6a196');
+  const shade = new ThreeColor();
+  for (let row = 0; row < count; row += 1) {
+    for (let column = 0; column < count; column += 1) {
+      const index = row * count + column;
+      const r = Math.max(0, Math.min(world.resolution - 1, row - 1));
+      const c = Math.max(0, Math.min(world.resolution - 1, column - 1));
+      const x = (c / (world.resolution - 1) - 0.5) * world.size;
+      const z = (r / (world.resolution - 1) - 0.5) * world.size;
+      const outer = row === 0 || column === 0 || row === count - 1 || column === count - 1;
+      const height = world.heights[r * world.resolution + c];
+      positions.setXYZ(index, column === 0 ? -600 : column === count - 1 ? 600 : x,
+        outer ? -180 : height, row === 0 ? -600 : row === count - 1 ? 600 : z);
+      const slope = sampleSlope(world, x, z);
+      shade.copy(wetSand).lerp(drySand, smooth(0.01, 0.17, height));
+      shade.lerp(grass, smooth(0.16, 0.38, height));
+      const variation = Math.sin(x * 1.7 + Math.sin(z * 2.3)) * Math.cos(z * 1.4 - x * 0.6);
+      shade.offsetHSL(variation * 0.018, 0, variation * 0.035);
+      const rocky = Math.max(smooth(1.45, 2.4, slope), smooth(4.8, 7, height) * 0.9);
+      shade.lerp(rock, rocky);
+      // Fine strata and erosion variation stay continuous across triangle boundaries.
+      const strata = Math.sin(height * 16 + x * 0.8 + Math.sin(z * 3)) * 0.025 * rocky;
+      shade.multiplyScalar(1 + strata);
+      colors.set([shade.r, shade.g, shade.b], index * 3);
+    }
   }
   geometry.setAttribute('color', new Float32BufferAttribute(colors, 3));
   geometry.computeVertexNormals();
-  const mesh = new Mesh(geometry, new MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 }));
+  const material = new MeshStandardNodeMaterial({ vertexColors: true, roughness: 0.95 });
+  const grain = sin(positionWorld.x.mul(6.3).add(sin(positionWorld.z.mul(4.7))))
+    .mul(sin(positionWorld.z.mul(7.1).add(positionWorld.y.mul(9.3))));
+  material.colorNode = color('white').mul(grain.mul(0.045).add(1));
+  const mesh = new Mesh(geometry, material);
+  mesh.castShadow = true;
   mesh.receiveShadow = true;
   scene.add(mesh);
 }
 
-function createWindMaterial(baseColor: string, time: ReturnType<typeof uniform>): MeshStandardNodeMaterial {
-  const material = new MeshStandardNodeMaterial({ color: baseColor, roughness: 0.88, vertexColors: true });
-  const sway = sin(positionLocal.y.mul(1.6).add(time.mul(0.8))).mul(positionLocal.y.abs().mul(0.035));
-  material.positionNode = positionLocal.add(vec3(sway, 0, cos(positionLocal.y.mul(1.4).add(time.mul(0.65))).mul(positionLocal.y.abs().mul(0.025))));
-  return material;
+function smooth(low: number, high: number, value: number): number {
+  const t = Math.max(0, Math.min(1, (value - low) / (high - low)));
+  return t * t * (3 - 2 * t);
 }
 
-function setTreeMatrix(matrix: Matrix4, tree: TreeData, y: number, scaleY: number): void {
-  matrix.makeScale(tree.scale, tree.scale * scaleY, tree.scale);
-  matrix.setPosition(tree.x, y, tree.z);
+function treeMaterial(time: ReturnType<typeof uniform>): MeshStandardNodeMaterial {
+  // Instance colours already contain the bark/leaf hue. A second dark base colour
+  // would multiply it again and turn the trunks almost black.
+  const material = new MeshStandardNodeMaterial({ color: '#ffffff', roughness: 0.92 });
+  const bend = max(positionLocal.y, float(0)).pow(2).mul(0.012);
+  material.positionNode = positionLocal.add(vec3(
+    sin(time.mul(1.2).add(positionWorld.x.mul(0.4))).mul(bend), 0,
+    cos(time.mul(0.85).add(positionWorld.z.mul(0.3))).mul(bend).mul(0.6),
+  ));
+  return material;
 }
 
 function addTreeKind(scene: Scene, trees: TreeData[], kind: TreeKind, time: ReturnType<typeof uniform>): void {
   const selected = trees.filter((tree) => tree.kind === kind);
-  if (selected.length === 0) return;
-  const trunkHeight = kind === 'palm' ? 1.7 : 0.9;
-  const canopyGeometry = kind === 'pine'
-    ? new ConeGeometry(0.68, 1.85, 8)
-    : kind === 'broadleaf'
-      ? new SphereGeometry(0.78, 8, 6)
-      : new ConeGeometry(0.82, 0.46, 8);
-  const trunk = new InstancedMesh(new CylinderGeometry(0.1, kind === 'palm' ? 0.13 : 0.16, trunkHeight, 7), createWindMaterial('#66503b', time), selected.length);
-  const canopy = new InstancedMesh(canopyGeometry, createWindMaterial(kind === 'palm' ? '#70b579' : kind === 'broadleaf' ? '#6cae6b' : '#5f9a62', time), selected.length);
-  const matrix = new Matrix4();
-  selected.forEach((tree, index) => {
-    const trunkColor = new ThreeColor('#66503b').offsetHSL(0, 0, (tree.tint - 0.5) * 0.12);
-    const canopyColor = new ThreeColor(kind === 'palm' ? '#70b579' : kind === 'broadleaf' ? '#6cae6b' : '#5f9a62').offsetHSL((tree.tint - 0.5) * 0.04, 0, (tree.tint - 0.5) * 0.12);
-    setTreeMatrix(matrix, tree, tree.y * 4.2 + trunkHeight * tree.scale * 0.5, 1);
-    trunk.setMatrixAt(index, matrix);
-    trunk.setColorAt(index, trunkColor);
-    const canopyY = kind === 'pine' ? 1.25 : kind === 'broadleaf' ? 1.55 : 2.05;
-    setTreeMatrix(matrix, tree, tree.y * 4.2 + canopyY * tree.scale, kind === 'palm' ? 1 : 1.05);
-    canopy.setMatrixAt(index, matrix);
-    canopy.setColorAt(index, canopyColor);
-  });
-  trunk.instanceMatrix.needsUpdate = true;
-  canopy.instanceMatrix.needsUpdate = true;
-  if (trunk.instanceColor) trunk.instanceColor.needsUpdate = true;
-  if (canopy.instanceColor) canopy.instanceColor.needsUpdate = true;
-  trunk.castShadow = true;
-  canopy.castShadow = true;
-  trunk.receiveShadow = true;
-  canopy.receiveShadow = true;
-  scene.add(trunk, canopy);
-}
-
-function addTrees(scene: Scene, world: WorldData, time: ReturnType<typeof uniform>): void {
-  addTreeKind(scene, world.trees, 'pine', time);
-  addTreeKind(scene, world.trees, 'broadleaf', time);
-  addTreeKind(scene, world.trees, 'palm', time);
-}
-
-function terrainDepth(world: WorldData, x: number, z: number): number {
-  if (Math.abs(x) > world.size * 0.5 || Math.abs(z) > world.size * 0.5) return 9 + Math.hypot(x, z) * 0.12;
-  const column = Math.round((x / world.size + 0.5) * (world.resolution - 1));
-  const row = Math.round((z / world.size + 0.5) * (world.resolution - 1));
-  return Math.max(0.03, -world.heights[row * world.resolution + column] * 4.2);
+  if (!selected.length) return;
+  const material = treeMaterial(time);
+  const trunkHeight = kind === 'palm' ? 1.8 : kind === 'pine' ? 1.5 : 1.05;
+  // Geometry is rooted at y=0 so the same instance matrix joins every tree part.
+  const trunkGeometry = new CylinderGeometry(0.065, 0.12, trunkHeight, 7);
+  trunkGeometry.translate(0, trunkHeight / 2, 0);
+  const parts: Array<{ geometry: CylinderGeometry | ConeGeometry | SphereGeometry | PlaneGeometry; tint: string }> = [
+    { geometry: trunkGeometry, tint: '#99714c' },
+  ];
+  if (kind === 'pine') {
+    for (let layer = 0; layer < 3; layer += 1) {
+      const canopy = new ConeGeometry(0.65 - layer * 0.15, 1.15 - layer * 0.15, 9);
+      canopy.translate(0, 1.05 + layer * 0.48, 0);
+      parts.push({ geometry: canopy, tint: ['#385c3e', '#48774b', '#5a8652'][layer] });
+    }
+  } else if (kind === 'broadleaf') {
+    for (let lobe = 0; lobe < 3; lobe += 1) {
+      const canopy = new SphereGeometry(0.57, 12, 9);
+      const vertices = canopy.attributes.position;
+      for (let i = 0; i < vertices.count; i += 1) {
+        const x = vertices.getX(i);
+        const y = vertices.getY(i);
+        const z = vertices.getZ(i);
+        const r = 1 + Math.sin(x * 13 + lobe) * Math.sin(z * 11 - y * 8) * 0.14;
+        vertices.setXYZ(i, x * r, y * r, z * r);
+      }
+      canopy.computeVertexNormals();
+      canopy.scale(1, 1.1, 0.85);
+      canopy.translate(Math.cos(lobe * 2.1) * 0.3, 1.45 + (lobe === 0 ? 0.3 : 0), Math.sin(lobe * 2.1) * 0.3);
+      parts.push({ geometry: canopy, tint: ['#668949', '#547f43', '#769751'][lobe] });
+    }
+  } else {
+    // Curved tapered fronds replace the old solid umbrella cone.
+    for (let frond = 0; frond < 7; frond += 1) {
+      const leaf = new PlaneGeometry(1, 1, 1, 6);
+      const pos = leaf.attributes.position;
+      for (let i = 0; i < pos.count; i += 1) {
+        const t = pos.getY(i) + 0.5;
+        const width = Math.sin(t * Math.PI) * 0.26;
+        const a = frond * Math.PI * 2 / 7;
+        const side = pos.getX(i) * width;
+        const length = t * 1.15;
+        pos.setXYZ(i, Math.cos(a) * length - Math.sin(a) * side,
+          1.8 + Math.sin(t * Math.PI) * 0.3 - t * t * 0.38,
+          Math.sin(a) * length + Math.cos(a) * side);
+      }
+      leaf.computeVertexNormals();
+      parts.push({ geometry: leaf, tint: '#6b944e' });
+    }
+  }
+  for (const { geometry, tint } of parts) {
+    const mesh = new InstancedMesh(geometry, material, selected.length);
+    if (kind === 'palm') material.side = DoubleSide;
+    const matrix = new Matrix4();
+    const quaternion = new Quaternion();
+    selected.forEach((tree, index) => {
+      quaternion.setFromEuler(new Euler(tree.lean, tree.rotation, tree.lean * 0.6));
+      matrix.compose(new Vector3(tree.x, tree.y - 0.035, tree.z), quaternion,
+        new Vector3(tree.scale, tree.scale * (0.92 + tree.tint * 0.16), tree.scale));
+      mesh.setMatrixAt(index, matrix);
+      mesh.setColorAt(index, new ThreeColor(tint).offsetHSL((tree.tint - 0.5) * 0.055, (tree.tint - 0.5) * 0.1, (tree.tint - 0.5) * 0.07));
+    });
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    scene.add(mesh);
+  }
 }
 
 function addOcean(scene: Scene, world: WorldData): { time: ReturnType<typeof uniform> } {
-  const geometry = new PlaneGeometry(1200, 1200, 64, 64);
+  const geometry = new PlaneGeometry(2, 2, 224, 224);
   geometry.rotateX(-Math.PI / 2);
-  const depths = new Float32Array(geometry.attributes.position.count);
-  for (let index = 0; index < depths.length; index += 1) {
-    const vertex = geometry.attributes.position;
-    depths[index] = terrainDepth(world, vertex.getX(index), vertex.getZ(index));
-  }
-  geometry.setAttribute('waterDepth', new Float32BufferAttribute(depths, 1));
+  const pos = geometry.attributes.position;
+  // Concentrate wave vertices near the island; the horizon needs far fewer.
+  const spread = (t: number) => Math.sinh(t * Math.asinh(600 / 9)) * 9;
+  for (let i = 0; i < pos.count; i += 1) pos.setXYZ(i, spread(pos.getX(i)), 0, spread(pos.getZ(i)));
+  geometry.computeBoundingSphere();
+  const heightTexture = new DataTexture(world.heights, world.resolution, world.resolution, RedFormat, FloatType);
+  heightTexture.minFilter = LinearFilter;
+  heightTexture.magFilter = LinearFilter;
+  heightTexture.needsUpdate = true;
   const time = uniform(0);
-  const material = new MeshBasicNodeMaterial({ transparent: true, opacity: 0.97 });
-  const wave = sin(positionLocal.x.mul(0.21).add(time.mul(0.75))).mul(0.11)
-    .add(sin(positionLocal.z.mul(0.31).sub(time.mul(0.55))).mul(0.065))
-    .add(sin(positionLocal.x.mul(0.07).add(positionLocal.z.mul(0.12)).add(time.mul(0.34))).mul(0.09))
-    .add(cos(positionLocal.x.mul(0.42).sub(positionLocal.z.mul(0.25)).add(time.mul(1.1))).mul(0.025));
-  material.positionNode = positionLocal.add(vec3(0, wave, 0));
-  const depth = attribute('waterDepth', 'float');
-  const viewDirection = normalize(cameraPosition.sub(positionWorld));
-  const fresnel = pow(float(1).sub(max(dot(normalWorld, viewDirection), float(0))), float(4));
-  const depthColor = mix(color('#32b8b2'), color('#062752'), smoothstep(float(0.35), float(8), depth));
-  const reflectedSky = mix(depthColor, color('#a9d6dc'), fresnel.mul(0.72));
-  const halfVector = normalize(vec3(-SUN_DIRECTION.x, SUN_DIRECTION.y, SUN_DIRECTION.z).add(viewDirection));
-  const glint = pow(max(dot(normalWorld, halfVector), float(0)), float(72)).mul(color('#fff2bf')).mul(0.9);
-  const foam = float(1).sub(smoothstep(float(0.03), float(0.3), depth));
-  material.colorNode = mix(reflectedSky.add(glint), color('#e9f0cf'), foam.mul(0.75));
-  const ocean = new Mesh(geometry, material);
-  ocean.position.y = 0;
-  ocean.receiveShadow = true;
-  scene.add(ocean);
+  const material = new MeshBasicNodeMaterial({ transparent: true, depthWrite: true });
+  // Vertex displacement and analytic fragment normals use the same wave spectrum.
+  const waves = [
+    { x: 0.85, z: 0.32, amplitude: 0.075, speed: 1.1 },
+    { x: -0.42, z: 1.45, amplitude: 0.045, speed: 1.45 },
+    { x: 2.6, z: 1.8, amplitude: 0.018, speed: 2.1 },
+    { x: -5.8, z: 3.2, amplitude: 0.008, speed: 2.8 },
+  ];
+  let displacement: ShaderNodeObject<Node> = float(0);
+  let dx: ShaderNodeObject<Node> = float(0);
+  let dz: ShaderNodeObject<Node> = float(0);
+  for (const wave of waves) {
+    const vertexPhase = positionLocal.x.mul(wave.x).add(positionLocal.z.mul(wave.z)).add(time.mul(wave.speed));
+    displacement = displacement.add(sin(vertexPhase).mul(wave.amplitude));
+    const phase = positionWorld.x.mul(wave.x).add(positionWorld.z.mul(wave.z)).add(time.mul(wave.speed));
+    dx = dx.add(cos(phase).mul(wave.amplitude * wave.x));
+    dz = dz.add(cos(phase).mul(wave.amplitude * wave.z));
+  }
+  material.positionNode = positionLocal.add(vec3(0, displacement, 0));
+  const waterNormal = normalize(vec3(dx.negate(), 1, dz.negate()));
+  const view = normalize(cameraPosition.sub(positionWorld));
+  const uv = positionWorld.xz.div(world.size).add(0.5)
+    .mul((world.resolution - 1) / world.resolution).add(0.5 / world.resolution);
+  const ground = texture(heightTexture, uv).r;
+  const depth = max(positionWorld.y.sub(ground), float(0));
+  const fresnel = pow(float(1).sub(max(dot(waterNormal, view), float(0))), float(5));
+  const depthColor = mix(color('#37cbb7'), color('#07516c'), smoothstep(0.25, 4.5, depth));
+  const deepColor = mix(depthColor, color('#07314f'), smoothstep(4, 14, depth));
+  const reflection = mix(color('#397da8'), color('#89b8cf'), fresnel);
+  const reflected = mix(deepColor, reflection, fresnel.mul(0.65).add(0.06));
+  const halfVector = normalize(vec3(SUN_DIRECTION).add(view));
+  const highlight = pow(max(dot(waterNormal, halfVector), float(0)), float(450));
+  const broadHighlight = pow(max(dot(waterNormal, halfVector), float(0)), float(40)).mul(0.06);
+  const glints = color('#fff1ce').mul(highlight.mul(2.5).add(broadHighlight));
+  // Depth is sampled per fragment, not interpolated across a huge ocean triangle.
+  const shore = float(1).sub(smoothstep(0.06, 0.42, depth));
+  const breaker = sin(depth.mul(15).sub(time.mul(2.4)).add(sin(positionWorld.x.mul(8)).mul(0.45)))
+    .mul(0.5).add(0.5);
+  const foam = shore.mul(smoothstep(0.35, 0.78, breaker)).mul(0.82);
+  material.colorNode = mix(reflected.add(glints), color('#f3fff1'), foam);
+  // Beer-Lambert absorption: sand remains visible only in the shallow water.
+  material.opacityNode = max(float(1).sub(exp(depth.mul(-2.5))), float(0.55)).add(foam).clamp(0, 1);
+  scene.add(new Mesh(geometry, material));
   return { time };
 }
 
 function addSky(scene: Scene): void {
-  const skyMaterial = new MeshBasicNodeMaterial({ side: BackSide, depthWrite: false });
-  const vertical = positionLocal.y.div(float(150));
-  skyMaterial.colorNode = mix(color('#8db9c8'), color('#dce9d5'), smoothstep(float(-0.12), float(0.82), vertical));
-  scene.add(new Mesh(new SphereGeometry(150, 32, 16), skyMaterial));
-  const sun = new Mesh(new SphereGeometry(4.5, 16, 8), new MeshBasicNodeMaterial({ color: '#fff2bd' }));
-  sun.position.copy(SUN_DIRECTION).multiplyScalar(125);
-  scene.add(sun);
+  const material = new MeshBasicNodeMaterial({ side: BackSide, depthWrite: false, fog: false });
+  const direction = normalize(positionWorld.sub(cameraPosition));
+  const gradient = smoothstep(0, 0.32, direction.y);
+  const sky = mix(color('#83bddc'), color('#1054b9'), gradient);
+  const sunAngle = dot(direction, vec3(SUN_DIRECTION));
+  const glow = pow(max(sunAngle, float(0)), float(200)).mul(0.5);
+  const disc = smoothstep(0.99984, 0.99992, sunAngle).mul(7);
+  material.colorNode = sky.add(color('#ffdca2').mul(glow.add(disc)));
+  scene.add(new Mesh(new SphereGeometry(900, 48, 24), material));
 }
 
 export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldData, forceWebGL2 = false): Promise<{
-  renderer: Renderer;
+  renderer: WebGPURenderer;
   label: string;
   render: (time: number) => void;
   resize: () => void;
 }> {
   const scene = new Scene();
-  scene.background = new ThreeColor('#a9d6dc');
-  scene.fog = new Fog('#a9d6dc', 42, 120);
-  const camera = new PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 220);
-  camera.position.set(18, 15, 20);
-  camera.lookAt(0, 1, 0);
-  let orbitYaw = Math.atan2(camera.position.x, camera.position.z);
-  let orbitPitch = 0.58;
-  let distance = camera.position.length();
+  scene.background = new ThreeColor('#a6cedf');
+  scene.fog = new FogExp2('#9bc5d9', 0.0018);
+  const camera = new PerspectiveCamera(46, innerWidth / innerHeight, 0.15, 1600);
+  const land: Vector3[] = [];
+  const minLand = new Vector3(Infinity, Infinity, Infinity);
+  const maxLand = new Vector3(-Infinity, -Infinity, -Infinity);
+  for (let row = 0; row < world.resolution; row += 1) {
+    for (let column = 0; column < world.resolution; column += 1) {
+      const height = world.heights[row * world.resolution + column];
+      if (height <= 0) continue;
+      const point = new Vector3((column / (world.resolution - 1) - 0.5) * world.size,
+        height, (row / (world.resolution - 1) - 0.5) * world.size);
+      land.push(point);
+      minLand.min(point);
+      maxLand.max(point);
+    }
+  }
+  const target = minLand.clone().add(maxLand).multiplyScalar(0.5);
+  target.y = 2.7;
+  let orbitYaw = 0.58;
+  let orbitPitch = 0.13;
+  // Fit the actual land, including an offshore islet, rather than the square map.
+  // A low pitch puts the horizon near the upper third at the default aspect ratio.
+  const right = new Vector3(Math.cos(orbitYaw), 0, -Math.sin(orbitYaw));
+  const toCamera = new Vector3(Math.sin(orbitYaw) * Math.cos(orbitPitch),
+    Math.sin(orbitPitch), Math.cos(orbitYaw) * Math.cos(orbitPitch));
+  const tanFov = Math.tan(camera.fov * Math.PI / 360);
+  let distance = 15;
+  for (const point of land) {
+    const offset = point.sub(target);
+    distance = Math.max(distance, offset.dot(toCamera) + Math.abs(offset.dot(right)) / (tanFov * camera.aspect * 0.62));
+  }
   let dragging = false;
   let lastX = 0;
   let lastY = 0;
   const updateCamera = () => {
-    orbitPitch = Math.max(0.2, Math.min(1.25, orbitPitch));
-    distance = Math.max(12, Math.min(48, distance));
-    camera.position.set(Math.sin(orbitYaw) * Math.cos(orbitPitch) * distance, Math.sin(orbitPitch) * distance, Math.cos(orbitYaw) * Math.cos(orbitPitch) * distance);
-    camera.lookAt(0, 1, 0);
+    orbitPitch = Math.max(0.035, Math.min(1.25, orbitPitch));
+    distance = Math.max(15, Math.min(world.size * 2, distance));
+    camera.position.set(target.x + Math.sin(orbitYaw) * Math.cos(orbitPitch) * distance,
+      target.y + Math.sin(orbitPitch) * distance, target.z + Math.cos(orbitYaw) * Math.cos(orbitPitch) * distance);
+    camera.lookAt(target);
   };
+  updateCamera();
   canvas.addEventListener('pointerdown', (event) => {
     dragging = true;
     lastX = event.clientX;
@@ -194,50 +289,55 @@ export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldD
   canvas.addEventListener('pointercancel', () => { dragging = false; });
   canvas.addEventListener('wheel', (event) => {
     event.preventDefault();
-    distance += event.deltaY * 0.025;
+    distance *= Math.exp(event.deltaY * 0.001);
     updateCamera();
   }, { passive: false });
 
   addSky(scene);
   addTerrain(scene, world);
   const treeTime = uniform(0);
-  addTrees(scene, world, treeTime);
+  for (const kind of ['pine', 'broadleaf', 'palm'] as const) addTreeKind(scene, world.trees, kind, treeTime);
   const ocean = addOcean(scene, world);
-  scene.add(new AmbientLight('#aacbc5', 1.05));
-  scene.add(new HemisphereLight('#b4dce1', '#4d513f', 1.45));
-  const sun = new DirectionalLight('#fff0cc', 2.7);
-  sun.position.copy(SUN_DIRECTION).multiplyScalar(32);
+  scene.add(new HemisphereLight('#c5defc', '#73654b', 3));
+  const sun = new DirectionalLight('#ffe1a6', 3.2);
+  sun.position.copy(SUN_DIRECTION).multiplyScalar(100);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(1024, 1024);
-  sun.shadow.radius = 4;
-  sun.shadow.bias = -0.0005;
-  sun.shadow.camera.left = -30;
-  sun.shadow.camera.right = 30;
-  sun.shadow.camera.top = 30;
-  sun.shadow.camera.bottom = -30;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.radius = 3;
+  sun.shadow.bias = -0.00015;
+  sun.shadow.normalBias = 0.035;
+  sun.shadow.camera.left = -40;
+  sun.shadow.camera.right = 40;
+  sun.shadow.camera.top = 40;
+  sun.shadow.camera.bottom = -40;
+  sun.shadow.camera.near = 1;
+  sun.shadow.camera.far = 180;
   scene.add(sun);
 
-  let renderer = new WebGPURenderer({ canvas, antialias: true, forceWebGL: forceWebGL2 });
-  let label = forceWebGL2 ? 'WebGL2' : 'WebGPU';
-  const initialized = await Promise.race([
-    renderer.init().then(() => true),
-    new Promise<boolean>((resolve) => window.setTimeout(() => resolve(false), 1500)),
-  ]);
-  if (!initialized) {
-    renderer.dispose();
-    renderer = new WebGPURenderer({ canvas, antialias: true, forceWebGL: true });
-    await renderer.init();
-    label = 'WebGL2';
-  } else if ((renderer.backend as { isWebGLBackend?: boolean }).isWebGLBackend) {
-    label = 'WebGL2';
-  }
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  // WebGPURenderer performs its own WebGL2 fallback, including adapter/init failures.
+  const renderer = new WebGPURenderer({ canvas, antialias: true, forceWebGL: forceWebGL2 });
+  await renderer.init();
+  const label = (renderer.backend as { isWebGLBackend?: boolean }).isWebGLBackend ? 'WebGL2' : 'WebGPU';
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
   renderer.setSize(innerWidth, innerHeight);
   renderer.outputColorSpace = SRGBColorSpace;
   renderer.toneMapping = ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.1;
+  renderer.toneMappingExposure = 1;
   renderer.shadowMap.enabled = true;
-  renderer.render(scene, camera);
+
+  const post = new PostProcessing(renderer);
+  const scenePass = pass(scene, camera);
+  scenePass.setMRT(mrt({ output, normal: normalView }));
+  const sceneColor = scenePass.getTextureNode('output');
+  const occlusion = ao(scenePass.getTextureNode('depth'), scenePass.getTextureNode('normal'), camera);
+  occlusion.resolutionScale = 0.5;
+  occlusion.samples.value = 8;
+  occlusion.radius.value = 0.55;
+  occlusion.thickness.value = 1;
+  // Gentle contact shading; HDR bloom is restricted to sun and water highlights.
+  const shaded = sceneColor.mul(mix(float(1), occlusion.getTextureNode().r, float(0.35)));
+  post.outputNode = shaded.add(bloom(sceneColor, 0.16, 0.4, 1.5));
+  post.render();
 
   const resize = () => {
     camera.aspect = innerWidth / innerHeight;
@@ -247,7 +347,7 @@ export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldD
   const render = (time: number) => {
     treeTime.value = time * 0.001;
     ocean.time.value = time * 0.001;
-    renderer.render(scene, camera);
+    post.render();
   };
   return { renderer, label, render, resize };
 }
