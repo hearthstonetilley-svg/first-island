@@ -8,7 +8,7 @@ import { ReadinessGate } from '../render/readiness';
 import { FrameDiagnostics } from '../render/diagnostics';
 import { LoadingProgress, LoadingScreen, paintLoading } from '../ui/loading';
 import { Agent, DEFAULT_DIALS, Snapshot, Activity } from '../sim/types';
-import { COLOURS, connect, control, FeedEvent, GOLD, LEARN, LiveState, MIND_COLOURS, MIND_LABELS, MIND_PLAN, Places, places, SKILL, usage } from './stream';
+import { COLOURS, connect, control, FeedEvent, GOLD, LEARN, LiveState, MIND_COLOURS, MIND_LABELS, MIND_PLAN, Places, places, SKILL, usage, factTexts } from './stream';
 
 // The island page: an observation station. Left, the eight minds, each with its
 // current action, its last outcome and its latest thought, which flies in from
@@ -156,7 +156,7 @@ function ensureCards() {
     if (cardEls[i]) return;
     const c = document.createElement('div');
     c.className = 'card'; c.style.setProperty('--c', COLOURS[i]);
-    c.innerHTML = `<div class="head"><span class="dot"></span><b></b><span class="model"></span><span class="hit" title="Predictions that agreed with the island, out of those scored; +N? are tries made without a prediction"></span><span class="doing"></span></div><div class="energy"><i></i></div><div class="outcome"></div><div class="thought"></div><div class="said"></div>`;
+    c.innerHTML = `<div class="head"><span class="dot"></span><b></b><span class="str" title="Strength"></span><span class="model"></span><span class="hit" title="Predictions that agreed with the island, out of those scored; +N? are tries made without a prediction"></span><span class="doing"></span></div><div class="energy"><i></i></div><div class="outcome"></div><div class="thought"></div><div class="said"></div>`;
     c.querySelector('b')!.textContent = name;
     c.onclick = () => select(selected === i ? undefined : i);
     c.ondblclick = () => follow(i);
@@ -186,6 +186,8 @@ function updateCards(s: LiveState) {
     c.classList.toggle('collapsed', a.collapsed); c.classList.toggle('sheltered', a.sheltered);
     const bar = c.querySelector<HTMLElement>('.energy i')!, width = `${Math.round(a.energy * 100)}%`;
     if (bar.style.width !== width) { bar.style.width = width; bar.style.background = a.energy < 0.25 ? '#ff6b5c' : a.energy < 0.5 ? '#ffb347' : '#5cffc1'; c.querySelector<HTMLElement>('.energy')!.title = `strength ${width}${a.sheltered ? ', sheltered' : ''}`; }
+    const str = c.querySelector<HTMLElement>('.str')!;
+    if (str.textContent !== width) { str.textContent = width; str.classList.toggle('low', a.energy < 0.25); }
     const hit = c.querySelector<HTMLElement>('.hit')!, hitText = a.hyp.tried || a.hyp.missing ? `${a.hyp.right}/${a.hyp.tried}${a.hyp.missing ? ` +${a.hyp.missing}?` : ''}` : '';
     if (hit.textContent !== hitText) hit.textContent = hitText;
     const m = s.mix[a.id] ?? 'scripted', chip = c.querySelector<HTMLElement>('.model')!;
@@ -248,8 +250,9 @@ function renderInspector() {
     inspectorFor = selected;
     inspector.style.setProperty('--c', COLOURS[selected]);
     inspector.innerHTML = `<div class="ins-head"><b></b><button class="follow">Follow</button><button class="ask">Ask to call a council</button></div>
-      <dl><dt>Thinks</dt><dd class="t"></dd><dt>Said</dt><dd class="s"></dd><dt>Carries</dt><dd class="c"></dd><dt>Has made</dt><dd class="m"></dd><dt>Skills</dt><dd class="sk"></dd><dt>Knows</dt><dd class="k"></dd></dl>
-      <h4>Recently</h4><ol class="ev"></ol>`;
+      <dl><dt>Thinks</dt><dd class="t"></dd><dt>Said</dt><dd class="s"></dd><dt>Carries</dt><dd class="c"></dd><dt>Has made</dt><dd class="m"></dd><dt>Skills</dt><dd class="sk"></dd><dt>Knows</dt><dd class="k"></dd><dt>Survival</dt><dd class="sv"></dd><dt>Food</dt><dd class="fd"></dd></dl>
+      <h4>Recently</h4><ol class="ev"></ol>
+      <p class="rules">${SURVIVAL_RULES}</p>`;
     const id = selected;
     inspector.querySelector<HTMLButtonElement>('.follow')!.onclick = () => follow(id);
     inspector.querySelector<HTMLButtonElement>('.ask')!.onclick = () => control({ cmd: 'council', agent: String(id) });
@@ -259,9 +262,27 @@ function renderInspector() {
   const put = (q: string, text: string) => { const el = inspector.querySelector(q)!; if (el.textContent !== text) el.textContent = text; };
   put('b', a.name); put('.t', l?.thought || '…'); put('.s', l?.said ? `"${l.said}"` : '…');
   put('.c', grouped(a.inventory)); put('.m', a.known.join(', ') || 'nothing yet'); put('.sk', a.skills.length ? a.skills.join(', ') + (a.runningSkill ? ` · running ${a.runningSkill}` : '') : 'none yet'); put('.k', `${a.facts} facts`);
+  put('.sv', a.collapsed ? `collapsed, strength ${Math.round(a.energy * 100)}%` : `strength ${Math.round(a.energy * 100)}% · ${a.sheltered ? 'sheltered' : 'exposed'}`);
+  put('.fd', foodLine(a.knownIds));
   const lines = (recent.get(selected) ?? []).slice(-6).reverse().map(e => e.text);
   const ol = inspector.querySelector('.ev')!;
   if (ol.textContent !== lines.join('')) { ol.innerHTML = ''; for (const t of lines) { const li = document.createElement('li'); li.textContent = t; ol.append(li); } }
+}
+
+// What the agent has learned about food, read from the facts it holds.
+const SURVIVAL_RULES = 'To survive: strength drains over time, faster at night and in storms unless sheltered near a hut or wall they built. Eating the right things restores it; some things sicken. At no strength they collapse, lose what they carry and wake later.';
+let factList: string[] = [], factsFetching = false;
+function foodLine(ids: number[]) {
+  if (ids.some(i => i >= factList.length) && !factsFetching) { factsFetching = true; factTexts().then(f => { factList = f; }).finally(() => { factsFetching = false; }); }
+  const good: string[] = [], bad: string[] = [], none: string[] = [];
+  for (const i of ids) {
+    const f = factList[i]; if (!f) continue;
+    let m = /^eating (.+) restores strength$/.exec(f); if (m) { good.push(m[1]); continue; }
+    m = /^eating (.+) makes you ill$/.exec(f); if (m) { bad.push(m[1]); continue; }
+    m = /^(.+) is not food$/.exec(f); if (m) none.push(m[1]);
+  }
+  const parts = [good.length ? `safe: ${good.join(', ')}` : '', bad.length ? `sickens: ${bad.join(', ')}` : '', none.length ? `not food: ${none.join(', ')}` : ''].filter(Boolean);
+  return parts.join(' · ') || 'nothing tried yet';
 }
 
 // ---------- right rail: usage, council, discoveries ----------

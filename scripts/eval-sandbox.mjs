@@ -197,6 +197,16 @@ for (let i = 0; i < 20 && !(fresh() && opened()); i++) await sleep(300);
 check('a spoken claim that contradicts what a listener knows starts a council', !!fresh() && !!opened(), `listener ${listener}, speaker ${speaker}: ${fresh() ? 'disagreement' : 'no disagreement'}, ${opened() ? 'matching council with the speaker' : 'no matching council'}`);
 check('the director steps in when nothing new is found, and says so', seen.types.has('director'));
 check('first-try hits are counted per model (recitation)', !!seen.last?.progress?.recall && Object.keys(seen.last.progress.recall).length > 0, JSON.stringify(seen.last?.progress?.recall ?? {}));
+// Survival is readable: strength as a number on every box, and a survival section in the inspector.
+await page.waitForFunction(() => [...document.querySelectorAll('.card .str')].filter(e => /^\d+%$/.test(e.textContent ?? '')).length === 8, null, { timeout: 5000 }).catch(() => {});
+check('every box shows strength as a number', await page.evaluate(() => [...document.querySelectorAll('.card .str')].filter(e => /^\d+%$/.test(e.textContent ?? '')).length === 8));
+await page.click('.card >> nth=6');
+await page.waitForFunction(() => /flint/.test(document.querySelector('.inspector .fd')?.textContent ?? ''), null, { timeout: 8000 }).catch(() => {});
+const surv = await page.evaluate(() => ({ sv: document.querySelector('.inspector .sv')?.textContent ?? '', fd: document.querySelector('.inspector .fd')?.textContent ?? '', rules: document.querySelector('.inspector .rules')?.textContent ?? '' }));
+check('the inspector shows strength and shelter', /\d+%/.test(surv.sv) && /sheltered|exposed|collapsed/.test(surv.sv), surv.sv);
+check('the inspector shows what the agent has learned about food', /not food: .*flint/.test(surv.fd), surv.fd);
+check('the survival rules are written on the page', /strength/.test(surv.rules) && /shelter/.test(surv.rules) && /collapse/.test(surv.rules));
+await page.keyboard.press('Escape');
 check('agents write and run skills', seen.types.has('skill_written') && seen.types.has('skill_run'), [...seen.types].filter(t => t.startsWith('skill') || t === 'learn_skill').join(','));
 check('no page errors', errors.length === 0, errors.slice(0, 2).join(' | '));
 // Layout: at every width the camera and panel controls stay whole and on screen.

@@ -125,3 +125,6 @@ canvas.overlay, .tags { pointer-events: none; }
 .find-list li.director b { color: #9fd8ff !important; }
 .find-list li.director span { color: #9fd8ff; font-style: italic; }
 .find-list li.disagree span { color: #ffb347; }
+.card .str { font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.card .str.low { color: #ff6b5c; }
+.inspector .rules { margin: 8px 0 0; font-size: 11px; color: var(--muted); line-height: 1.35; }
