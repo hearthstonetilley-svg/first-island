@@ -193,18 +193,34 @@ await api('/api/control', { cmd: 'act', agent: 7, decision: { action: 'gather', 
 for (let i = 0; i < 10 && !seen.woodWithTool; i++) await sleep(300);
 check('with a flint flake, wood can be gathered', !!seen.woodWithTool);
 // The night boar: it charges an agent caught in the open, and a spear drives it off.
-let prey = [];
-for (let i = 0; i < 40; i++) { prey = (seen.last?.agents ?? []).filter(a => a.council === null && !a.collapsed && !a.sheltered).map(a => a.id); if (prey.length >= 2) break; await sleep(500); }
-const [bitten, spearman] = prey;
-await api('/api/control', { cmd: 'hold', agent: bitten, items: ['fruit'] });
-await api('/api/control', { cmd: 'boar', agent: bitten });
-for (let i = 0; i < 20 && !(seen.charged ?? []).includes(bitten); i++) await sleep(300);
-check('the boar charges an agent caught in the open', (seen.charged ?? []).includes(bitten), `agent ${bitten}`);
+// It charges whoever in the open is nearest, so each try picks an agent afresh: out in the open,
+// out of any council, and standing apart from the others.
+for (let i = 0; i < 40 && (seen.last?.agents ?? []).filter(a => a.council === null && !a.collapsed && !a.sheltered).length < 2; i++) await sleep(500);
+const openApart = skip => {
+  const all = seen.last?.agents ?? [];
+  const apart = a => Math.min(...all.filter(o => o.id !== a.id).map(o => Math.hypot(o.x - a.x, o.z - a.z)));
+  return all.filter(a => a.council === null && !a.collapsed && !a.sheltered && a.id !== skip).sort((a, b) => apart(b) - apart(a))[0]?.id;
+};
+let bitten;
+for (let attempt = 0; attempt < 3 && bitten === undefined; attempt++) {
+  const pick = openApart(); if (pick === undefined) { await sleep(1000); continue; }
+  await api('/api/control', { cmd: 'hold', agent: pick, items: ['fruit'] });
+  await api('/api/control', { cmd: 'boar', agent: pick });
+  for (let i = 0; i < 20 && !(seen.charged ?? []).includes(pick); i++) await sleep(300);
+  if ((seen.charged ?? []).includes(pick)) bitten = pick;
+}
+check('the boar charges an agent caught in the open', bitten !== undefined, `agent ${bitten}`);
 check('the boar is drawn on the island while it is out', !!seen.last?.world?.boar);
-await api('/api/control', { cmd: 'hold', agent: spearman, items: ['spear'] });
-await api('/api/control', { cmd: 'boar', agent: spearman });
-for (let i = 0; i < 20 && !(seen.drove ?? []).includes(spearman); i++) await sleep(300);
-check('a spear drives the boar off', (seen.drove ?? []).includes(spearman) && !(seen.charged ?? []).includes(spearman), `agent ${spearman}`);
+let speared;
+for (let attempt = 0; attempt < 3 && speared === undefined; attempt++) {
+  const pick = openApart(bitten); if (pick === undefined) { await sleep(1000); continue; }
+  const before = (seen.charged ?? []).filter(id => id === pick).length;
+  await api('/api/control', { cmd: 'hold', agent: pick, items: ['spear'] });
+  await api('/api/control', { cmd: 'boar', agent: pick });
+  for (let i = 0; i < 20 && !(seen.drove ?? []).includes(pick); i++) await sleep(300);
+  if ((seen.drove ?? []).includes(pick) && (seen.charged ?? []).filter(id => id === pick).length === before) speared = pick;
+}
+check('a spear drives the boar off', speared !== undefined, `agent ${speared}`);
 const placeInfo = await (await api('/api/places')).json();
 check('agents explore and name places themselves', seen.types.has('explored') && seen.types.has('named') && placeInfo.regions.some(r => r.name), `${placeInfo.regions.filter(r => r.explored).length}/${placeInfo.regions.length} explored, ${placeInfo.regions.filter(r => r.name).length} named`);
 check('the map panel shows their map', await page.evaluate(() => /explored/.test(document.querySelector('.map-score')?.textContent ?? '')));
