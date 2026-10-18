@@ -5,7 +5,7 @@
 //   3. warm-up frame times are measured and reported (gated only with EVAL_TIMING=strict, because headless
 //      Chromium renders in software and its timings say nothing about real hardware)
 // Writes eval-results/report.json and eval-results/summary.md, and screenshots of every load.
-// Usage: npm run build && npm run eval    (EVAL_SEEDS=1,7  EVAL_RUNS=2  EVAL_TIMING=strict)
+// Usage: npm run build && npm run eval    (EVAL_SEEDS=1,7  EVAL_RUNS=2  EVAL_TIMING=strict  EVAL_PORT=4182)
 import { chromium } from 'playwright';
 import { preview } from 'vite';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -13,6 +13,8 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 const SEEDS = (process.env.EVAL_SEEDS ?? '1,7,42,99,2026').split(',').map(Number);
 const RUNS = Number(process.env.EVAL_RUNS ?? 3);
 const STRICT_TIMING = process.env.EVAL_TIMING === 'strict';
+const PORT = Number(process.env.EVAL_PORT ?? 4179);
+if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) throw new Error('EVAL_PORT must be a valid TCP port');
 const START_DEADLINE_MS = 60_000; // CI software rendering takes 25 to 30 s
 const SAMPLE_MS = 3_000;
 const LOAD_CAP_MS = 150_000;
@@ -26,8 +28,8 @@ const MODES = [
   { name: 'webgl2', query: '&renderer=webgl2' },
 ];
 
-const server = await preview({ preview: { port: 4179, strictPort: true }, logLevel: 'silent' });
-const base = 'http://localhost:4179/';
+const server = await preview({ preview: { port: PORT, strictPort: true }, logLevel: 'silent' });
+const base = `http://localhost:${PORT}/`;
 const browser = await chromium.launch({
   args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--enable-unsafe-webgpu'],
 });

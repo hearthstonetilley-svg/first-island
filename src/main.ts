@@ -5,7 +5,6 @@ import { SceneRecovery } from './render/recovery';
 import { FrameDiagnostics } from './render/diagnostics';
 import { AdaptiveQuality } from './render/quality';
 import { ReadinessGate } from './render/readiness';
-import { warmRenderer } from './render/warmup';
 import { LoadingProgress, LoadingScreen, paintLoading } from './ui/loading';
 
 const params = new URLSearchParams(window.location.search);
@@ -48,6 +47,8 @@ const stopped = () => {
   cancelAnimationFrame(frameRequest);
   sceneEvents?.abort();
   app.classList.add('is-loading');
+  app.classList.remove('is-measuring');
+  loading.element.classList.remove('is-measuring');
   app.setAttribute('aria-busy', 'true');
   label.textContent = `seed ${seed} · preparing graphics…`;
   fps.textContent = '… fps · … ms · restoring graphics';
@@ -102,6 +103,7 @@ async function runScene(island: IslandScene): Promise<void> {
   const quality = new AdaptiveQuality(pixelRatio, postEnabled);
   const readiness = new ReadinessGate();
   let entered = false;
+  let playing = false;
   let animationStart: number | undefined;
   let gateStarted: number | undefined;
   let previousTime: number | undefined;
@@ -119,7 +121,12 @@ async function runScene(island: IslandScene): Promise<void> {
     }
     app.classList.remove('is-loading');
     app.setAttribute('aria-busy', 'false');
-    loading.finish();
+    void loading.finish().then(() => {
+      if (!active()) return;
+      // Quality windows begin only after the overlay and its fade are gone.
+      quality.reset();
+      playing = true;
+    });
   };
   const resetSampling = () => {
     previousTime = undefined;
@@ -137,6 +144,8 @@ async function runScene(island: IslandScene): Promise<void> {
   await progress({ stage: 'settling', message: 'Checking frame rate', percent: 92 });
   const readinessStarted = performance.now();
   if (!active()) return;
+  app.classList.add('is-measuring');
+  loading.measure();
   const nextFrame = () => { if (active()) frameRequest = requestAnimationFrame((time) => {
     void loop(time).catch((error) => { if (active()) void controller.reportFailure(island, error); });
   }); };
@@ -148,33 +157,27 @@ async function runScene(island: IslandScene): Promise<void> {
     previousTime = time;
     if (frameTime !== undefined) smoothedFrameTime = smoothedFrameTime === undefined
       ? frameTime : smoothedFrameTime * 0.9 + frameTime * 0.1;
-    const change = qualityLocked ? undefined : quality.sample(time);
+    const change = qualityLocked ? undefined : quality.sample(time, playing);
     if (change) {
       island.setQuality(change);
       readiness.reset();
       diagnostics?.qualityChange(time - gateStarted, change);
-      if (!entered) loading.update({ stage: 'settling', message: 'Adjusting quality for your device', percent: 94 + (quality.atMinimum ? 3 : 0) });
     }
     if (!entered) {
       const result = readiness.sample(time);
       if (result) {
         diagnostics?.report.loading.windows.push({ atMs: performance.now(), quality: quality.level, ...result });
         if (result.ready) enter('automatic');
-        else if (quality.atMinimum || qualityLocked || time - gateStarted > 15000) {
+        else {
           loading.limited(1000 / result.medianMs, () => enter('manual'));
         }
       }
     }
-    if (entered) animationStart ??= time;
+    animationStart ??= time;
     const visibleFrame = entered;
     const renderStarted = performance.now();
     island.render(animationStart === undefined ? 0 : time - animationStart);
     const submittedAt = performance.now();
-    if (!visibleFrame) {
-      // Fence covered probe frames so cadence includes completed GPU work.
-      await warmRenderer({ compile: async () => {}, draws: [() => {}],
-        waitForGPU: () => island.waitForGPU(), dispose: () => {} }, 10000);
-    }
     if (!active()) return;
     label.textContent = `seed ${seed} · ${island.label}`;
     if (!notice.hidden && entered && island.label === 'WebGL2' && notice.textContent?.includes('switching')) {

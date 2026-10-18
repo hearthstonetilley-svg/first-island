@@ -44,3 +44,10 @@ canvas { display: block; width: 100%; height: 100%; }
 @media (prefers-reduced-motion: reduce) { #app > canvas, .label, .fps, .loading-screen { transition: none; } .loading-progress::-webkit-progress-value { transition: none; } }
 
 .graphics-notice { position: fixed; z-index: 11; bottom: 64px; left: 50%; transform: translateX(-50%); padding: 10px 16px; max-width: calc(100vw - 40px); border: 1px solid #85b5ae; border-radius: 8px; background: #173f49; color: #def3e8; font-size: 12px; text-align: center; box-shadow: 0 4px 20px #09252e40; }
+
+/* Readiness uses the animated, composited play canvas. Keep its overlay cheap:
+   no blur/filter, gradients, decorative pattern or full-screen opacity animation. */
+#app.is-measuring > canvas { opacity: 1; transition: none; }
+.loading-screen.is-measuring { background: rgb(9 37 46 / 92%); }
+.loading-screen.is-measuring::before { display: none; }
+.loading-screen.is-measuring .loading-steps li::before { box-shadow: none; }

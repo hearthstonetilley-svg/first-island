@@ -67,27 +67,31 @@ export class LoadingScreen {
     }
   }
 
+  measure(): void {
+    this.element.classList.add('is-measuring');
+  }
+
   limited(fps: number, enter: () => void): void {
     this.element.dataset.state = 'limited';
-    this.status.textContent = 'Low frame rate on this device';
-    this.detail.textContent = `This device is running at ${Math.round(fps)} fps. You can enter now, or wait for a smoother frame rate.`;
+    this.status.textContent = 'Checking a slower preview';
+    this.detail.textContent = `The preview is running at ${Math.round(fps)} fps. Enter now or wait. Quality adjusts after you arrive.`;
     this.button.hidden = false;
     this.action = enter;
   }
 
-  finish(): void {
+  async finish(): Promise<void> {
     this.bar.value = 100;
     this.amount.textContent = '100%';
     this.status.textContent = 'Your island is ready';
     this.button.hidden = true;
     this.element.dataset.state = 'complete';
     // Let the completed bar paint before starting the CSS crossfade.
-    void paintLoading().then(() => {
-      this.element.classList.add('is-leaving');
-      this.element.setAttribute('aria-hidden', 'true');
-      this.element.inert = true;
-      setTimeout(() => this.element.remove(), 900);
-    });
+    await paintLoading();
+    this.element.classList.add('is-leaving');
+    this.element.setAttribute('aria-hidden', 'true');
+    this.element.inert = true;
+    await new Promise<void>((resolve) => setTimeout(resolve, 900));
+    this.element.remove();
   }
 
   fail(message: string): void {

@@ -527,10 +527,11 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
   canvas.style.visibility = 'visible';
   await paintLoading();
 
+  const drawWithAO = draw;
   const setQuality = (change: QualityChange) => {
     watch.assert();
     renderer.setPixelRatio(change.pixelRatio);
-    draw = change.aoEnabled ? draw : drawWithoutAO;
+    draw = change.aoEnabled ? drawWithAO : drawWithoutAO;
     if (options.diagnostics) Object.assign(options.diagnostics.report.scene, {
       pixelRatio: change.pixelRatio, ao: change.aoEnabled,
     });

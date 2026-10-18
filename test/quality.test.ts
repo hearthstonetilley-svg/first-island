@@ -37,7 +37,7 @@ describe('adaptive rendering quality', () => {
     expect(windowOf(quality, 100000, 16)).toBeUndefined();
     expect(quality.level).toBe('high');
   });
-  it('never increases pixel ratio and does not claim an AO step when post is off', () => {
+  it('never exceeds base pixel ratio and does not claim an AO step when post is off', () => {
     for (const ratio of [0.4, 0.5, 1, 1.5]) {
       const quality = new AdaptiveQuality(ratio, false);
       const change = windowOf(quality, 0, 50);
@@ -45,5 +45,48 @@ describe('adaptive rendering quality', () => {
       expect(change?.aoEnabled).toBe(false);
       expect(windowOf(quality, 3000, 50)).toBeUndefined();
     }
+  });
+  it('ignores slow loading and fade frames, then starts a full play window', () => {
+    const quality = new AdaptiveQuality(1.5, true);
+    for (let time = 0; time <= 20000; time += 100) {
+      expect(quality.sample(time, false)).toBeUndefined();
+    }
+    expect(quality.level).toBe('high');
+    expect(windowOf(quality, 20100, 16)).toBeUndefined();
+    expect(quality.level).toBe('high');
+  });
+  it('steps back up from low through AO restoration to the original resolution', () => {
+    const quality = new AdaptiveQuality(1.5, true);
+    windowOf(quality, 0, 50);
+    windowOf(quality, 2100, 50);
+    expect(quality.level).toBe('low');
+    quality.reset();
+    const changes = [];
+    for (let time = 5000; time <= 17300; time += 10) {
+      const change = quality.sample(time);
+      if (time < 11000) expect(change).toBeUndefined();
+      if (change) changes.push(change);
+    }
+    expect(changes).toEqual([
+      expect.objectContaining({ level: 'balanced', aoEnabled: true, pixelRatio: 1 }),
+      expect.objectContaining({ level: 'high', aoEnabled: true, pixelRatio: 1.5 }),
+    ]);
+  });
+  it('requires sustained headroom and discards it across a background pause', () => {
+    const quality = new AdaptiveQuality(1, false);
+    windowOf(quality, 0, 50);
+    quality.reset();
+    for (let time = 3000; time < 8000; time += 10) expect(quality.sample(time)).toBeUndefined();
+    quality.reset();
+    for (let time = 100000; time < 104000; time += 10) expect(quality.sample(time)).toBeUndefined();
+    // A medium window breaks the fast streak; 50 fps alone cannot trigger an upgrade.
+    for (let time = 104000; time < 113000; time += 20) expect(quality.sample(time)).toBeUndefined();
+    expect(quality.level).toBe('balanced');
+    const changes = [];
+    for (let time = 113000; time <= 121000; time += 10) {
+      const change = quality.sample(time);
+      if (change) changes.push(change);
+    }
+    expect(changes).toEqual([expect.objectContaining({ level: 'high', pixelRatio: 1, aoEnabled: false })]);
   });
 });

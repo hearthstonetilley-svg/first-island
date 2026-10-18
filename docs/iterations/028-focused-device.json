@@ -1,0 +1,46 @@
+{
+  "recovered": {
+    "label": "seed 42 · WebGL2",
+    "fps": "… fps · … ms · high",
+    "notice": "Graphics restored · WebGL2",
+    "canvasCount": 1,
+    "navigationCount": 1,
+    "lossEvents": [
+      {
+        "reason": "destroyed",
+        "message": "Device was destroyed."
+      }
+    ],
+    "scene": {
+      "backend": "WebGL2",
+      "viewport": [
+        1280,
+        800
+      ],
+      "pixelRatio": 1,
+      "initialPixelRatio": 1,
+      "shadowMap": [
+        2048,
+        2048
+      ],
+      "meshes": 21,
+      "triangles": 444844,
+      "treeDrawMeshes": 18,
+      "trees": 331,
+      "terrainVertices": 66564,
+      "oceanVertices": 50625,
+      "postEnabled": true,
+      "ao": true,
+      "bloom": true
+    },
+    "generationStarts": 1
+  },
+  "stopped": {
+    "label": "seed 42 · graphics unavailable",
+    "fps": "renderer unavailable",
+    "state": "error"
+  },
+  "errors": [
+    "Island startup failed: Error: WebGL2 graphics context was lost. Reload to retry.\n    at TP.recover (http://localhost:4180/assets/index-cwib_jBp.js:450:14611)\n    at lP.<anonymous> (http://localhost:4180/assets/index-cwib_jBp.js:450:14389)\n    at lP.notify (http://localhost:4180/assets/index-cwib_jBp.js:431:64358)\n    at u.onDeviceLost (http://localhost:4180/assets/index-cwib_jBp.js:450:7613)\n    at HTMLCanvasElement.n (http://localhost:4180/assets/index-cwib_jBp.js:203:41645)"
+  ]
+}
