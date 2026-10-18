@@ -872,6 +872,7 @@ createServer(async (req, res) => {
       for (const a of picked) { a.reservedUntil = until; a.energy = 1; a.running = null; a.path = []; a.busyUntil = until; a.nextThink = until; }
       reply.reserved = picked.map(a => a.id);
     }
+    if (process.env.SANDBOX_TEST === '1' && b.cmd === 'hold') { const ag = agents[Number(b.agent)]; if (ag && Array.isArray(b.items)) { itemLedger += b.items.length - ag.inventory.length; ag.inventory = b.items.map(String).slice(0, 6); } }
     if (process.env.SANDBOX_TEST === '1' && b.cmd === 'act') { const ag = agents[Number(b.agent)]; if (ag) try { act(ag, cleanDecision(b.decision)); } catch (err) { console.error('act failed', (err as Error).message); } }
     if (b.cmd === 'council') {
       const a = agents[Number(b.agent)];
