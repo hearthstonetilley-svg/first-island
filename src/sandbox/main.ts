@@ -7,18 +7,65 @@ import { COLOURS, connect, control, FeedEvent, LiveState } from './stream';
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `
   <canvas></canvas>
+  <canvas class="web"></canvas>
   <div class="bubbles"></div>
   <div class="bar">
     <strong>Island Sandbox</strong>
     <button data-cmd="start">Start</button><button data-cmd="pause">Pause</button>
     <label>Minds <select class="minds"><option value="scripted">scripted</option><option value="haiku">Haiku</option></select></label>
     <button class="overview">Island view</button>
+    <label><input type="checkbox" class="show-web" checked> Web</label>
     <a href="/web.html" target="_blank">Open the web</a>
     <span class="usage"></span>
   </div>
   <aside class="feed"><h2>Feed <small>observer</small></h2><ol></ol></aside>
   <div class="status">Connecting to the island…</div>`;
 const canvas = app.querySelector('canvas')!;
+const webCanvas = app.querySelector<HTMLCanvasElement>('canvas.web')!;
+const webCtx = webCanvas.getContext('2d')!;
+const showWeb = app.querySelector<HTMLInputElement>('.show-web')!;
+// The web drawn on the island: a strand between every pair that has spoken,
+// thicker with each word carried, with a dot travelling for each new word.
+const strands = new Map<string, { a: number; b: number; count: number; last: number }>();
+const flashes: Array<{ from: number; to: number; at: number }> = [];
+function recordWeb(e: FeedEvent) {
+  if (e.type !== 'say' || e.agent === undefined) return;
+  for (const to of e.to ?? []) {
+    const key = [e.agent, to].sort().join('-');
+    const s = strands.get(key) ?? { a: e.agent, b: to, count: 0, last: 0 };
+    s.count++; s.last = e.t; strands.set(key, s);
+    flashes.push({ from: e.agent, to, at: performance.now() });
+  }
+}
+function drawWeb(positions: Map<number, { x: number; y: number; visible: boolean }>, now: number) {
+  const ratio = devicePixelRatio;
+  if (webCanvas.width !== innerWidth * ratio || webCanvas.height !== innerHeight * ratio) {
+    webCanvas.width = innerWidth * ratio; webCanvas.height = innerHeight * ratio;
+  }
+  webCtx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  webCtx.clearRect(0, 0, innerWidth, innerHeight);
+  if (!showWeb.checked) { flashes.length = 0; return; }
+  webCtx.lineCap = 'round';
+  for (const s of strands.values()) {
+    const p = positions.get(s.a), q = positions.get(s.b);
+    if (!p?.visible || !q?.visible) continue;
+    const age = (Date.now() - s.last) / 1000;
+    webCtx.strokeStyle = `rgba(235,245,255,${Math.max(0.18, 0.75 - age / 90)})`;
+    webCtx.lineWidth = Math.min(7, 1 + Math.log2(1 + s.count) * 1.2);
+    webCtx.beginPath(); webCtx.moveTo(p.x, p.y);
+    webCtx.quadraticCurveTo((p.x + q.x) / 2, Math.min(p.y, q.y) - 40, q.x, q.y); webCtx.stroke();
+  }
+  for (let i = flashes.length - 1; i >= 0; i--) {
+    const f = flashes[i], t = (now - f.at) / 1400;
+    const p = positions.get(f.from), q = positions.get(f.to);
+    if (t > 1 || !p?.visible || !q?.visible) { flashes.splice(i, 1); continue; }
+    const cx = (p.x + q.x) / 2, cy = Math.min(p.y, q.y) - 40, u = 1 - t;
+    webCtx.fillStyle = COLOURS[f.from];
+    webCtx.beginPath();
+    webCtx.arc(u * u * p.x + 2 * u * t * cx + t * t * q.x, u * u * p.y + 2 * u * t * cy + t * t * q.y, 5, 0, Math.PI * 2);
+    webCtx.fill();
+  }
+}
 const bubbles = app.querySelector<HTMLDivElement>('.bubbles')!;
 const feed = app.querySelector('.feed ol')!;
 const usage = app.querySelector('.usage')!;
@@ -64,6 +111,7 @@ const bubbleEls = new Map<number, HTMLDivElement>();
 function drawBubbles() {
   if (!island || !state) return;
   const positions = new Map(island.agentPositions().map(p => [p.id, p]));
+  drawWeb(positions, performance.now());
   for (const a of state.agents) {
     let el = bubbleEls.get(a.id);
     if (!el) {
@@ -87,7 +135,7 @@ function drawBubbles() {
 connect({
   async hello(h) {
     names = h.names;
-    h.history.forEach(addFeed);
+    h.history.forEach(e => { addFeed(e); recordWeb(e); });
     if (island) return;
     status.textContent = 'Building the island…';
     const world = await generateWorldAsync(h.seed);
@@ -108,6 +156,6 @@ connect({
     minds.value = s.mindMode;
     usage.textContent = `${s.running ? 'running' : 'paused'} · model calls ${s.calls} (${s.perMin}/${s.cap} per min)${s.failed ? ` · ${s.failed} fell back` : ''}`;
   },
-  event: addFeed,
+  event(e) { addFeed(e); recordWeb(e); },
   down() { status.hidden = false; status.textContent = 'Lost the island server. Is it running?'; },
 });
