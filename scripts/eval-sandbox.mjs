@@ -84,15 +84,19 @@ const meters = await page.waitForFunction(() => document.querySelectorAll('.mete
 check('usage meters show', meters);
 // The mixer: drag the first divider right and the agents' minds change on the server.
 const handle = page.locator('.mix-bar .handle').first();
-const hb = await handle.boundingBox().catch(() => null), bb = await page.locator('.mix-bar').boundingBox().catch(() => null);
+let hb = null; for (let i = 0; i < 10 && !hb; i++) { hb = await handle.boundingBox({ timeout: 5000 }).catch(() => null); if (!hb) await sleep(500); }
+const bb = await page.locator('.mix-bar').boundingBox().catch(() => null);
 const options = await page.evaluate(() => document.querySelectorAll('.mix-bar .seg').length);
 check('mixer offers the connected models', options >= 3, `${options} options`);
+// Record what the press actually lands on, so a miss explains itself.
+await page.evaluate(() => { window.__mixPress = []; addEventListener('pointerdown', e => window.__mixPress.push(`${e.target.className}@${Math.round(e.clientX)}`), { capture: true }); });
 if (hb && bb) { await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2); await page.mouse.down();
 await page.mouse.move(bb.x + bb.width * 0.5, hb.y + hb.height / 2, { steps: 6 }); await page.mouse.up();
 // The new mix goes to the server and comes back on the stream: wait for it rather than a fixed pause.
 await page.waitForFunction(() => new Set([...document.querySelectorAll('.card .model')].map(m => m.textContent)).size >= 2, null, { timeout: 60000 }).catch(() => {}); }
 const mixNow = await page.evaluate(() => [...document.querySelectorAll('.card .model')].map(m => m.textContent));
-check('dragging the mixer reassigns minds', new Set(mixNow).size >= 2, mixNow.join(','));
+const mixWhy = await page.evaluate(() => (window.__mixPress ?? []).join(' '));
+check('dragging the mixer reassigns minds', new Set(mixNow).size >= 2, `${mixNow.join(',')}; pressed ${mixWhy}; handle at ${hb && Math.round(hb.x + hb.width / 2)}, bar ${bb && Math.round(bb.x)} to ${bb && Math.round(bb.x + bb.width)}; server mix ${(seen.last?.mix ?? []).join(',')}`);
 if (hb && bb) { await page.mouse.move(bb.x + 2, hb.y + hb.height / 2); await page.mouse.down(); await page.mouse.up(); }
 await api('/api/control', { minds: 'scripted' }); await sleep(1000);
 await sleep(4000);
@@ -198,19 +202,35 @@ await api('/api/control', { cmd: 'act', agent: 7, decision: { action: 'gather', 
 for (let i = 0; i < 10 && !seen.woodWithTool; i++) await sleep(300);
 check('with a flint flake, wood can be gathered', !!seen.woodWithTool);
 // The night boar: it charges an agent caught in the open, and a spear drives it off.
-let prey = [];
-for (let i = 0; i < 40; i++) { prey = (seen.last?.agents ?? []).filter(a => a.council === null && !a.collapsed && !a.sheltered).map(a => a.id); if (prey.length >= 2) break; await sleep(500); }
-const [bitten, spearman] = prey;
-await api('/api/control', { cmd: 'hold', agent: bitten, items: ['fruit'] });
-await api('/api/control', { cmd: 'boar', agent: bitten });
-for (let i = 0; i < 20 && !(seen.charged ?? []).includes(bitten); i++) await sleep(300);
-check('the boar charges an agent caught in the open', (seen.charged ?? []).includes(bitten), `agent ${bitten}`);
+// It charges whoever in the open is nearest, so each try picks an agent afresh: out in the open,
+// out of any council, and standing apart from the others.
+for (let i = 0; i < 40 && (seen.last?.agents ?? []).filter(a => a.council === null && !a.collapsed && !a.sheltered).length < 2; i++) await sleep(500);
+const openApart = skip => {
+  const all = seen.last?.agents ?? [];
+  const apart = a => Math.min(...all.filter(o => o.id !== a.id).map(o => Math.hypot(o.x - a.x, o.z - a.z)));
+  return all.filter(a => a.council === null && !a.collapsed && !a.sheltered && a.id !== skip).sort((a, b) => apart(b) - apart(a))[0]?.id;
+};
+let bitten;
+for (let attempt = 0; attempt < 3 && bitten === undefined; attempt++) {
+  const pick = openApart(); if (pick === undefined) { await sleep(1000); continue; }
+  await api('/api/control', { cmd: 'hold', agent: pick, items: ['fruit'] });
+  await api('/api/control', { cmd: 'boar', agent: pick });
+  for (let i = 0; i < 20 && !(seen.charged ?? []).includes(pick); i++) await sleep(300);
+  if ((seen.charged ?? []).includes(pick)) bitten = pick;
+}
+check('the boar charges an agent caught in the open', bitten !== undefined, `agent ${bitten}`);
 check('the boar is drawn on the island while it is out', !!seen.last?.world?.boar);
 check('the sky panel says the boar is out', await page.evaluate(() => /boar is out/i.test(document.querySelector('.skycard .threat')?.textContent ?? '')));
-await api('/api/control', { cmd: 'hold', agent: spearman, items: ['spear'] });
-await api('/api/control', { cmd: 'boar', agent: spearman });
-for (let i = 0; i < 20 && !(seen.drove ?? []).includes(spearman); i++) await sleep(300);
-check('a spear drives the boar off', (seen.drove ?? []).includes(spearman) && !(seen.charged ?? []).includes(spearman), `agent ${spearman}`);
+let speared;
+for (let attempt = 0; attempt < 3 && speared === undefined; attempt++) {
+  const pick = openApart(bitten); if (pick === undefined) { await sleep(1000); continue; }
+  const before = (seen.charged ?? []).filter(id => id === pick).length;
+  await api('/api/control', { cmd: 'hold', agent: pick, items: ['spear'] });
+  await api('/api/control', { cmd: 'boar', agent: pick });
+  for (let i = 0; i < 20 && !(seen.drove ?? []).includes(pick); i++) await sleep(300);
+  if ((seen.drove ?? []).includes(pick) && (seen.charged ?? []).filter(id => id === pick).length === before) speared = pick;
+}
+check('a spear drives the boar off', speared !== undefined, `agent ${speared}`);
 const placeInfo = await (await api('/api/places')).json();
 check('agents explore and name places themselves', seen.types.has('explored') && seen.types.has('named') && placeInfo.regions.some(r => r.name), `${placeInfo.regions.filter(r => r.explored).length}/${placeInfo.regions.length} explored, ${placeInfo.regions.filter(r => r.name).length} named`);
 check('the map panel shows their map', await page.evaluate(() => /explored/.test(document.querySelector('.map-score')?.textContent ?? '')));
