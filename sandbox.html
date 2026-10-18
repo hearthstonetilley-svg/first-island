@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>Island Sandbox</title>
+    <!-- Dark from the very first frame: no white or unstyled flash before the code loads. -->
+    <style>html, body { margin: 0; height: 100%; background: #0d1a24; color: #e6eef2; color-scheme: dark; }
+      #app:empty::before { content: 'First Island'; position: fixed; inset: 0; display: grid; place-items: center; font: 600 13px system-ui, sans-serif; letter-spacing: .2em; color: #4d6070; }</style>
   </head>
   <body>
     <div id="app"></div>

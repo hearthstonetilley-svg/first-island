@@ -1,10 +1,13 @@
 import { median } from './diagnostics';
 
-export type QualityLevel = 'high' | 'balanced' | 'low';
+export type QualityLevel = 'high' | 'balanced' | 'low' | 'minimal';
 export interface QualityChange {
   level: QualityLevel;
   pixelRatio: number;
   aoEnabled: boolean;
+  /** False only in the opt-in minimal tier: the scene renders directly, without bloom. */
+  postEnabled?: boolean;
+  shadowMapSize?: number;
   medianMs: number;
   elapsedMs: number;
 }
@@ -21,11 +24,13 @@ export class AdaptiveQuality {
   private stage = 0;
   private fastWindows = 0;
 
-  constructor(readonly basePixelRatio: number, readonly postEnabled: boolean) {
+  /** allowMinimal adds one tier below low (no post-processing, smaller shadows) for pages that opt in. */
+  constructor(readonly basePixelRatio: number, readonly postEnabled: boolean, readonly allowMinimal = false) {
     this.reducedPixelRatio = Math.min(basePixelRatio, 1, Math.max(0.5, basePixelRatio * 0.75));
   }
 
-  get atMinimum(): boolean { return this.stage >= (this.postEnabled ? 2 : 1); }
+  private get lowStage(): number { return this.postEnabled ? 2 : 1; }
+  get atMinimum(): boolean { return this.stage >= this.lowStage + (this.allowMinimal ? 1 : 0); }
 
   reset(): void {
     this.fastWindows = 0;
@@ -57,8 +62,11 @@ export class AdaptiveQuality {
     else if (this.stage > 0 && this.fastWindows >= 3) this.stage -= 1;
     else return;
     this.fastWindows = 0;
-    this.level = this.stage === 0 ? 'high' : this.stage === 1 ? 'balanced' : 'low';
-    return { level: this.level, pixelRatio: this.stage === 0 ? this.basePixelRatio : this.reducedPixelRatio,
+    const minimal = this.stage > this.lowStage;
+    this.level = minimal ? 'minimal' : this.stage === 0 ? 'high' : this.stage === 1 ? 'balanced' : 'low';
+    const change: QualityChange = { level: this.level, pixelRatio: this.stage === 0 ? this.basePixelRatio : this.reducedPixelRatio,
       aoEnabled: this.postEnabled && this.stage < 2, medianMs, elapsedMs };
+    if (this.allowMinimal) { change.postEnabled = this.postEnabled && !minimal; change.shadowMapSize = minimal ? 1024 : 2048; }
+    return change;
   }
 }

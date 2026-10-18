@@ -20,6 +20,9 @@ export class AgentFigures {
   private agents:Agent[]=[];
   private readonly capacity=1000;
   selected:number|undefined;
+  /** Sandbox view: larger figures, each in its agent's own colour. */
+  scale=1;
+  colours:string[]|undefined;
   private paused=false;
   constructor(private readonly scene:Scene,initial?:Snapshot){
     const material=new MeshStandardNodeMaterial({color:'#ffffff',roughness:0.85});
@@ -50,7 +53,7 @@ export class AgentFigures {
     for(let i=0;i<this.agents.length;i++){
       const a=this.agents[i];
       const growth=0.55+Math.min(1,a.biologicalAge/0.3)*0.45;
-      const resting=a.activity==='resting',s= growth*(resting?0.8:1);
+      const resting=a.activity==='resting',s= growth*(resting?0.8:1)*this.scale;
       const height=resting?0.6:1;
       const moving=['wandering','seeking food','seeking cover','socialising'].includes(a.activity);
       const stride=moving&&!this.paused?Math.sin(animationSeconds*7+a.id)*0.13:0;
@@ -66,7 +69,7 @@ export class AgentFigures {
       put(this.arms,i*2,-0.16,0.43,-stride,-stride);
       put(this.arms,i*2+1,0.16,0.43,stride,stride);
       put(this.cues,i,0,0.93,0);
-      this.tint.setHSL((a.family*0.61803398875)%1,0.72,0.64);
+      if(this.colours)this.tint.set(this.colours[a.id%this.colours.length]);else this.tint.setHSL((a.family*0.61803398875)%1,0.72,0.64);
       this.torso.setColorAt(i,this.tint);this.arms.setColorAt(i*2,this.tint);this.arms.setColorAt(i*2+1,this.tint);
       this.cues.setColorAt(i,this.tint.set(ACTIVITIES[a.activity]));
       if(a.id===this.selected){this.selection.visible=true;this.selection.position.set(a.x,a.y+0.04,a.z);}
@@ -93,7 +96,7 @@ export class AgentFigures {
   }
   projected(camera:PerspectiveCamera):Array<{id:number;x:number;y:number;visible:boolean}>{
     return this.agents.map(a=>{
-      const p=new Vector3(a.x,a.y+0.5,a.z).project(camera);
+      const p=new Vector3(a.x,a.y+0.95*this.scale,a.z).project(camera);
       return {id:a.id,x:(p.x+1)*innerWidth/2,y:(1-p.y)*innerHeight/2,visible:p.z>=-1&&p.z<=1&&Math.abs(p.x)<=1&&Math.abs(p.y)<=1};
     });
   }

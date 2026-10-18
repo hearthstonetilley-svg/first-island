@@ -11,7 +11,7 @@ import {
 } from 'three/tsl';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
-import { sampleSlope, WorldData } from '../world/generate';
+import { sampleHeight, sampleSlope, WorldData } from '../world/generate';
 import { initializeRenderer } from './startup';
 import { DeviceWatch } from './device';
 import { TreeFigures } from './trees';
@@ -20,6 +20,7 @@ import { QualityChange } from './quality';
 import { warmRenderer } from './warmup';
 import { Snapshot } from '../sim/types';
 import { AgentFigures } from './agents';
+import { StructureData, Structures } from './structures';
 import { LoadingProgress, paintLoading } from '../ui/loading';
 
 const SUN_DIRECTION = new Vector3(-0.82, 0.22, -0.53).normalize();
@@ -165,6 +166,10 @@ function addSky(scene: Scene): void {
 
 interface SceneOptions {
   snapshot?: Snapshot;
+  /** Called when the owner takes the camera by hand (drag or wheel), ending any follow. */
+  onManualCamera?: () => void;
+  figureScale?: number;
+  agentColours?: string[];
   onSelect?: (id: number) => void;
   postEnabled?: boolean;
   diagnostics?: FrameDiagnostics;
@@ -183,8 +188,29 @@ export interface IslandScene {
   updateSnapshot(snapshot: Snapshot, timestamp: number): void;
   selectAgent(id: number | undefined): void;
   followAgent(id: number | undefined): void;
-  islandView(): void;
+  /** Whole island; pitch and fill let a page with side panels frame it to its free space. */
+  islandView(pitch?: number, fill?: number): void;
   agentPositions(): ReturnType<AgentFigures['projected']>;
+  addStructure(structure: StructureData): void;
+  project(x: number, y: number, z: number): { x: number; y: number; visible: boolean };
+  /** Free camera: move along the ground relative to the view, turn, and zoom. */
+  move(forward: number, right: number): void;
+  turn(radians: number): void;
+  zoom(factor: number): void;
+  cameraInfo(): { y: number; ground: number; tx: number; tz: number; yaw: number; pitch: number; distance: number; gliding: boolean };
+  /** Stop any follow or glide: the camera stays exactly where it is. */
+  cancelAutomaticCamera(): void;
+  /** The full camera pose, to carry across a graphics recovery. */
+  getPose(): { tx: number; ty: number; tz: number; yaw: number; pitch: number; distance: number };
+  setPose(pose: { tx: number; ty: number; tz: number; yaw: number; pitch: number; distance: number }): void;
+  /** Ease the camera to frame these agents (all agents when omitted). */
+  frameAgents(ids?: number[]): void;
+  /** Keep the scene's centre clear of a panel this many pixels wide on the left (and right). */
+  setInsets(left: number, right: number): void;
+  /** 1 is full day, 0 is deep night; storm darkens and greys the light. */
+  setDaylight(daylight: number, storm?: boolean): void;
+  /** The quality actually being drawn, which can lag a request while a path compiles. */
+  appliedQuality(): string;
   waitForGPU(): Promise<void>;
   onLost(listener: () => void): () => void;
   dispose(): void;
@@ -310,9 +336,12 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
   let lastY = 0;
   const updateCamera = () => {
     orbitPitch = Math.max(0.035, Math.min(1.25, orbitPitch));
-    distance = Math.max(15, Math.min(world.size * 2, distance));
+    distance = Math.max(options.figureScale ? 5 : 15, Math.min(world.size * 2, distance));
     camera.position.set(target.x + Math.sin(orbitYaw) * Math.cos(orbitPitch) * distance,
       target.y + Math.sin(orbitPitch) * distance, target.z + Math.cos(orbitYaw) * Math.cos(orbitPitch) * distance);
+    // The free camera never sinks into the land: lift the view above the ground under it.
+    const under = Math.max(0, sampleHeight(world, camera.position.x, camera.position.z));
+    if (camera.position.y < under + 1.2) camera.position.y = under + 1.2;
     camera.lookAt(target);
   };
   updateCamera();
@@ -326,6 +355,7 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
   canvas.addEventListener('pointermove', (event) => {
     if (!dragging) return;
     moved ||= Math.hypot(event.clientX - downX, event.clientY - downY) > 4;
+    if (moved) manualCamera();
     orbitYaw -= (event.clientX - lastX) * 0.008;
     orbitPitch += (event.clientY - lastY) * 0.006;
     lastX = event.clientX;
@@ -339,6 +369,7 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
   canvas.addEventListener('pointercancel', () => { dragging = false; }, { signal: events.signal });
   canvas.addEventListener('wheel', (event) => {
     event.preventDefault();
+    manualCamera();
     distance *= Math.exp(event.deltaY * 0.001);
     updateCamera();
   }, { passive: false, signal: events.signal });
@@ -355,7 +386,8 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
   disposables.push(figures);
   const ocean = addOcean(scene, world);
   disposables.push(ocean.heightTexture);
-  scene.add(new HemisphereLight('#c5defc', '#73654b', 3));
+  const sky = new HemisphereLight('#c5defc', '#73654b', 3);
+  scene.add(sky);
   const sun = new DirectionalLight('#ffe1a6', 3.2);
   sun.position.copy(SUN_DIRECTION).multiplyScalar(100);
   sun.castShadow = true;
@@ -382,6 +414,7 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
 
   options.diagnostics?.phase('sceneBuild', performance.now() - buildStarted);
   let draw: () => void = () => { renderer.render(scene, camera); };
+  const drawDirect = draw;
   let drawWithoutAO = draw;
   let compileScene = () => renderer.compileAsync(scene, camera);
   let compileWater = () => renderer.compileAsync(ocean.mesh, camera, scene);
@@ -474,10 +507,25 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
   await paintLoading();
 
   const drawWithAO = draw;
+  let directReady = false, applied = 'high', qualityRequest = 0;
   const setQuality = (change: QualityChange) => {
     watch.assert();
+    const request = ++qualityRequest;
     renderer.setPixelRatio(change.pixelRatio);
-    draw = change.aoEnabled ? drawWithAO : drawWithoutAO;
+    if (change.shadowMapSize && sun.shadow.mapSize.x !== change.shadowMapSize) {
+      sun.shadow.mapSize.set(change.shadowMapSize, change.shadowMapSize);
+      sun.shadow.map?.dispose(); sun.shadow.map = null;
+    }
+    if (change.postEnabled === false) {
+      // Minimal tier: render straight to the screen, no bloom pass. Compile that path
+      // first, then switch, so the change itself does not stall a frame.
+      if (directReady) { draw = drawDirect; applied = change.level; return; }
+      // Only the latest request may switch the path when its compile finishes.
+      void renderer.compileAsync(scene, camera).then(() => { directReady = true; if (request === qualityRequest) { draw = drawDirect; applied = change.level; } })
+        .catch(() => { if (request === qualityRequest) applied = `${applied} (minimal failed to compile)`; });
+      return;
+    }
+    draw = change.aoEnabled ? drawWithAO : drawWithoutAO; applied = change.level;
     if (options.diagnostics) Object.assign(options.diagnostics.report.scene, {
       pixelRatio: change.pixelRatio, ao: change.aoEnabled,
     });
@@ -486,12 +534,31 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
   const resize = () => {
     watch.assert();
     camera.aspect = innerWidth / innerHeight;
+    applyInsets();
     camera.updateProjectionMatrix();
     renderer.setSize(innerWidth, innerHeight);
+  };
+  let glide: { target: Vector3; distance: number; pitch: number } | undefined;
+  // Any automatic movement (a follow or a glide) ends the moment the owner takes the camera.
+  function cancelAutomatic() { followed = undefined; glide = undefined; lastGlide = 0; }
+  // A real drag or wheel always hands the camera to the owner, whatever was animating.
+  function manualCamera() { cancelAutomatic(); options.onManualCamera?.(); }
+  let lastGlide = 0;
+  let insets = { left: 0, right: 0 };
+  const applyInsets = () => {
+    if (!insets.left && !insets.right) { camera.clearViewOffset(); return; }
+    camera.setViewOffset(innerWidth, innerHeight, (insets.right - insets.left) / 2, 0, innerWidth, innerHeight);
   };
   const render = (time: number) => {
     watch.assert();
     const agents = figures.update(performance.now(), time * 0.001);
+    if (glide) {
+      // Time-based easing: the same glide on a slow machine as on a fast one.
+      const nowMs = performance.now(), k = 1 - Math.exp(-Math.min(1, (nowMs - (lastGlide || nowMs)) / 1000) * 4); lastGlide = nowMs;
+      target.lerp(glide.target, k); distance += (glide.distance - distance) * k; orbitPitch += (glide.pitch - orbitPitch) * k;
+      if (target.distanceTo(glide.target) < 0.05 && Math.abs(distance - glide.distance) < 0.05) { glide = undefined; lastGlide = 0; }
+      updateCamera();
+    }
     if (followed !== undefined) {
       const agent = agents.find(a => a.id === followed);
       if (agent) { target.lerp(new Vector3(agent.x, agent.y + 0.45, agent.z), 0.3); updateCamera(); }
@@ -501,11 +568,57 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
     ocean.time.value = time * 0.001;
     draw();
   };
+  const structures = new Structures(scene);
+  if (options.figureScale) figures.scale = options.figureScale;
+  if (options.agentColours) figures.colours = options.agentColours;
+  const limit = world.size / 2;
   return { renderer, label, render, resize, setQuality, dispose,
+    appliedQuality: () => applied,
+    setDaylight: (daylight, storm) => {
+      const d = Math.max(0, Math.min(1, daylight)), gloom = storm ? 0.55 : 1;
+      sun.intensity = 3.2 * (0.08 + 0.92 * d) * gloom;
+      sky.intensity = 3 * (0.18 + 0.82 * d) * gloom;
+      sun.color.set(d < 0.35 ? '#9fb4ff' : storm ? '#c8ccd0' : '#ffe1a6');
+      renderer.toneMappingExposure = 0.55 + 0.45 * d;
+      if (scene.fog instanceof FogExp2) { scene.fog.color.set(storm ? '#5d6a72' : d < 0.35 ? '#1a2740' : '#9bc5d9'); scene.fog.density = storm ? 0.006 : 0.0018; }
+    },
+    addStructure: (structure) => structures.add(structure),
+    frameAgents: (ids) => {
+      const list = figures.update(performance.now(), 0).filter(a => !ids || ids.includes(a.id));
+      if (!list.length) return;
+      followed = undefined;
+      const cx = list.reduce((n, a) => n + a.x, 0) / list.length, cz = list.reduce((n, a) => n + a.z, 0) / list.length;
+      const cy = list.reduce((n, a) => n + a.y, 0) / list.length;
+      const radius = Math.max(...list.map(a => Math.hypot(a.x - cx, a.z - cz)));
+      glide = { target: new Vector3(cx, cy + 0.6, cz), distance: Math.max(9, radius * 2.4 + 8), pitch: 0.5 };
+    },
+    setInsets: (left, right) => { insets = { left, right }; applyInsets(); },
+    move: (forward, right) => {
+      cancelAutomatic();
+      const step = Math.max(0.04, distance * 0.0045);
+      target.x = Math.max(-limit, Math.min(limit, target.x - Math.sin(orbitYaw) * forward * step + Math.cos(orbitYaw) * right * step));
+      target.z = Math.max(-limit, Math.min(limit, target.z - Math.cos(orbitYaw) * forward * step - Math.sin(orbitYaw) * right * step));
+      // Glide over the land: the point the camera looks at rides on the terrain.
+      target.y = Math.max(0, sampleHeight(world, target.x, target.z)) + 0.45;
+      updateCamera();
+    },
+    turn: (radians) => { cancelAutomatic(); orbitYaw += radians; updateCamera(); },
+    zoom: (factor) => { cancelAutomatic(); distance *= factor; updateCamera(); },
+    cameraInfo: () => ({ y: camera.position.y, ground: Math.max(0, sampleHeight(world, camera.position.x, camera.position.z)), tx: target.x, tz: target.z, yaw: orbitYaw, pitch: orbitPitch, distance, gliding: !!glide || followed !== undefined }),
+    cancelAutomaticCamera: () => cancelAutomatic(),
+    getPose: () => ({ tx: target.x, ty: target.y, tz: target.z, yaw: orbitYaw, pitch: orbitPitch, distance }),
+    setPose: (pose) => { cancelAutomatic(); target.set(pose.tx, pose.ty, pose.tz); orbitYaw = pose.yaw; orbitPitch = pose.pitch; distance = pose.distance; updateCamera(); },
+    project: (x, y, z) => { const p = new Vector3(x, y, z).project(camera);
+      return { x: (p.x + 1) * innerWidth / 2, y: (1 - p.y) * innerHeight / 2, visible: p.z >= -1 && p.z <= 1 && Math.abs(p.x) <= 1 && Math.abs(p.y) <= 1 }; },
     updateSnapshot: (snapshot, timestamp) => { trees.receive(snapshot); figures.receive(snapshot, timestamp); },
     selectAgent: (id) => { figures.selected = id; },
-    followAgent: (id) => { followed = id; if (id !== undefined) { distance = 15; orbitPitch = 0.45; } },
-    islandView: () => { followed = undefined; target.copy(islandTarget); distance = islandDistance; orbitYaw = 0.58; orbitPitch = 0.13; updateCamera(); },
+    followAgent: (id) => { followed = id; glide = undefined; if (id !== undefined) { distance = 12; orbitPitch = 0.45; } },
+    islandView: (pitch, fill) => {
+      followed = undefined; glide = undefined;
+      if (pitch === undefined) { target.copy(islandTarget); distance = islandDistance; orbitYaw = 0.58; orbitPitch = 0.13; updateCamera(); return; }
+      // Ease to the whole island seen from higher up, scaled to the free part of the screen.
+      glide = { target: islandTarget.clone(), distance: islandDistance * (fill ?? 1), pitch };
+    },
     agentPositions: () => figures.projected(camera),
     waitForGPU: () => watch.run(() => renderer.waitForGPU()), onLost: (listener) => watch.subscribe(listener) };
 }

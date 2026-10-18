@@ -99,7 +99,23 @@ The owner's reaction: "that's the design equivalent of the Matrix."
 - Parked as known debt: ecology, population tuning, brief 3.5. Built things (fire, shelter) appear only in the feed so
   far, and the island starts fresh on every server restart.
 
+## 18 Oct 2026, night: councils, skills, a lost contract, and getting back on track
+
+- Built in the afternoon and evening: councils and the torrent (a chair's model call picks split, branch or none; parts run
+  as parallel calls; a merge names the winner), knowledge passing as facts, the island's own invented chemistry, buildable
+  forms, skills (named procedures an agent writes, runs as one action and teaches), the minds mixer across the connected
+  plans, real usage meters for Codex and Claude, persistence, and the web as a knowledge nucleus.
+- What went wrong: the sandbox page had dropped the whole startup and performance contract of rounds 8 to 10, the camera
+  framed the agents on its own, reloads flashed, and an adversarial review was run out of the owner's sight. The owner:
+  "Why would you remove things i specifically added", "the performance of the island and the web is terrible".
+- The recovery, planned with the advisor and audited by GPT-6-Astra in a visible tmux window (docs/reviews/astra-audit-
+  2026-10-18.md), shipped as four batches: correctness (recovery, camera ownership, no flash, ordered thoughts, councils
+  that obey Pause), measurement (frame diagnostics; the web draws only on change), a safe minimal quality tier, and layout
+  from measured panels. The sandbox eval grew to 35 checks and makes no model calls.
+- Still open: render cost on the owner's own GPU (the software renderer stays slow even at the minimal tier, so the next
+  cuts need a real-hardware reading), and a device-loss test, which headless WebGL2 cannot exercise.
+
 ## Next
 
-Make the work visible and lasting: built things on the island, memory that survives a restart, then teaching (what
-one agent knows spreading to another) drawn as the web.
+The first play test with the owner: a fresh island, start to finish. Then pressure (hunger, night, storms, shelter),
+agents naming their own places, and councils called on disagreement.
