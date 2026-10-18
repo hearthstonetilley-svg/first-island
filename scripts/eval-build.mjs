@@ -13,7 +13,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 const SEEDS = (process.env.EVAL_SEEDS ?? '1,7,42,99,2026').split(',').map(Number);
 const RUNS = Number(process.env.EVAL_RUNS ?? 3);
 const STRICT_TIMING = process.env.EVAL_TIMING === 'strict';
-const START_DEADLINE_MS = 30_000;
+const START_DEADLINE_MS = 60_000; // CI software rendering takes 25 to 30 s
 const SAMPLE_MS = 3_000;
 const LOAD_CAP_MS = 150_000;
 const OUT = 'eval-results';
