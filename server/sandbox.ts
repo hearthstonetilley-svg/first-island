@@ -67,7 +67,7 @@ function combine(inventory: Item[], a: Item, b: Item): Item | 'nothing' | undefi
   const rest = [...inventory]; rest.splice(i, 1);
   const j = rest.indexOf(b); if (j < 0) return undefined;
   const r = react(chem, a, b); if (!r) return 'nothing';
-  rest.splice(j, 1); rest.push(r.product); inventory.splice(0, inventory.length, ...rest);
+  rest.splice(j, 1); rest.push(r.product); inventory.splice(0, inventory.length, ...rest); itemLedger -= 1;
   return r.product;
 }
 interface Built { id: number; kind: string; name: string; x: number; y: number; z: number; colour: string; by: number; at: number }
@@ -84,7 +84,18 @@ interface SandboxAgent {
   lastResult: string; busyUntil: number; thinking: boolean; nextThink: number; council: number | null; doing?: string; outcome?: string;
   skills?: string[]; running?: { skill: string; step: number; startedAt: number; made: string[] } | null;
   hyp?: { tried: number; right: number; missing?: number; untested?: number };
-  energy?: number; sheltered?: boolean; collapsedUntil?: number;
+  energy?: number; sheltered?: boolean; collapsedUntil?: number; mindEpoch?: number;
+}
+
+// ---------- item ledger (test mode): items are conserved ----------
+// Every gather adds one, every use, meal, build, set-down or collapse removes what it removes.
+// Outside councils (which hold items in hand while they work), what the agents carry must
+// equal the ledger; any difference is a duplication or a loss, and the eval fails on it.
+let itemLedger = 0;
+function checkLedger() {
+  if (councils.some(c => !c.closedAt)) return;
+  const held = agents.reduce((n, a) => n + a.inventory.length, 0);
+  if (held !== itemLedger) { emit('ledger_mismatch', `items held ${held}, ledger ${itemLedger}`); itemLedger = held; }
 }
 
 // ---------- pressure: hunger, day and night, storms, shelter ----------
@@ -93,13 +104,16 @@ interface SandboxAgent {
 // agent collapses, loses what it carried and wakes on the shore: hard, but the cast stays.
 const DAY_MS = Number(process.env.SANDBOX_DAY_MS ?? 480000);
 const DRAIN_PER_S = Number(process.env.SANDBOX_DRAIN ?? 1 / 900);
-const clockStart = Date.now();
-const daylight = () => 0.5 + 0.5 * Math.cos(((Date.now() - clockStart) % DAY_MS) / DAY_MS * Math.PI * 2);
+// The island's own clock advances only while it is running and someone is watching, so a
+// pause freezes the day, the weather and every recovery deadline.
+let simMs = 0;
+const simNow = () => simMs;
+const daylight = () => 0.5 + 0.5 * Math.cos((simNow() % DAY_MS) / DAY_MS * Math.PI * 2);
 const isNight = () => daylight() < 0.3;
-let storm: { until: number } | null = null, nextStorm = Date.now() + 300000 + Math.random() * 300000;
+let storm: { until: number } | null = null, nextStorm = 300000 + Math.random() * 300000;
 const SHELTERING = ['hut', 'tower'];
 function updatePressure(dt: number) {
-  const now = Date.now();
+  const now = simNow();
   if (!storm && now > nextStorm) { storm = { until: now + 60000 + Math.random() * 30000 }; emit('weather', 'A storm sweeps across the island.'); }
   if (storm && now > storm.until) { storm = null; nextStorm = now + 360000 + Math.random() * 360000; emit('weather', 'The storm passes.'); }
   for (const a of agents) {
@@ -117,7 +131,7 @@ function updatePressure(dt: number) {
     if (a.council !== null) rate *= 0.5;
     a.energy = Math.max(0, a.energy - rate * dt);
     if (a.energy <= 0 && a.council === null) {
-      a.inventory = []; a.running = null; a.path = []; a.collapsedUntil = now + 20000;
+      itemLedger -= a.inventory.length; a.inventory = []; a.running = null; a.path = []; a.collapsedUntil = now + 20000; a.mindEpoch = (a.mindEpoch ?? 0) + 1;
       emit('collapse', 'COLLAPSES from hunger and exposure', a.id);
     }
   }
@@ -275,7 +289,7 @@ function act(a: SandboxAgent, d: Decision) {
     if (!want) { a.lastResult = 'There is nothing to gather here.'; emit('result', 'finds nothing to gather here', a.id); }
     else if (a.inventory.length >= 6) { a.lastResult = 'Your hands are full.'; emit('result', 'has full hands', a.id); }
     else {
-      a.inventory.push(want); a.activity = 'seeking food'; a.lastResult = `You gathered ${describeItem(want)}.`;
+      a.inventory.push(want); itemLedger += 1; a.activity = 'seeking food'; a.lastResult = `You gathered ${describeItem(want)}.`;
       learn(a, factId(`${want} is found at ${nearestPlace(a.x, a.z)}`)); emit('action', `gathers ${want}`, a.id);
     }
   } else if (action === 'combine') {
@@ -299,7 +313,7 @@ function act(a: SandboxAgent, d: Decision) {
     if (i < 0) a.lastResult = `You have no ${target}.`;
     else if (!sub?.structure) { a.lastResult = `${target} cannot be built.`; emit('result', `tries to build with ${target}, which cannot be built`, a.id); }
     else {
-      a.inventory.splice(i, 1); a.activity = 'seeking cover'; a.busyUntil = Date.now() + 4000;
+      a.inventory.splice(i, 1); itemLedger -= 1; a.activity = 'seeking cover'; a.busyUntil = Date.now() + 4000;
       const b: Built = { id: structures.length + 1, kind: sub.structure, name: target, x: a.x, y: a.y, z: a.z, colour: sub.colour, by: a.id, at: Date.now() };
       structures.push(b); learn(a, factId(`${target} can be built`));
       a.lastResult = `You built ${target} at ${nearestPlace(a.x, a.z)}. It stays there.`;
@@ -310,7 +324,7 @@ function act(a: SandboxAgent, d: Decision) {
     if (i < 0) a.lastResult = `You have no ${target}.`;
     else if (sub?.food === undefined) { learn(a, factId(`${target} is not food`)); a.lastResult = `${target} is not food. You keep it.`; emit('result', `tries to eat ${target}: not food`, a.id); }
     else {
-      a.inventory.splice(i, 1); a.energy = Math.max(0, Math.min(1, (a.energy ?? 1) + sub.food)); a.activity = 'eating'; a.busyUntil = Date.now() + 2500;
+      a.inventory.splice(i, 1); itemLedger -= 1; a.energy = Math.max(0, Math.min(1, (a.energy ?? 1) + sub.food)); a.activity = 'eating'; a.busyUntil = Date.now() + 2500;
       const good = sub.food > 0;
       learn(a, factId(good ? `eating ${target} restores strength` : `eating ${target} makes you ill`));
       a.lastResult = good ? `You ate ${target} and feel stronger.` : `You ate ${target} and feel ill.`;
@@ -319,7 +333,7 @@ function act(a: SandboxAgent, d: Decision) {
   } else if (action === 'drop') {
     const i = a.inventory.indexOf(target);
     if (i < 0) a.lastResult = `You have no ${target}.`;
-    else { a.inventory.splice(i, 1); a.lastResult = `You set down ${target}. Your hands have room.`; emit('action', `sets down ${target}`, a.id); }
+    else { a.inventory.splice(i, 1); itemLedger -= 1; a.lastResult = `You set down ${target}. Your hands have room.`; emit('action', `sets down ${target}`, a.id); }
   } else if (action === 'rest') {
     a.activity = 'resting'; a.busyUntil = Date.now() + 5000; a.lastResult = 'You rested.'; emit('action', 'rests', a.id);
   } else if (action === 'write_skill') {
@@ -352,8 +366,8 @@ let running = false;
 let inFlight = 0;
 // One limit for every model call, minds and councils alike.
 const MAX_IN_FLIGHT = Number(process.env.MAX_IN_FLIGHT ?? process.env.MIND_CONCURRENCY ?? 2);
-const waitForSlot = async (): Promise<boolean> => {
-  for (let i = 0; i < 600; i++) { if (!running || viewers.size === 0) return false; if (inFlight < MAX_IN_FLIGHT) { inFlight++; return true; } await new Promise(r => setTimeout(r, 100)); }
+const waitForSlot = async (epoch = pauseEpoch): Promise<boolean> => {
+  for (let i = 0; i < 600; i++) { if (!running || viewers.size === 0 || pauseEpoch !== epoch) return false; if (inFlight < MAX_IN_FLIGHT) { inFlight++; return true; } await new Promise(r => setTimeout(r, 100)); }
   return false;
 };
 const canSpend = () => running && viewers.size > 0;
@@ -408,6 +422,8 @@ function prompt(a: SandboxAgent): string {
 
 async function think(a: SandboxAgent) {
   a.thinking = true;
+  // A reply that arrives after the agent collapsed belongs to a mind that no longer exists.
+  const epoch = a.mindEpoch ?? 0;
   try {
     let d: Decision;
     const m = mindOf(a);
@@ -415,7 +431,7 @@ async function think(a: SandboxAgent) {
       mindCalls.push(Date.now()); inFlight++;
       try { d = cleanDecision(await callModel(m, SYSTEM, prompt(a), 'mind')); } catch { d = scriptedMind(a); } finally { inFlight--; }
     } else d = scriptedMind(a);
-    if (running && a.council === null) {
+    if (running && a.council === null && !a.collapsedUntil && (a.mindEpoch ?? 0) === epoch) {
       try { act(a, d); } catch (err) { a.lastResult = 'Something went wrong with that; try again.'; console.error('act failed', a.name, (err as Error).message); }
     }
   } finally { a.thinking = false; a.nextThink = Date.now() + (mindOf(a) === 'scripted' ? 3000 + Math.random() * 3000 : 1500); }
@@ -451,18 +467,19 @@ function scheduleMinds() {
 
 // ---------- councils: the torrent ----------
 interface CouncilRecord { id: number; chair: number; members: number[]; problem: string; mode: string; parts: Array<{ agent: number; task: string; finding?: string; result?: string; made?: string }>;
-  winner: number | null; summary: string; calls: number; openedAt: number; closedAt?: number; observer: boolean }
+  winner: number | null; summary: string; calls: number; openedAt: number; closedAt?: number; observer: boolean; epoch: number }
 let councils: CouncilRecord[] = [];
 async function councilCall(system: string, user: string, rec: CouncilRecord, fallback: () => Record<string, unknown>, who?: SandboxAgent): Promise<Record<string, unknown>> {
+  const epoch = rec.epoch;
   const m = who ? mindOf(who) : mindOf(agents[rec.chair]);
   // Pause or an empty room stops the council spending: it falls back without a call.
   if (m === 'scripted' || !canSpend()) return fallback();
-  if (!(await waitForSlot())) return fallback();
+  if (!(await waitForSlot(epoch))) return fallback();
   // Budget is checked and reserved together at the moment of launch, after any wait,
   // so parallel parts cannot all pass the check and overspend.
-  if (!canSpend() || !within(councilCalls, COUNCIL_CAP)) { inFlight--; return fallback(); }
+  if (!canSpend() || pauseEpoch !== epoch || !within(councilCalls, COUNCIL_CAP)) { inFlight--; return fallback(); }
   councilCalls.push(Date.now()); rec.calls++;
-  try { return await callModel(m, system, user, 'council'); } catch { return fallback(); } finally { inFlight--; }
+  try { const reply = await callModel(m, system, user, 'council'); return pauseEpoch === epoch ? reply : fallback(); } catch { return fallback(); } finally { inFlight--; }
 }
 const COUNCIL_SYSTEM = `You are inhabitants of a small island holding a council. Island laws: ${LAWS.join(' ')}
 The materials have their own names; use them exactly. Reply with ONE JSON object and nothing else.`;
@@ -470,10 +487,11 @@ The materials have their own names; use them exactly. Reply with ONE JSON object
 async function council(chair: SandboxAgent, problem: string, observer = false) {
   const epoch = pauseEpoch;
   let dealtPot: Array<{ item: Item; owner: SandboxAgent; home: boolean }> = [];
-  const members = [chair, ...near(chair).filter(o => o.council === null)].slice(0, 6);
+  if (chair.collapsedUntil) return;
+  const members = [chair, ...near(chair).filter(o => o.council === null && !o.collapsedUntil)].slice(0, 6);
   if (members.length < 2) { chair.lastResult = 'Nobody is near enough to hold a council.'; emit('result', 'calls a council but nobody is near', chair.id); return; }
   const rec: CouncilRecord = { id: councils.length + 1, chair: chair.id, members: members.map(m => m.id), problem: scrub(problem).slice(0, 160), mode: '',
-    parts: [], winner: null, summary: '', calls: 0, openedAt: Date.now(), observer };
+    parts: [], winner: null, summary: '', calls: 0, openedAt: Date.now(), observer, epoch: pauseEpoch };
   councils.push(rec);
   for (const m of members) { m.council = rec.id; m.path = []; m.activity = 'socialising'; }
   emit('council_open', `${observer ? '[observer asked] ' : ''}calls a council: "${rec.problem}"`, chair.id, rec.members.filter(i => i !== chair.id), { council: rec.id, members: rec.members });
@@ -491,6 +509,7 @@ async function council(chair: SandboxAgent, problem: string, observer = false) {
       .map(p => ({ agent: byName(String(p.agent ?? '')), task: scrub(String(p.task ?? '')).slice(0, 120) }))
       .filter(p => p.agent && rec.members.includes(p.agent.id)).slice(0, 6) as Array<{ agent: SandboxAgent; task: string }>;
     if (rec.mode === 'none' || parts.length === 0) parts.splice(0, parts.length, { agent: chair, task: rec.problem });
+    if (pauseEpoch !== epoch || !running) throw new Error('adjourned');
     rec.parts = parts.map(p => ({ agent: p.agent.id, task: p.task }));
     emit('council_split', `${rec.mode.toUpperCase()}: ${parts.map(p => `${p.agent.name}: ${p.task}`).join(' | ')}`, chair.id, parts.map(p => p.agent.id),
       { council: rec.id, mode: rec.mode, parts: rec.parts });
@@ -505,16 +524,20 @@ async function council(chair: SandboxAgent, problem: string, observer = false) {
     dealtPot = pot;
     const hands: Array<typeof pot> = parts.map(() => []);
     pot.forEach((entry, i) => hands[i % parts.length].push(entry));
-    const results = await Promise.all(parts.map(async (p, i) => {
+    // Every part settles before anything else happens, so one failing part cannot race the others.
+    const settled = await Promise.allSettled(parts.map(async (p, i) => {
       const dealt = hands[i];
       const mine = dealt.map(d => d.item);
       const answer = mine.length < 2 ? { finding: 'too few items to try anything', try: {} } : await councilCall(COUNCIL_SYSTEM, [`You are ${p.agent.name} in a council chaired by ${chair.name}. Problem: ${rec.problem}`,
         `Your part (${rec.mode}): ${p.task}`, `Items dealt to you for this part: ${mine.join(', ') || 'none'}.`, `Facts the council knows: ${factList(pooled)}.`,
         mine.length >= 2 ? 'Pick one pair from your items to combine for your part, avoiding pairs already known to make nothing.' : 'You have too few items to combine; report what the council should do next.',
         'Reply: {"finding": "<one short line>", "try": {"a": "<item>", "b": "<item>"}, "expect": "<what you predict it makes, or nothing>"}'].join('\n'), rec,
-        () => ({ finding: 'trying a pair', try: { a: mine[0] ?? '', b: mine[1] ?? '' }, expect: 'nothing' }), p.agent);
+        () => (process.env.SANDBOX_TEST_BAD_PART === '1' && i === 0 && rec.id % 3 === 0 ? { finding: { evil: true }, try: { a: { toString: 0 }, b: 'wood' }, expect: { x: 1 } } as Record<string, unknown>
+          : { finding: 'trying a pair', try: { a: mine[0] ?? '', b: mine[1] ?? '' }, expect: 'nothing' }), p.agent);
       const t = (answer && typeof answer.try === 'object' && answer.try ? answer.try : {}) as Record<string, unknown>;
-      const x = String(t.a ?? '').toLowerCase(), y = String(t.b ?? '').toLowerCase();
+      // Only plain strings count as item names; anything else is treated as no choice.
+      const word = (v: unknown) => (typeof v === 'string' ? v.toLowerCase().slice(0, 40) : '');
+      const x = word(t.a), y = word(t.b);
       let r: { text: string; made?: string; fact?: number } = { text: mine.length >= 2 ? `has no ${x} and ${y} in hand` : 'too few items to try' };
       // Paused while this part was thinking: nothing is tried, and the dealt items go home below.
       if (mine.length >= 2 && live()) { r = tryCombine(p.agent, x, y, { inventory: mine } as SandboxAgent); if (!/^lacks /.test(r.text)) judge(p.agent, answer.expect, `${x} + ${y}`, r.made); }
@@ -522,10 +545,13 @@ async function council(chair: SandboxAgent, problem: string, observer = false) {
       const left = [...mine];
       for (const d of dealt) { const k = left.indexOf(d.item); if (k >= 0) { left.splice(k, 1); d.owner.inventory.push(d.item); } d.home = true; }
       p.agent.inventory.push(...left);
-      rec.parts[i] = { ...rec.parts[i], finding: scrub(String(answer.finding ?? '')).slice(0, 120), result: r.text, made: r.made };
+      rec.parts[i] = { ...rec.parts[i], finding: typeof answer.finding === 'string' ? scrub(answer.finding).slice(0, 120) : '', result: r.text, made: r.made };
+      if (rec.closedAt) return { agent: p.agent, ...r };
       emit('council_part', `${p.agent.name}: ${rec.parts[i].finding} (${r.text})`, p.agent.id, [chair.id], { council: rec.id, part: i, made: r.made ?? null });
       return { agent: p.agent, ...r };
     }));
+    const results = settled.flatMap(x => (x.status === 'fulfilled' ? [x.value] : []));
+    if (settled.some(x => x.status === 'rejected')) throw new Error('a council part failed');
     if (!live()) throw new Error('adjourned');
     // 3. Merge: the chair keeps what worked and every member learns it.
     const merged = await councilCall(COUNCIL_SYSTEM, [`You chair the council (${chair.name}). Problem: ${rec.problem}. Mode: ${rec.mode}.`,
@@ -554,7 +580,7 @@ async function council(chair: SandboxAgent, problem: string, observer = false) {
     for (const d of dealtPot) if (!d.home) { d.owner.inventory.push(d.item); d.home = true; }
     // The carry law holds the moment the council ends: anything over six is set down at once.
     for (const m of members) {
-      if (m.inventory.length > 6) { const dropped = m.inventory.splice(6); emit('result', `sets down ${dropped.join(', ')}: hands full after the council`, m.id); }
+      if (m.inventory.length > 6) { const dropped = m.inventory.splice(6); itemLedger -= dropped.length; emit('result', `sets down ${dropped.join(', ')}: hands full after the council`, m.id); }
       m.council = null; m.nextThink = Date.now() + 1000;
     }
   }
@@ -582,6 +608,8 @@ function load() {
   } catch { /* fresh island */ }
 }
 if (process.env.SANDBOX_FRESH !== '1') load();
+itemLedger = agents.reduce((n, a) => n + a.inventory.length, 0);
+if (process.env.SANDBOX_TEST === '1') setInterval(checkLedger, 500);
 setInterval(save, 15000);
 process.on('SIGTERM', () => { save(); process.exit(0); });
 // A failure in one agent's task must never stop the island.
@@ -593,10 +621,11 @@ let tick = 0, last = Date.now();
 const CARRY = 6;
 setInterval(() => {
   const now = Date.now(), dt = (now - last) / 1000; last = now;
-  if (running) { stepAgents(dt); updatePressure(dt); }
+  // Bodies, hunger and minds share one condition: the island lives while it runs and is watched.
+  if (running && viewers.size > 0) { simMs += dt * 1000; stepAgents(dt); updatePressure(dt); }
   // The carry law holds between every step: anything over six is set down.
   for (const a of agents) if (a.council === null && a.inventory.length > CARRY) {
-    const dropped = a.inventory.splice(CARRY);
+    const dropped = a.inventory.splice(CARRY); itemLedger -= dropped.length;
     emit('result', `sets down ${dropped.join(', ')}: hands full`, a.id);
   }
   scheduleMinds();

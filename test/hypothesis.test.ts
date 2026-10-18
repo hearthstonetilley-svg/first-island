@@ -22,6 +22,12 @@ describe('hypothesis marking', () => {
     expect(mark('fire or cord', 'fire')).toBe('missing');
     expect(mark('either sparks or nothing', null)).toBe('missing');
   });
+  it('rejects ambiguous clauses instead of guessing (third audit)', () => {
+    expect(mark('cord, not fire', 'cord')).toBe('missing');
+    expect(mark('it will do nothing', null)).toBe('correct');
+    expect(mark('nothing will happen', null)).toBe('correct');
+    expect(mark('cord and sparks', 'cord')).toBe('missing');
+  });
   it('marks plain predictions', () => {
     expect(mark('sparks', 'sparks')).toBe('correct');
     expect(mark('a spark', 'sparks')).toBe('correct');

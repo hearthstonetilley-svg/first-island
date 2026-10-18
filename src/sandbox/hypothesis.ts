@@ -27,12 +27,17 @@ const STRIP = /\b(i (think|expect|predict|guess)|i'd (say|guess)|it (will|might|
 
 export function readPrediction(raw: unknown, names: string[]): Prediction {
   if (typeof raw !== 'string') return { kind: 'missing' };
+  // Punctuation is read before it is cleaned away: "cord, not fire" is two claims.
+  if (/[,;/]/.test(raw)) return { kind: 'missing' };
   let t = clean(raw);
   if (!t) return { kind: 'missing' };
   // "Nothing" in any of its forms is checked first, before "no" is read as negation.
   if (/^(nothing|none|no change|no reaction|nothing happens|nothing will happen|it will do nothing)$/.test(t.replace(STRIP, ' ').replace(/\s+/g, ' ').trim()) || /^(no change|no reaction)$/.test(t)) return { kind: 'nothing' };
-  // A hedge between outcomes is not one testable claim.
-  if (/\b(or|either)\b/.test(t)) return { kind: 'missing' };
+  // A hedge or a list of outcomes is not one testable claim: reject rather than guess.
+  if (/\b(or|either|and|but)\b|[,;]/.test(t)) return { kind: 'missing' };
+  // Any sentence whose only outcome word is "nothing" predicts nothing ("it will do nothing").
+  const bare = t.replace(STRIP, ' ').replace(/\b(do|does|happen|happens|change|changes|occur|occurs)\b/g, ' ').replace(/\s+/g, ' ').trim();
+  if (bare === 'nothing') return { kind: 'nothing' };
   // Negation can sit anywhere before the outcome: "not cord", "I expect not cord", "it will not make fire".
   let negated = false;
   const neg = /\b(not|no|never|won't|wont|cannot|can't|doesn't|does not|will not)\b/;
