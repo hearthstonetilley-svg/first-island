@@ -1,6 +1,6 @@
 # Design: the world and its agents
 
-Status: draft 2, 18 Oct 2026 (adds the system as an evolving eval). This is the design the stage 2 briefs are cut from. Open questions are listed at the end.
+Status: accepted, 18 Oct 2026 (draft 2 plus the owner's decisions in section 13). This is the design the stage 2 briefs are cut from. Open questions are listed at the end.
 
 ## 1. The research question
 
@@ -160,7 +160,7 @@ the answers. So the system is designed as an eval from the start, and an evolvin
 ### 11.3 Scoring: the climb
 A run is scored on how far up the layers the society gets, and how fast:
 - **Layer reached**, with evidence: 1 survives generations; 2 names things and predicts outcomes before testing them;
-  3 makes things on purpose from multi-step recipes; 4 reads or edits a definition (only if the gate exists in that run).
+  3 makes things on purpose from multi-step recipes; 4 crosses the understanding threshold (decision 1), then reads or rewrites definitions.
 - **Milestone times** in simulated generations: first tool, first shelter, first fire, first boat, first record.
 - **Complexity score** (section 8), and **knowledge retention** across generations.
 - **Cost**: mind calls spent. A society that climbs as far for half the budget scores higher.
@@ -171,10 +171,9 @@ A run is scored on how far up the layers the society gets, and how fast:
   and uncontaminated. Only aggregate results are published.
 - **Open track:** public, evolving and ever harder. This is where the frontier is pushed and where runs are shown.
 
-### 11.5 Comparing minds
-The same held-out worlds can be run with different models as the minds (Claude, GPT, open models), with the same
-budget. The output is a leaderboard of civilisations, not answers: which society climbed highest, fastest and
-cleanest. Bodies, physics and chemistry stay identical, so the only variable is the mind.
+### 11.5 Minds stay swappable
+The mind model is a setting, not a dependency, so a run could use a different model. A cross-model leaderboard is not
+a goal of this project (owner decision 7).
 
 ## 12. Build order
 
@@ -190,15 +189,18 @@ cleanest. Bodies, physics and chemistry stay identical, so the only variable is 
 - **2f: knowledge.** Teaching, forgetting at death, records, the idea web.
 - Later: boats and other islands, rivals, the director, and the layer 4 gate.
 
-## 13. Open questions for the owner
+## 13. Owner decisions (18 Oct 2026)
 
-1. **The awakening gate.** What does it take to reach layer 4: a discovery (an instrument that reveals definitions),
-   a threshold of understanding, or never by default? What does editing cost?
-2. **Laws or state.** If they reach layer 4, may they change the laws, or only the world state?
-3. **Language.** Do agents speak in natural language (readable, but it imports Earth concepts) or in invented tokens
-   (pure, but we need to translate)?
-4. **Death and pace.** How long is a generation in real time? This sets how fast evolution can be watched.
-5. **Our interventions.** May we (the owner, the director) change the world during a run, and is every intervention
-   logged as an event?
-6. **The held-out track.** Where do the secret seeds live (a private repo, or a local file), and who may run them?
-7. **Comparing minds.** Is a cross-model leaderboard a goal for this project, or a later spin-off?
+1. **The awakening gate: an understanding threshold.** Layer 4 unlocks when the society has correctly predicted
+   enough of the hidden rules (predictions logged before tests, scored against the true chemistry). It is earned
+   through science, not handed out.
+2. **Laws too, at a cost.** Past the gate, agents may change the world state and also rewrite the laws (what an
+   element or reaction does). Rewriting a law carries a heavy cost, and every rewrite is a logged event.
+3. **Language: natural language with coined names.** Agents speak plain language, but every name for a thing,
+   material or process must be one their society coined. The leak eval enforces it.
+4. **Pace: about 30 minutes of real time per generation** in a watched run (a dial; headless runs go faster).
+5. **Interventions: allowed, always logged.** The owner and the director may change a running world; every
+   intervention is an event in the log.
+6. **Held-out track: a private repo** holding the secret seeds and dials; only aggregate results are published.
+7. **Cross-model leaderboard: not a goal.** One society, one mind model at a time. Section 11.5 is kept only as a
+   note that minds stay swappable.
