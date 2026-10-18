@@ -47,7 +47,7 @@ let buffer = '';
       if (!data) continue;
       const d = JSON.parse(data);
       if (kind === 'state') { seen.last = d; seen.states++; seen.agents = d.agents.length; seen.maxDay = Math.max(seen.maxDay, d.world.daylight); seen.minDay = Math.min(seen.minDay, d.world.daylight); for (const a of d.agents) seen.minEnergy = Math.min(seen.minEnergy, a.energy); for (const a of d.agents) if (a.council === null) seen.maxCarry = Math.max(seen.maxCarry, a.inventory.length); }
-      if (kind === 'event') { seen.types.add(d.type); if (/^sets down /.test(d.text)) { seen.drops++; if (seen.watchDrop && d.agent === seen.watchDrop.agent && d.text === `sets down ${seen.watchDrop.item}`) seen.droppedBy = d.agent; } if (['action', 'result', 'thought', 'say'].includes(d.type)) seen.actions++; if (/^gathers (sand|shell|seaweed|driftwood|water|wood|plant fibre|resin|fruit|clay|dry grass|red berries|flint|stone|pyrite)$/.test(d.text)) seen.realItems++; if (d.type === 'hypothesis') seen.hyps++; if (d.type === 'disagreement') (seen.disagreements ??= []).push(d); if (d.type === 'council_open') (seen.opens ??= []).push(d); if (/^(eats|tries to eat) /.test(d.text)) seen.eats++; if (d.type === 'council_merge' && /^ADJOURNED/.test(d.text)) seen.adjourned = true; if (d.type === 'ledger_mismatch') seen.ledger = d.text; if (d.type === 'council_open') seen.councilOpens++; if (d.type === 'ledger_check') seen.ledgerChecks++; }
+      if (kind === 'event') { seen.types.add(d.type); if (/^sets down /.test(d.text)) { seen.drops++; if (seen.watchDrop && d.agent === seen.watchDrop.agent && d.text === `sets down ${seen.watchDrop.item}`) seen.droppedBy = d.agent; } if (['action', 'result', 'thought', 'say'].includes(d.type)) seen.actions++; if (/^gathers (sand|shell|seaweed|driftwood|water|wood|plant fibre|resin|fruit|clay|dry grass|red berries|flint|stone|pyrite)$/.test(d.text)) seen.realItems++; if (d.type === 'hypothesis') seen.hyps++; if (d.type === 'threat' && /^is charged by the boar/.test(d.text)) (seen.charged ??= []).push(d.agent); if (d.type === 'threat' && /^drives the boar off/.test(d.text)) (seen.drove ??= []).push(d.agent); if (d.agent === 7 && /^cannot gather wood without/.test(d.text)) seen.toolBlocked = true; if (d.agent === 7 && d.text === 'gathers wood' && seen.toolGiven) seen.woodWithTool = true; if (d.type === 'disagreement') (seen.disagreements ??= []).push(d); if (d.type === 'council_open') (seen.opens ??= []).push(d); if (/^(eats|tries to eat) /.test(d.text)) seen.eats++; if (d.type === 'council_merge' && /^ADJOURNED/.test(d.text)) seen.adjourned = true; if (d.type === 'ledger_mismatch') seen.ledger = d.text; if (d.type === 'council_open') seen.councilOpens++; if (d.type === 'ledger_check') seen.ledgerChecks++; }
     }
   }
 })().catch(() => {});
@@ -84,15 +84,19 @@ const meters = await page.waitForFunction(() => document.querySelectorAll('.mete
 check('usage meters show', meters);
 // The mixer: drag the first divider right and the agents' minds change on the server.
 const handle = page.locator('.mix-bar .handle').first();
-const hb = await handle.boundingBox().catch(() => null), bb = await page.locator('.mix-bar').boundingBox().catch(() => null);
+let hb = null; for (let i = 0; i < 10 && !hb; i++) { hb = await handle.boundingBox({ timeout: 5000 }).catch(() => null); if (!hb) await sleep(500); }
+const bb = await page.locator('.mix-bar').boundingBox().catch(() => null);
 const options = await page.evaluate(() => document.querySelectorAll('.mix-bar .seg').length);
 check('mixer offers the connected models', options >= 3, `${options} options`);
+// Record what the press actually lands on, so a miss explains itself.
+await page.evaluate(() => { window.__mixPress = []; addEventListener('pointerdown', e => window.__mixPress.push(`${e.target.className}@${Math.round(e.clientX)}`), { capture: true }); });
 if (hb && bb) { await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2); await page.mouse.down();
 await page.mouse.move(bb.x + bb.width * 0.5, hb.y + hb.height / 2, { steps: 6 }); await page.mouse.up();
 // The new mix goes to the server and comes back on the stream: wait for it rather than a fixed pause.
 await page.waitForFunction(() => new Set([...document.querySelectorAll('.card .model')].map(m => m.textContent)).size >= 2, null, { timeout: 60000 }).catch(() => {}); }
 const mixNow = await page.evaluate(() => [...document.querySelectorAll('.card .model')].map(m => m.textContent));
-check('dragging the mixer reassigns minds', new Set(mixNow).size >= 2, mixNow.join(','));
+const mixWhy = await page.evaluate(() => (window.__mixPress ?? []).join(' '));
+check('dragging the mixer reassigns minds', new Set(mixNow).size >= 2, `${mixNow.join(',')}; pressed ${mixWhy}; handle at ${hb && Math.round(hb.x + hb.width / 2)}, bar ${bb && Math.round(bb.x)} to ${bb && Math.round(bb.x + bb.width)}; server mix ${(seen.last?.mix ?? []).join(',')}`);
 if (hb && bb) { await page.mouse.move(bb.x + 2, hb.y + hb.height / 2); await page.mouse.down(); await page.mouse.up(); }
 await api('/api/control', { minds: 'scripted' }); await sleep(1000);
 await sleep(4000);
@@ -181,6 +185,46 @@ await api('/api/control', { cmd: 'hold', agent: 6, items: ['flint'] });
 await api('/api/control', { cmd: 'act', agent: 6, decision: { action: 'eat', target: 'flint' } });
 check('strength drains and agents try to eat', seen.minEnergy < 0.9 && seen.eats > 0, `lowest strength ${seen.minEnergy.toFixed(2)}, ${seen.eats} meals tried`);
 check('day turns to night', seen.maxDay > 0.8 && seen.minDay < 0.3, `daylight ${seen.minDay.toFixed(2)} to ${seen.maxDay.toFixed(2)}`);
+// Tools matter: wood from a living tree cannot be gathered by hand, and can with an edge.
+await api('/api/control', { cmd: 'goto', agent: 7, ground: 'grove' });
+await api('/api/control', { cmd: 'hold', agent: 7, items: [] });
+await api('/api/control', { cmd: 'act', agent: 7, decision: { action: 'gather', target: 'wood' } });
+for (let i = 0; i < 10 && !seen.toolBlocked; i++) await sleep(300);
+check('wood cannot be gathered without a tool', !!seen.toolBlocked);
+await api('/api/control', { cmd: 'hold', agent: 7, items: ['flint flake'] }); seen.toolGiven = true;
+await api('/api/control', { cmd: 'goto', agent: 7, ground: 'grove' });
+await api('/api/control', { cmd: 'act', agent: 7, decision: { action: 'gather', target: 'wood' } });
+for (let i = 0; i < 10 && !seen.woodWithTool; i++) await sleep(300);
+check('with a flint flake, wood can be gathered', !!seen.woodWithTool);
+// The night boar: it charges an agent caught in the open, and a spear drives it off.
+// It charges whoever in the open is nearest, so each try picks an agent afresh: out in the open,
+// out of any council, and standing apart from the others.
+for (let i = 0; i < 40 && (seen.last?.agents ?? []).filter(a => a.council === null && !a.collapsed && !a.sheltered).length < 2; i++) await sleep(500);
+const openApart = skip => {
+  const all = seen.last?.agents ?? [];
+  const apart = a => Math.min(...all.filter(o => o.id !== a.id).map(o => Math.hypot(o.x - a.x, o.z - a.z)));
+  return all.filter(a => a.council === null && !a.collapsed && !a.sheltered && a.id !== skip).sort((a, b) => apart(b) - apart(a))[0]?.id;
+};
+let bitten;
+for (let attempt = 0; attempt < 3 && bitten === undefined; attempt++) {
+  const pick = openApart(); if (pick === undefined) { await sleep(1000); continue; }
+  await api('/api/control', { cmd: 'hold', agent: pick, items: ['fruit'] });
+  await api('/api/control', { cmd: 'boar', agent: pick });
+  for (let i = 0; i < 20 && !(seen.charged ?? []).includes(pick); i++) await sleep(300);
+  if ((seen.charged ?? []).includes(pick)) bitten = pick;
+}
+check('the boar charges an agent caught in the open', bitten !== undefined, `agent ${bitten}`);
+check('the boar is drawn on the island while it is out', !!seen.last?.world?.boar);
+let speared;
+for (let attempt = 0; attempt < 3 && speared === undefined; attempt++) {
+  const pick = openApart(bitten); if (pick === undefined) { await sleep(1000); continue; }
+  const before = (seen.charged ?? []).filter(id => id === pick).length;
+  await api('/api/control', { cmd: 'hold', agent: pick, items: ['spear'] });
+  await api('/api/control', { cmd: 'boar', agent: pick });
+  for (let i = 0; i < 20 && !(seen.drove ?? []).includes(pick); i++) await sleep(300);
+  if ((seen.drove ?? []).includes(pick) && (seen.charged ?? []).filter(id => id === pick).length === before) speared = pick;
+}
+check('a spear drives the boar off', speared !== undefined, `agent ${speared}`);
 const placeInfo = await (await api('/api/places')).json();
 check('agents explore and name places themselves', seen.types.has('explored') && seen.types.has('named') && placeInfo.regions.some(r => r.name), `${placeInfo.regions.filter(r => r.explored).length}/${placeInfo.regions.length} explored, ${placeInfo.regions.filter(r => r.name).length} named`);
 check('the map panel shows their map', await page.evaluate(() => /explored/.test(document.querySelector('.map-score')?.textContent ?? '')));

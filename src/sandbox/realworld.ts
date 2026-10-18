@@ -14,7 +14,7 @@ const SPECS: Spec[] = [
   S('seaweed', 'wet kelp washed ashore', 0, '#4f7d4a', { ground: 'shore', food: 0.1 }),
   S('driftwood', 'dry, salt-bleached wood', 0, '#b9a58a', at('shore')),
   S('water', 'fresh water from a seep', 0, '#6fb7e0', at('shore')),
-  S('wood', 'a straight branch', 0, '#8a6038', at('grove')),
+  S('wood', 'a straight branch cut from a living tree', 0, '#8a6038', { ground: 'grove', needs: ['flint flake', 'blade', 'axe'] }),
   S('plant fibre', 'long fibres stripped from bark and leaves', 0, '#a8b77a', at('grove')),
   S('resin', 'sticky tree sap', 0, '#d39a3a', at('grove')),
   S('fruit', 'ripe fruit from the trees', 0, '#e0784a', { ground: 'grove', food: 0.3 }),

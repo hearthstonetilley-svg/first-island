@@ -199,7 +199,12 @@ function updateCards(s: LiveState) {
 const mixBar = $('.mix-bar'), mixLegend = $('.mix-legend');
 let mixDraft: number[] | undefined, mixOptions: string[] = [], dragging: { divider: number } | undefined;
 const countsOf = (mix: string[], options: string[]) => options.map(o => mix.filter(m => m === o).length);
+// Rebuilt only when the mix or the options change, so a handle is never replaced under the pointer.
+let mixerDrawn = '';
 function drawMixer(counts: number[]) {
+  const key = `${mixOptions.join(',')}|${counts.join(',')}`;
+  if (key === mixerDrawn) return;
+  mixerDrawn = key;
   const total = counts.reduce((n, c) => n + c, 0) || 1;
   mixBar.innerHTML = '';
   let acc = 0;
@@ -270,7 +275,7 @@ function renderInspector() {
 }
 
 // What the agent has learned about food, read from the facts it holds.
-const SURVIVAL_RULES = 'To survive: strength drains over time, faster at night and in storms unless sheltered near a hut or wall they built. Eating the right things restores it; some things sicken. At no strength they collapse, lose what they carry and wake later.';
+const SURVIVAL_RULES = 'To survive: strength drains over time, faster at night and in storms unless sheltered near a hut or wall they built. Eating the right things restores it; some things sicken. At no strength they collapse, lose what they carry and wake later. At night a wild boar hunts anyone in the open: shelter keeps it off, and a spear drives it away.';
 let factList: string[] = [], factsFetching = false;
 function foodLine(ids: number[]) {
   if (ids.some(i => i >= factList.length) && !factsFetching) { factsFetching = true; factTexts().then(f => { factList = f; }).finally(() => { factsFetching = false; }); }
@@ -470,6 +475,16 @@ function draw(positions: Map<number, { x: number; y: number; visible: boolean }>
     ctx.font = '600 12px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(10,20,28,.55)';
     const w = ctx.measureText(r.name).width + 10; ctx.fillRect(p.x - w / 2, p.y - 13, w, 17);
     ctx.fillStyle = '#f2e7c9'; ctx.fillText(r.name, p.x, p.y);
+  }
+  // The night boar, drawn where it is while it is out.
+  const boarAt = state?.world.boar;
+  if (boarAt && island) {
+    const p = island.project(boarAt.x, boarAt.y + 0.6, boarAt.z);
+    if (p.visible && p.x > frameInsets.left && p.x < innerWidth - frameInsets.right) {
+      ctx.fillStyle = '#3a2418'; ctx.strokeStyle = '#ff6b5c'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(p.x, p.y, 9, 6, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.font = '600 11px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = '#ffb3a8'; ctx.fillText('boar', p.x, p.y - 11);
+    }
   }
   for (const c of state?.councils ?? []) {
     for (const m of c.members) {

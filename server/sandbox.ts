@@ -10,8 +10,9 @@ import { generateWorld } from '../src/world/generate';
 import { Ground } from '../src/sim/navigation';
 import { makeScrubber } from '../src/sandbox/scrub';
 import { readClaim as parseClaim } from '../src/sandbox/claim';
-import { generateChemistry, react, strike, substance, Ground as Soil } from '../src/sandbox/chemistry';
+import { generateChemistry, react, strike, substance, missingTool, pickGather, Ground as Soil } from '../src/sandbox/chemistry';
 import { realWorldChemistry } from '../src/sandbox/realworld';
+import { newBoar, stepBoar } from '../src/sandbox/boar';
 import { markPrediction, readPrediction } from '../src/sandbox/hypothesis';
 type Item = string;
 import { Backend, BACKENDS, available, callModel, CODEX_HOME, describe, perMinute, stats } from './router';
@@ -87,7 +88,7 @@ const LAWS = [
   'Two things you carry may be combined. Some pairs make something new; most do nothing. Some things change when struck alone.',
   'Some things you make can be set down and built where you stand; what is built stays.',
   'Words carry only a short distance; others hear you only if they are near.',
-  'Your strength drains over time, faster at night and in storms. Some things can be eaten to restore it; some cannot, and some sicken. Being near a hut or a wall you have built shelters you from night and storm. With no strength left you collapse and lose what you carry.',
+  'Your strength drains over time, faster at night and in storms. Some things can be eaten to restore it; some cannot, and some sicken. Being near a hut or a wall you have built shelters you from night and storm. With no strength left you collapse and lose what you carry. At night a wild boar roams and charges anyone caught in the open.',
 ];
 function combine(inventory: Item[], a: Item, b: Item): Item | 'nothing' | undefined {
   const i = inventory.indexOf(a); if (i < 0) return undefined;
@@ -196,6 +197,39 @@ function updatePressure(dt: number) {
       itemLedger -= a.inventory.length; a.inventory = []; a.running = null; a.path = []; a.collapsedUntil = now + 20000; a.mindEpoch = (a.mindEpoch ?? 0) + 1;
       emit('collapse', 'COLLAPSES from hunger and exposure', a.id);
     }
+  }
+  updateBoar(dt, now);
+}
+
+// ---------- the night boar (decision 55) ----------
+// It wakes at nightfall on the high rock, as far from the agents as it can, and hunts until dawn.
+// Agents in a council stand together and are left alone, which also keeps council items safe.
+const boar = newBoar(0, 0);
+let boarForcedUntil = 0;
+const boarY = () => nodes.reduce((best, n) => Math.hypot(n.x - boar.x, n.z - boar.z) < Math.hypot(best.x - boar.x, best.z - boar.z) ? n : best, nodes[0]).y;
+function updateBoar(dt: number, now: number) {
+  const active = isNight() || now < boarForcedUntil;
+  if (active && !boar.awake && now >= boarForcedUntil) {
+    const rock = nodes.filter(n => soilOf(n) === 'high rock'), pool = rock.length ? rock : nodes;
+    const far = (n: GNode) => Math.min(...agents.map(a => Math.hypot(a.x - n.x, a.z - n.z)));
+    const den = pool.reduce((best, n) => far(n) > far(best) ? n : best, pool[0]);
+    boar.x = den.x; boar.z = den.z; boar.nextHit = {}; boar.fleeUntil = 0;
+    emit('threat', 'Night falls, and a wild boar stirs on the high rock.');
+  }
+  const wasAwake = boar.awake;
+  const events = stepBoar(boar, agents.map(a => ({ id: a.id, x: a.x, z: a.z, sheltered: !!a.sheltered || a.council !== null, collapsed: !!a.collapsedUntil, inventory: a.inventory })), active, now, dt, i => (substance(chem, i)?.food ?? 0) > 0);
+  if (wasAwake && !boar.awake) emit('threat', 'Dawn comes, and the boar goes back to its den.');
+  for (const e of events) {
+    const a = agents[e.id];
+    if (e.kind === 'driven') {
+      learn(a, factId('a spear drives the boar off'));
+      a.lastResult = 'The boar charged, and you drove it off with your spear.'; emit('threat', 'drives the boar off with a spear', a.id); continue;
+    }
+    a.energy = Math.max(0, (a.energy ?? 1) - 0.2);
+    if (e.took) { const i = a.inventory.indexOf(e.took); if (i >= 0) { a.inventory.splice(i, 1); itemLedger -= 1; } }
+    learn(a, factId('the boar charges anyone in the open at night'));
+    a.lastResult = `A wild boar charged you in the dark${e.took ? ` and ran off with your ${e.took}` : ''}. You are hurt.`;
+    emit('threat', `is charged by the boar${e.took ? `, which takes the ${e.took}` : ''}`, a.id);
   }
 }
 
@@ -390,9 +424,15 @@ function act(a: SandboxAgent, d: Decision) {
     emit('action', `walks to ${where}`, a.id);
   } else if (action === 'gather') {
     const options = gatherable(here);
-    const want = options.find(i => target.includes(i)) ?? options[Math.floor(Math.random() * options.length)];
+    const want = pickGather(options, target);
+    const lacking = want ? missingTool(substance(chem, want), a.inventory) : undefined;
     if (!want) { a.lastResult = 'There is nothing to gather here.'; emit('result', 'finds nothing to gather here', a.id); }
     else if (a.inventory.length >= 6) { a.lastResult = 'Your hands are full.'; emit('result', 'has full hands', a.id); }
+    else if (lacking) {
+      const tools = lacking.length > 1 ? `${lacking.slice(0, -1).join(', ')} or ${lacking[lacking.length - 1]}` : lacking[0];
+      learn(a, factId(`gathering ${want} needs a ${tools}`));
+      a.lastResult = `You cannot get ${want} with bare hands. It needs a ${tools}.`; emit('result', `cannot gather ${want} without a ${tools}`, a.id);
+    }
     else {
       a.inventory.push(want); itemLedger += 1; a.activity = 'seeking food'; a.lastResult = `You gathered ${describeItem(want)}.`;
       learn(a, factId(`${want} is found on ${soilOf(here)} ground`)); emit('action', `gathers ${want}`, a.id);
@@ -773,7 +813,7 @@ setInterval(() => {
 }, 100);
 setInterval(() => {
   tick++;
-  send('state', { tick, running, mindMode, mix, world: { daylight: daylight(), night: isNight(), storm: !!storm }, backends: ['scripted', ...available()], calls: stats.total, failed: stats.failed, mindError: stats.lastError, perMin: perMinute(), cap: MIND_CAP + COUNCIL_CAP,
+  send('state', { tick, running, mindMode, mix, world: { daylight: daylight(), night: isNight(), storm: !!storm, boar: boar.awake ? { x: boar.x, y: boarY(), z: boar.z } : null }, backends: ['scripted', ...available()], calls: stats.total, failed: stats.failed, mindError: stats.lastError, perMin: perMinute(), cap: MIND_CAP + COUNCIL_CAP,
     councilCalls: stats.byPurpose.council ?? 0, facts: facts.length,
     progress: { elements: chem.substances.filter(x => x.tier === 0).length, makeable: chem.substances.filter(x => x.tier > 0).length, found: new Set(agents.flatMap(a => a.made)).size,
       structures: chem.substances.filter(x => x.structure).length, built: new Set(structures.map(b => b.name)).size, councils: councils.length, skills: skills.size, regions: REGIONS.length, explored: new Set(agents.flatMap(a => a.visited ?? [])).size, named: Object.keys(placeNames).length, recall, hypotheses: hypTotal, hypothesesRight: hypRight, hypothesesMissing: hypMissing, ideas: ideas.length, chemistry: CHEMISTRY },
@@ -872,7 +912,9 @@ createServer(async (req, res) => {
       for (const a of picked) { a.reservedUntil = until; a.energy = 1; a.running = null; a.path = []; a.busyUntil = until; a.nextThink = until; }
       reply.reserved = picked.map(a => a.id);
     }
+    if (process.env.SANDBOX_TEST === '1' && b.cmd === 'goto') { const ag = agents[Number(b.agent)], i = nodes.findIndex(n => soilOf(n) === b.ground); if (ag && i >= 0) { const n = nodes[i]; ag.node = i; ag.x = n.x; ag.y = n.y; ag.z = n.z; ag.path = []; } }
     if (process.env.SANDBOX_TEST === '1' && b.cmd === 'hold') { const ag = agents[Number(b.agent)]; if (ag && Array.isArray(b.items)) { itemLedger += b.items.length - ag.inventory.length; ag.inventory = b.items.map(String).slice(0, 6); } }
+    if (process.env.SANDBOX_TEST === '1' && b.cmd === 'boar') { const ag = agents[Number(b.agent)]; if (ag) { boarForcedUntil = simNow() + 30000; boar.awake = true; boar.x = ag.x + 0.5; boar.z = ag.z; boar.nextHit = {}; boar.fleeUntil = 0; } }
     if (process.env.SANDBOX_TEST === '1' && b.cmd === 'act') { const ag = agents[Number(b.agent)]; if (ag) try { act(ag, cleanDecision(b.decision)); } catch (err) { console.error('act failed', (err as Error).message); } }
     if (b.cmd === 'council') {
       const a = agents[Number(b.agent)];
