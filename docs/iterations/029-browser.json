@@ -1,0 +1,142 @@
+[
+  {
+    "seed": 1,
+    "mode": "auto",
+    "ticks": 478,
+    "eventCount": 3,
+    "events": [
+      {
+        "seq": 0,
+        "tick": 0,
+        "type": "generation",
+        "data": {
+          "generation": 1,
+          "seed": 1
+        }
+      },
+      {
+        "seq": 1,
+        "tick": 3,
+        "type": "intervention",
+        "data": {
+          "speed": 100
+        }
+      },
+      {
+        "seq": 2,
+        "tick": 478,
+        "type": "intervention",
+        "data": {
+          "speed": 0
+        }
+      }
+    ],
+    "errors": [],
+    "stage": "core"
+  },
+  {
+    "seed": 7,
+    "mode": "auto",
+    "ticks": 508,
+    "eventCount": 3,
+    "events": [
+      {
+        "seq": 0,
+        "tick": 0,
+        "type": "generation",
+        "data": {
+          "generation": 1,
+          "seed": 7
+        }
+      },
+      {
+        "seq": 1,
+        "tick": 1,
+        "type": "intervention",
+        "data": {
+          "speed": 100
+        }
+      },
+      {
+        "seq": 2,
+        "tick": 508,
+        "type": "intervention",
+        "data": {
+          "speed": 0
+        }
+      }
+    ],
+    "errors": [],
+    "stage": "core"
+  },
+  {
+    "seed": 42,
+    "mode": "auto",
+    "ticks": 572,
+    "eventCount": 3,
+    "events": [
+      {
+        "seq": 0,
+        "tick": 0,
+        "type": "generation",
+        "data": {
+          "generation": 1,
+          "seed": 42
+        }
+      },
+      {
+        "seq": 1,
+        "tick": 1,
+        "type": "intervention",
+        "data": {
+          "speed": 100
+        }
+      },
+      {
+        "seq": 2,
+        "tick": 572,
+        "type": "intervention",
+        "data": {
+          "speed": 0
+        }
+      }
+    ],
+    "errors": [],
+    "stage": "core"
+  },
+  {
+    "seed": 42,
+    "mode": "webgl2",
+    "ticks": 415,
+    "eventCount": 3,
+    "events": [
+      {
+        "seq": 0,
+        "tick": 0,
+        "type": "generation",
+        "data": {
+          "generation": 1,
+          "seed": 42
+        }
+      },
+      {
+        "seq": 1,
+        "tick": 1,
+        "type": "intervention",
+        "data": {
+          "speed": 100
+        }
+      },
+      {
+        "seq": 2,
+        "tick": 415,
+        "type": "intervention",
+        "data": {
+          "speed": 0
+        }
+      }
+    ],
+    "errors": [],
+    "stage": "core"
+  }
+]
