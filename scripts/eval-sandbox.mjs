@@ -181,17 +181,21 @@ check('agents explore and name places themselves', seen.types.has('explored') &&
 check('the map panel shows their map', await page.evaluate(() => /explored/.test(document.querySelector('.map-score')?.textContent ?? '')));
 // Deterministic disagreement: pick two agents who are awake and outside any council, clear the
 // pair cooldown, teach the listener one result, and have the speaker contradict it beside them.
-const free = (seen.last?.agents ?? []).filter(a => a.council === null && !a.collapsed && !a.thinking).map(a => a.id);
+// Wait until two agents are awake and outside councils, then hold them still (no thinking, no
+// skill) while the fixture runs, so nothing else can pull them away.
+let free = [];
+for (let i = 0; i < 40; i++) { free = (seen.last?.agents ?? []).filter(a => a.council === null && !a.collapsed && !a.thinking).map(a => a.id); if (free.length >= 2) break; await sleep(500); }
 const [listener, speaker] = free;
+check('two agents are free for the disagreement fixture', free.length >= 2, `${free.length} free`);
 await api('/api/control', { cmd: 'wake', agents: [listener, speaker] });
 await api('/api/control', { cmd: 'know', agent: listener, fact: 'flint + pyrite makes sparks' });
 await api('/api/control', { cmd: 'meet', agent: speaker, to: listener });
 const dBefore = (seen.disagreements ?? []).length, oBefore = (seen.opens ?? []).length;
 await api('/api/control', { cmd: 'act', agent: speaker, decision: { action: 'wait', say: 'flint + pyrite makes nothing' } });
 const fresh = () => (seen.disagreements ?? []).slice(dBefore).find(d => d.agent === listener && d.data?.pair === 'flint + pyrite');
-const opened = () => (seen.opens ?? []).slice(oBefore).find(o => o.agent === listener);
+const opened = () => (seen.opens ?? []).slice(oBefore).find(o => o.agent === listener && (o.data?.members ?? []).includes(speaker) && /flint \+ pyrite/.test(o.text));
 for (let i = 0; i < 20 && !(fresh() && opened()); i++) await sleep(300);
-check('a spoken claim that contradicts what a listener knows starts a council', !!fresh() && !!opened(), `listener ${listener}, speaker ${speaker}: ${fresh() ? 'disagreement' : 'no disagreement'}, ${opened() ? 'council opened' : 'no council'}`);
+check('a spoken claim that contradicts what a listener knows starts a council', !!fresh() && !!opened(), `listener ${listener}, speaker ${speaker}: ${fresh() ? 'disagreement' : 'no disagreement'}, ${opened() ? 'matching council with the speaker' : 'no matching council'}`);
 check('the director steps in when nothing new is found, and says so', seen.types.has('director'));
 check('first-try hits are counted per model (recitation)', !!seen.last?.progress?.recall && Object.keys(seen.last.progress.recall).length > 0, JSON.stringify(seen.last?.progress?.recall ?? {}));
 check('agents write and run skills', seen.types.has('skill_written') && seen.types.has('skill_run'), [...seen.types].filter(t => t.startsWith('skill') || t === 'learn_skill').join(','));

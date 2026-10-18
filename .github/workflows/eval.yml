@@ -18,6 +18,7 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm test
+      - run: npm run typecheck:server
       - run: npm run build
       - name: Build eval (every seed loads and draws an island)
         run: npm run eval

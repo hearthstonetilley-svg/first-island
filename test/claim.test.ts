@@ -22,4 +22,12 @@ describe('reading a spoken recipe claim', () => {
     expect(readClaim('ember and redwood makes fire', names)).toBeUndefined();
     expect(readClaim('flint and pyrite makes sparkses', names)).toBeUndefined();
   });
+  it("takes the server's list of names as well as a set", () => {
+    expect(readClaim('flint + pyrite makes sparks', [...names])).toEqual({ pair: 'flint + pyrite', product: 'sparks' });
+  });
+  it('rejects alternatives and negation among the ingredients', () => {
+    expect(readClaim('flint or wood and pyrite makes sparks', names)).toBeUndefined();
+    expect(readClaim('not flint and pyrite makes sparks', names)).toBeUndefined();
+    expect(readClaim('I found that flint and pyrite make sparks', names)).toEqual({ pair: 'flint + pyrite', product: 'sparks' });
+  });
 });

@@ -281,7 +281,7 @@ async function refreshMeters() {
         bar('Claude weekly', u.claude.sevenDayPercent, `${u.claude.sevenDayResetsAt ? `resets ${fmtTime(u.claude.sevenDayResetsAt)} · ` : ''}as of ${fmtAgo(u.claude.asOf)}`),
       ] : [bar('Claude plan', undefined, 'not connected: needs the status line hook')]),
       bar(u.island.cap ? 'This island' : 'This island (model calls off)', u.island.cap ? (u.island.perMinute / u.island.cap) * 100 : undefined, `${u.island.calls} calls · Claude $${u.island.costUsd.toFixed(3)}, ${(u.island.inputTokens / 1000).toFixed(0)}k in / ${(u.island.outputTokens / 1000).toFixed(1)}k out${(u.island.byBackend.luna ?? 0) + (u.island.byBackend.sol ?? 0) ? ` · Codex ${(u.island.byBackend.luna ?? 0) + (u.island.byBackend.sol ?? 0)} calls, cost not measured` : ''} · ${u.island.perMinute}/${u.island.cap} per min`),
-      recallLine ? `<div class="meter"><div class="m-row"><span>Right on the first try, per model</span></div><div class="m-note" title="A correct guess on a pair nobody on the island had tried can only come from what the model already knew">${recallLine} right on a pair nobody here had tried</div></div>` : '',
+      recallLine ? `<div class="meter"><div class="m-row"><span>Right on the first try, per model</span></div><div class="m-note" title="Named guesses on a pair nobody on the island had tried before, and how many were right, credited to the mind that made the guess">${recallLine} right on a pair nobody here had tried</div></div>` : '',
     ].join('');
   } catch { /* server down */ }
 }

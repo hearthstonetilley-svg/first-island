@@ -291,7 +291,7 @@ const triedPairs = new Set<string>();
 const recall: Record<string, { first: number; right: number }> = {};
 const ideas: Array<{ agent: number; idea: string; from: string; at: number }> = [];
 let hypTotal = 0, hypRight = 0, hypMissing = 0, hypUntested = 0;
-function judge(a: SandboxAgent, expect: unknown, tried: string, made: string | undefined) {
+function judge(a: SandboxAgent, expect: unknown, tried: string, made: string | undefined, source?: Mind) {
   const prediction = readPrediction(typeof expect === 'string' ? scrub(expect) : expect, knownNames);
   const mark = markPrediction(prediction, made ?? null);
   a.hyp ??= { tried: 0, right: 0, missing: 0, untested: 0 };
@@ -311,7 +311,7 @@ function judge(a: SandboxAgent, expect: unknown, tried: string, made: string | u
   }
   a.hyp.tried++; hypTotal++; if (mark === 'correct') { a.hyp.right++; hypRight++; }
   // Only a guess that names a product counts: "nothing" is right most of the time by chance.
-  if (firstTry && prediction.kind === 'thing') { const m = a.source ?? 'scripted'; recall[m] ??= { first: 0, right: 0 }; recall[m].first++; if (mark === 'correct') recall[m].right++; }
+  if (firstTry && prediction.kind === 'thing') { const m = source ?? a.source ?? 'scripted'; recall[m] ??= { first: 0, right: 0 }; recall[m].first++; if (mark === 'correct') recall[m].right++; }
   const said = prediction.kind === 'thing' ? prediction.name : prediction.kind === 'not' ? `not ${prediction.name}` : prediction.kind === 'something' ? 'something' : 'nothing';
   emit('hypothesis', `${mark === 'correct' ? 'RIGHT' : 'WRONG'}: expected ${said} from ${tried}, got ${made ?? 'nothing'}`, a.id, undefined, { right: mark === 'correct', expect: said, actual: made ?? null, tried });
 }
@@ -596,8 +596,10 @@ async function councilCall(system: string, user: string, rec: CouncilRecord, fal
   // so parallel parts cannot all pass the check and overspend.
   if (!canSpend() || pauseEpoch !== epoch || !within(councilCalls, COUNCIL_CAP)) { inFlight--; return fallback(); }
   councilCalls.push(Date.now()); rec.calls++;
-  try { const reply = await callModel(m, system, user, 'council'); return pauseEpoch === epoch ? reply : fallback(); } catch { return fallback(); } finally { inFlight--; }
+  try { const reply = await callModel(m, system, user, 'council'); if (pauseEpoch !== epoch) return fallback(); councilSource.set(reply, m); return reply; } catch { return fallback(); } finally { inFlight--; }
 }
+// Which model wrote a council reply; a fallback reply is not in here, so it counts as scripted.
+const councilSource = new WeakMap<object, Mind>();
 const COUNCIL_SYSTEM = `You are inhabitants of a small island holding a council. Island laws: ${LAWS.join(' ')}
 The materials have their own names; use them exactly. Reply with ONE JSON object and nothing else.`;
 
@@ -659,7 +661,7 @@ async function council(chair: SandboxAgent, problem: string, observer = false) {
       const x = word(t.a), y = word(t.b);
       let r: { text: string; made?: string; fact?: number } = { text: mine.length >= 2 ? `has no ${x} and ${y} in hand` : 'too few items to try' };
       // Paused while this part was thinking: nothing is tried, and the dealt items go home below.
-      if (mine.length >= 2 && live()) { r = tryCombine(p.agent, x, y, { inventory: mine } as SandboxAgent); if (!/^lacks /.test(r.text)) judge(p.agent, answer.expect, `${x} + ${y}`, r.made); }
+      if (mine.length >= 2 && live()) { r = tryCombine(p.agent, x, y, { inventory: mine } as SandboxAgent); if (!/^lacks /.test(r.text)) judge(p.agent, answer.expect, `${x} + ${y}`, r.made, councilSource.get(answer) ?? 'scripted'); }
       // Return what is left: unused items to their owners, anything new to the one who made it.
       const left = [...mine];
       for (const d of dealt) { const k = left.indexOf(d.item); if (k >= 0) { left.splice(k, 1); d.owner.inventory.push(d.item); } d.home = true; }
@@ -852,7 +854,7 @@ createServer(async (req, res) => {
     if (process.env.SANDBOX_TEST === '1' && b.cmd === 'know') { const ag = agents[Number(b.agent)]; if (ag && typeof b.fact === 'string') learn(ag, factId(b.fact)); }
     // Test hook: place an agent next to another.
     if (process.env.SANDBOX_TEST === '1' && b.cmd === 'meet') { const ag = agents[Number(b.agent)], to = agents[Number(b.to)]; if (ag && to) { ag.node = to.node; ag.x = to.x; ag.y = to.y; ag.z = to.z; ag.path = []; } }
-    if (process.env.SANDBOX_TEST === '1' && b.cmd === 'wake') { for (const k of Object.keys(lastDisagreement)) delete lastDisagreement[k]; for (const i of Array.isArray(b.agents) ? b.agents : []) { const ag = agents[Number(i)]; if (ag && !ag.collapsedUntil) ag.energy = 1; } }
+    if (process.env.SANDBOX_TEST === '1' && b.cmd === 'wake') { for (const k of Object.keys(lastDisagreement)) delete lastDisagreement[k]; for (const i of Array.isArray(b.agents) ? b.agents : []) { const ag = agents[Number(i)]; if (ag && !ag.collapsedUntil) { ag.energy = 1; ag.running = null; ag.path = []; ag.busyUntil = Date.now() + 15000; ag.nextThink = Date.now() + 15000; } } }
     if (process.env.SANDBOX_TEST === '1' && b.cmd === 'act') { const ag = agents[Number(b.agent)]; if (ag) try { act(ag, cleanDecision(b.decision)); } catch (err) { console.error('act failed', (err as Error).message); } }
     if (b.cmd === 'council') {
       const a = agents[Number(b.agent)];
