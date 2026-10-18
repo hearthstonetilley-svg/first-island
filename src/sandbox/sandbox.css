@@ -101,3 +101,11 @@ canvas.overlay, .tags { pointer-events: none; }
 .top > .fps, .top > .web-link { flex: none; }
 @media (max-width: 1100px) { .top .mix-legend, .top > .history { display: none; } }
 @media (max-width: 900px) { .top > .progress { display: none; } }
+.card .hit { font-size: 10px; color: var(--muted); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; }
+.card .hit:empty { display: none; }
+.hyps h3 .hyp-score { text-transform: none; letter-spacing: 0; color: var(--text); font-weight: 600; margin-left: 4px; }
+.hyp-list { margin: 0; padding-left: 16px; font-size: 12px; }
+.hyp-list li { margin: 3px 0; }
+.hyp-list li.right span::before { content: '✓ '; color: var(--mint); }
+.hyp-list li.wrong span::before { content: '✗ '; color: #ff6b5c; }
+.hyp-list li.idea span { color: #c49bff; }

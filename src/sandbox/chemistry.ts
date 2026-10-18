@@ -4,7 +4,9 @@
 // materials make more, and the deepest products are things that can be built.
 
 export type Ground = 'shore' | 'grove' | 'high rock' | 'meadow';
-export interface Substance { name: string; description: string; tier: number; ground?: Ground; structure?: string; colour: string; colourName: string }
+export interface Substance { name: string; description: string; tier: number; ground?: Ground; structure?: string; colour: string; colourName: string;
+  /** Strength gained (or lost) by eating it; undefined means it is not food. */
+  food?: number }
 export interface Reaction { a: string; b: string; product: string; struck?: boolean }
 export interface Chemistry { seed: number; substances: Substance[]; reactions: Reaction[] }
 

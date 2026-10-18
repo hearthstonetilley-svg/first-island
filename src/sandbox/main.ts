@@ -39,6 +39,7 @@ app.innerHTML = `
   <aside class="rail right">
     <section class="panel meters"><h3>Usage</h3><div class="meter-list"></div></section>
     <section class="panel council"><h3>Council</h3><div class="council-body"><p class="muted">No council yet. Agents call one when a problem needs several minds.</p></div></section>
+    <section class="panel hyps"><h3>Hypotheses <span class="hyp-score"></span></h3><ol class="hyp-list"><li class="muted">Each try carries a prediction; the world marks it.</li></ol></section>
     <section class="panel finds"><h3>Discoveries</h3><ol class="find-list"></ol></section>
   </aside>
   <div class="mode" title="W A S D move · Q E turn · R F zoom · drag to orbit · Esc frames the agents"></div>
@@ -153,7 +154,7 @@ function ensureCards() {
     if (cardEls[i]) return;
     const c = document.createElement('div');
     c.className = 'card'; c.style.setProperty('--c', COLOURS[i]);
-    c.innerHTML = `<div class="head"><span class="dot"></span><b></b><span class="model"></span><span class="doing"></span></div><div class="outcome"></div><div class="thought"></div><div class="said"></div>`;
+    c.innerHTML = `<div class="head"><span class="dot"></span><b></b><span class="model"></span><span class="hit" title="Hypotheses right out of tried"></span><span class="doing"></span></div><div class="outcome"></div><div class="thought"></div><div class="said"></div>`;
     c.querySelector('b')!.textContent = name;
     c.onclick = () => select(selected === i ? undefined : i);
     c.ondblclick = () => follow(i);
@@ -180,6 +181,8 @@ function updateCards(s: LiveState) {
     const said = l && Date.now() - l.saidAt < 10000 ? `"${l.said}"` : '';
     c.querySelector('.said')!.textContent = said;
     c.classList.toggle('in-council', a.council !== null);
+    const hit = c.querySelector<HTMLElement>('.hit')!, hitText = a.hyp.tried ? `${a.hyp.right}/${a.hyp.tried}` : '';
+    if (hit.textContent !== hitText) hit.textContent = hitText;
     const m = s.mix[a.id] ?? 'scripted', chip = c.querySelector<HTMLElement>('.model')!;
     if (chip.textContent !== MIND_LABELS[m]) { chip.textContent = MIND_LABELS[m] ?? m; chip.style.background = MIND_COLOURS[m] ?? '#555'; }
   }
@@ -294,6 +297,20 @@ function renderCouncil() {
 const findSeen = new Set<number>();
 // Everything built so far, kept here so a graphics recovery can rebuild all of it.
 const builtMap = new Map<number, never>();
+const hypSeen = new Set<number>();
+function addHypothesis(e: FeedEvent) {
+  if (hypSeen.has(e.seq)) return; hypSeen.add(e.seq);
+  const list = $('.hyp-list'); list.querySelector('.muted')?.remove();
+  const li = document.createElement('li');
+  const right = e.type === 'hypothesis' && e.data?.right === true;
+  li.className = e.type === 'idea' ? 'idea' : right ? 'right' : 'wrong';
+  li.innerHTML = `<b style="color:${COLOURS[e.agent ?? 0]}"></b> <span></span>`;
+  li.querySelector('b')!.textContent = names[e.agent ?? 0];
+  li.querySelector('span')!.textContent = e.type === 'idea' ? `idea: ${String(e.data?.idea)} from ${String(e.data?.from)} (untested)`
+    : `expected ${String(e.data?.expect)} from ${String(e.data?.tried)}, got ${String(e.data?.actual ?? 'nothing')}`;
+  list.prepend(li);
+  while (list.children.length > 8) list.lastChild!.remove();
+}
 function addFind(e: FeedEvent) {
   if (findSeen.has(e.seq)) return; findSeen.add(e.seq);
   const li = document.createElement('li');
@@ -327,6 +344,7 @@ function onEvent(e: FeedEvent, live = true) {
     renderCouncil();
   }
   if (e.type === 'discovery' || e.type === 'built' || e.type === 'skill_written') addFind(e);
+  if (e.type === 'hypothesis' || e.type === 'idea') addHypothesis(e);
   if (e.type === 'built' && e.data?.structure) { const b = e.data.structure as { id: number }; builtMap.set(b.id, b as never); island?.addStructure(b as never); }
   if (!live) { if (e.type === 'thought' || e.type === 'say') land(agent, e.type, e.text, e.t, e.seq); return; }
   const now = performance.now();
@@ -536,6 +554,8 @@ connect({
     mixOptions = s.backends;
     if (!dragging && !mixDraft) drawMixer(countsOf(s.mix, mixOptions));
     const p = s.progress;
+    const hs = $('.hyp-score'), hsText = p.hypotheses ? `${p.hypothesesRight}/${p.hypotheses} right${p.ideas ? ` · ${p.ideas} ideas` : ''}` : '';
+    if (hs.textContent !== hsText) hs.textContent = hsText;
     $('.progress').innerHTML = `<span class="slots">${Array.from({ length: p.makeable }, (_, i) => `<i class="${i < p.found ? 'on' : ''}"></i>`).join('')}</span>
       <span class="slots big">${Array.from({ length: p.structures }, (_, i) => `<i class="${i < p.built ? 'on' : ''}"></i>`).join('')}</span>
       <span class="count">${p.found}/${p.makeable} made · ${p.built}/${p.structures} built · ${p.skills} skills · ${p.councils} councils</span>`;

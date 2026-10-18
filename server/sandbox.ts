@@ -10,6 +10,7 @@ import { generateWorld } from '../src/world/generate';
 import { Ground } from '../src/sim/navigation';
 import { makeScrubber } from '../src/sandbox/scrub';
 import { generateChemistry, react, strike, substance, Ground as Soil } from '../src/sandbox/chemistry';
+import { realWorldChemistry } from '../src/sandbox/realworld';
 type Item = string;
 import { Backend, BACKENDS, available, callModel, CODEX_HOME, describe, perMinute, stats } from './router';
 
@@ -42,7 +43,10 @@ const PLACES: Record<string, number> = {
 const nearestPlace = (x: number, z: number) => Object.entries(PLACES)
   .sort((a, b) => Math.hypot(nodes[a[1]].x - x, nodes[a[1]].z - z) - Math.hypot(nodes[b[1]].x - x, nodes[b[1]].z - z))[0][0];
 // The island's own chemistry: six invented elements, each found in one kind of ground.
-const chem = generateChemistry(SEED);
+// Real-world materials by default (decision 49), so every guess can be checked against reality.
+// SANDBOX_CHEMISTRY=invented keeps the seeded invented chemistry for comparison runs.
+const CHEMISTRY = process.env.SANDBOX_CHEMISTRY === 'invented' ? 'invented' : 'real';
+const chem = CHEMISTRY === 'invented' ? generateChemistry(SEED) : realWorldChemistry();
 function soilOf(n: GNode): Soil {
   if (n.y < 1.2) return 'shore';
   if (n.y > 4) return 'high rock';
@@ -78,6 +82,7 @@ interface SandboxAgent {
   thought: string; said: string; saidAt: number; inventory: Item[]; made: string[]; known: number[]; heard: string[];
   lastResult: string; busyUntil: number; thinking: boolean; nextThink: number; council: number | null; doing?: string; outcome?: string;
   skills?: string[]; running?: { skill: string; step: number; startedAt: number; made: string[] } | null;
+  hyp?: { tried: number; right: number };
 }
 
 // ---------- skills: named procedures an agent writes, runs as one action, and teaches ----------
@@ -163,7 +168,25 @@ function tryCombine(a: SandboxAgent, x: Item, y: Item, inventoryOwner: Pick<Sand
   return { text: `${x} + ${y} made ${result}`, made: result, fact: f };
 }
 
-interface Decision { thought?: string; say?: string; share?: unknown; teach_skill?: unknown; action?: string; target?: string; with?: string; problem?: string; skill_name?: string; steps?: unknown }
+// ---------- hypotheses: each try carries the agent's prediction, and the world marks it ----------
+const known = new Set(chem.substances.map(x => x.name));
+const ideas: Array<{ agent: number; idea: string; from: string; at: number }> = [];
+let hypTotal = 0, hypRight = 0;
+const norm = (t: string) => t.toLowerCase().replace(/[^a-z ]/g, ' ').replace(/\b(a|an|the|some|make|makes|it|will|probably|maybe)\b/g, ' ').replace(/\s+/g, ' ').trim();
+function judge(a: SandboxAgent, expect: string | undefined, tried: string, made: string | undefined) {
+  if (!expect || !expect.trim()) return;
+  const e = norm(scrub(String(expect))).slice(0, 60); if (!e) return;
+  const right = made ? norm(made).split(' ').every(w => e.includes(w)) : /\b(nothing|no change|none)\b/.test(e);
+  a.hyp ??= { tried: 0, right: 0 }; a.hyp.tried++; hypTotal++; if (right) { a.hyp.right++; hypRight++; }
+  emit('hypothesis', `${right ? 'RIGHT' : 'WRONG'}: expected ${e} from ${tried}, got ${made ?? 'nothing'}`, a.id, undefined, { right, expect: e, actual: made ?? null, tried });
+  // A real-world thing this island has no recipe for is kept as an idea for the owner to judge.
+  if (!made && !right && !/\b(nothing|none)\b/.test(e) && ![...known].some(k => e.includes(k))) {
+    ideas.push({ agent: a.id, idea: e, from: tried, at: Date.now() }); if (ideas.length > 200) ideas.shift();
+    emit('idea', `proposes ${e} from ${tried} (untested: not in the island's recipes)`, a.id, undefined, { idea: e, from: tried });
+  }
+}
+
+interface Decision { thought?: string; say?: string; share?: unknown; teach_skill?: unknown; action?: string; target?: string; with?: string; problem?: string; skill_name?: string; steps?: unknown; expect?: string }
 function act(a: SandboxAgent, d: Decision) {
   if (d.thought) { a.thought = scrub(String(d.thought)).slice(0, 180); emit('thought', a.thought, a.id); }
   const listeners = near(a);
@@ -202,15 +225,16 @@ function act(a: SandboxAgent, d: Decision) {
     }
   } else if (action === 'combine') {
     const r = tryCombine(a, target, String(d.with ?? '').toLowerCase());
+    if (!/^lacks /.test(r.text)) judge(a, d.expect, `${target} + ${String(d.with ?? '').toLowerCase()}`, r.made);
     a.lastResult = r.made ? `You made ${describeItem(r.made)}!` : `Combining: ${r.text}.`;
     if (!r.made) emit('result', `combines: ${r.text}`, a.id);
   } else if (action === 'strike') {
     const i = a.inventory.indexOf(target);
     const r = i < 0 ? undefined : strike(chem, target);
     if (i < 0) a.lastResult = `You have no ${target}.`;
-    else if (!r) { learn(a, factId(`striking ${target} does nothing`)); a.lastResult = `Striking ${target} does nothing.`; emit('result', `strikes ${target}: nothing`, a.id); }
+    else if (!r) { judge(a, d.expect, `striking ${target}`, undefined); learn(a, factId(`striking ${target} does nothing`)); a.lastResult = `Striking ${target} does nothing.`; emit('result', `strikes ${target}: nothing`, a.id); }
     else {
-      a.inventory[i] = r.product; learn(a, factId(`striking ${target} makes ${r.product}`));
+      a.inventory[i] = r.product; judge(a, d.expect, `striking ${target}`, r.product); learn(a, factId(`striking ${target} makes ${r.product}`));
       const first = !agents.some(o => o.made.includes(r.product)); if (!a.made.includes(r.product)) a.made.push(r.product);
       a.lastResult = `Striking ${target} made ${describeItem(r.product)}!`;
       emit(first ? 'discovery' : 'action', first ? `DISCOVERS ${r.product} (striking ${target})` : `strikes ${target} into ${r.product}`, a.id);
@@ -280,14 +304,14 @@ function scriptedMind(a: SandboxAgent): Decision {
   if (a.inventory.length >= 6 && Math.random() < 0.5) { d.action = 'drop'; d.target = pick(a.inventory); }
   else if (a.skills?.length && r < 0.12) { d.action = 'use_skill'; d.target = pick(a.skills); }
   else if ((!a.skills?.length ? Math.random() < 0.3 : r > 0.95) && a.known.some(f => / makes (?!nothing)/.test(facts[f]))) {
-    const f = facts[a.known.filter(x => / makes (?!nothing)/.test(facts[x]))[0]], m = f.match(/^(\S+) \+ (\S+) makes (\S+)$/);
+    const f = facts[a.known.filter(x => / makes (?!nothing)/.test(facts[x]))[0]], m = f.match(/^(.+?) \+ (.+?) makes (.+)$/);
     if (m) { d.action = 'write_skill'; d.skill_name = `make ${m[3]}`; d.steps = [{ action: 'gather', target: m[1] }, { action: 'gather', target: m[2] }, { action: 'combine', target: m[1], with: m[2] }]; }
   }
   else if (r < 0.08 && near(a).length >= 2) { d.action = 'council'; d.problem = 'What can we make that none of us has made?'; }
   else if (r < 0.38) { d.action = 'walk'; d.target = pick([...Object.keys(PLACES), ...agents.filter(o => o !== a).map(o => o.name)]); }
   else if (r < 0.65) d.action = 'gather';
   else if (a.inventory.some(i => substance(chem, i)?.structure)) { d.action = 'build'; d.target = a.inventory.find(i => substance(chem, i)?.structure); }
-  else if (r < 0.72 && a.inventory.length >= 2) { d.action = 'combine'; d.target = pick(a.inventory); d.with = pick(a.inventory); }
+  else if (r < 0.72 && a.inventory.length >= 2) { d.action = 'combine'; d.target = pick(a.inventory); d.with = pick(a.inventory); d.expect = pick(['nothing', 'fire', 'rope', 'a tool']); }
   else if (r < 0.8 && a.inventory.length) { d.action = 'strike'; d.target = pick(a.inventory); }
   else if (r < 0.92) { d.action = 'wait'; d.say = pick(['Over here!', 'I found something.', 'Listen to this.']); }
   else d.action = 'rest';
@@ -298,8 +322,8 @@ const SYSTEM = `You are one inhabitant of a small island. You and seven others w
 Island laws: ${LAWS.join(' ')} Facts pass between minds only when spoken: share the numbers of facts you want nearby listeners to learn.
 A council: when a problem is too big for one mind, you may call the people near you into a council. The council may split the problem into parts, try competing plans side by side, and merge what worked.
 You control only yourself. Each turn reply with ONE JSON object and nothing else:
-{"thought": "<one short private thought>", "say": "<words spoken aloud, or empty>", "share": [<fact numbers to teach listeners>], "action": "walk|gather|combine|strike|build|drop|rest|wait|council", "target": "<place, person or thing>", "with": "<second thing for combine>", "problem": "<for council: the problem>"}
-Places: ${Object.keys(PLACES).join(', ')}. Nothing here is like anything you remember: the materials have their own names and ways, and you must learn them by trying.
+{"thought": "<one short private thought>", "say": "<words spoken aloud, or empty>", "share": [<fact numbers to teach listeners>], "action": "walk|gather|combine|strike|build|drop|rest|wait|council", "target": "<place, person or thing>", "with": "<second thing for combine>", "expect": "<for combine or strike: what you predict it makes, or nothing>", "problem": "<for council: the problem>"}
+Places: ${Object.keys(PLACES).join(', ')}. ${CHEMISTRY === 'real' ? 'The materials here are ordinary real-world things and behave as they do in the real world. Whenever you combine or strike, first predict the result in "expect": the world will show whether your hypothesis was right. If you think something real could be made that nobody has tried, say what and from what.' : 'Nothing here is like anything you remember: the materials have their own names and ways, and you must learn them by trying.'}
 Skills: when you know a way of doing something in several steps, write it down as a skill and give it a name of your own: {"action": "write_skill", "skill_name": "<your name for it>", "steps": [{"action": "gather", "target": "<thing>"}, {"action": "combine", "target": "<thing>", "with": "<thing>"}, ...]}. Steps may be walk, gather, combine, strike, build, drop. Run a skill you know with {"action": "use_skill", "target": "<skill name>"}: it carries out every step for you. Teach a skill to people near you by adding "teach_skill": ["<skill name>"].
 Be curious, share what you learn, turn what works into skills, and call a council when working together would help. Keep words short.`;
 
@@ -406,12 +430,12 @@ async function council(chair: SandboxAgent, problem: string, observer = false) {
       const answer = mine.length < 2 ? { finding: 'too few items to try anything', try: {} } : await councilCall(COUNCIL_SYSTEM, [`You are ${p.agent.name} in a council chaired by ${chair.name}. Problem: ${rec.problem}`,
         `Your part (${rec.mode}): ${p.task}`, `Items dealt to you for this part: ${mine.join(', ') || 'none'}.`, `Facts the council knows: ${factList(pooled)}.`,
         mine.length >= 2 ? 'Pick one pair from your items to combine for your part, avoiding pairs already known to make nothing.' : 'You have too few items to combine; report what the council should do next.',
-        'Reply: {"finding": "<one short line>", "try": {"a": "<item>", "b": "<item>"}}'].join('\n'), rec,
+        'Reply: {"finding": "<one short line>", "try": {"a": "<item>", "b": "<item>"}, "expect": "<what you predict it makes, or nothing>"}'].join('\n'), rec,
         () => ({ finding: 'trying a pair', try: { a: mine[0] ?? '', b: mine[1] ?? '' } }), p.agent);
       const t = (answer.try ?? {}) as Record<string, string>;
       const x = String(t.a ?? '').toLowerCase(), y = String(t.b ?? '').toLowerCase();
       let r: { text: string; made?: string; fact?: number } = { text: mine.length >= 2 ? `has no ${x} and ${y} in hand` : 'too few items to try' };
-      if (mine.length >= 2) r = tryCombine(p.agent, x, y, { inventory: mine } as SandboxAgent);
+      if (mine.length >= 2) { r = tryCombine(p.agent, x, y, { inventory: mine } as SandboxAgent); if (!/^lacks /.test(r.text)) judge(p.agent, String(answer.expect ?? ''), `${x} + ${y}`, r.made); }
       // Return what is left: unused items to their owners, anything new to the one who made it.
       const left = [...mine];
       for (const d of dealt) { const k = left.indexOf(d.item); if (k >= 0) { left.splice(k, 1); d.owner.inventory.push(d.item); } }
@@ -436,7 +460,11 @@ async function council(chair: SandboxAgent, problem: string, observer = false) {
     for (const m of members) m.lastResult = `Council: ${rec.summary}`;
   } finally {
     rec.closedAt ??= Date.now();
-    for (const m of members) { m.council = null; m.nextThink = Date.now() + 1000; }
+    // The carry law holds the moment the council ends: anything over six is set down at once.
+    for (const m of members) {
+      if (m.inventory.length > 6) { const dropped = m.inventory.splice(6); emit('result', `sets down ${dropped.join(', ')}: hands full after the council`, m.id); }
+      m.council = null; m.nextThink = Date.now() + 1000;
+    }
   }
 }
 
@@ -444,7 +472,7 @@ async function council(chair: SandboxAgent, problem: string, observer = false) {
 function save() {
   try {
     mkdirSync(STATE_DIR, { recursive: true });
-    const data = { version: 2, seed: SEED, running, facts, seq, structures, mix, skills: [...skills.values()], events: events.slice(-400), councils: councils.slice(-100),
+    const data = { version: 3, chemistry: CHEMISTRY, hypTotal, hypRight, ideas, seed: SEED, running, facts, seq, structures, mix, skills: [...skills.values()], events: events.slice(-400), councils: councils.slice(-100),
       agents: agents.map(a => ({ ...a, path: [], thinking: false, council: null, running: null })) };
     writeFileSync(STATE_FILE + '.tmp', JSON.stringify(data)); renameSync(STATE_FILE + '.tmp', STATE_FILE);
   } catch (err) { console.error('save failed', (err as Error).message); }
@@ -452,7 +480,8 @@ function save() {
 function load() {
   try {
     const data = JSON.parse(readFileSync(STATE_FILE, 'utf8'));
-    if (data.version !== 2 || data.seed !== SEED) return;
+    if (data.version !== 3 || data.seed !== SEED || data.chemistry !== CHEMISTRY) return;
+    hypTotal = data.hypTotal ?? 0; hypRight = data.hypRight ?? 0; ideas.push(...(data.ideas ?? []));
     structures = data.structures ?? []; if (Array.isArray(data.mix)) mix = data.mix; if (typeof data.running === 'boolean') running = data.running;
     for (const k of data.skills ?? []) skills.set(k.name, k);
     facts.push(...data.facts); seq = data.seq; events = data.events; councils = data.councils ?? [];
@@ -482,12 +511,12 @@ setInterval(() => {
   tick++;
   send('state', { tick, running, mindMode, mix, backends: ['scripted', ...available()], calls: stats.total, failed: stats.failed, mindError: stats.lastError, perMin: perMinute(), cap: MIND_CAP + COUNCIL_CAP,
     councilCalls: stats.byPurpose.council ?? 0, facts: facts.length,
-    progress: { elements: 6, makeable: chem.substances.filter(x => x.tier > 0).length, found: new Set(agents.flatMap(a => a.made)).size,
-      structures: chem.substances.filter(x => x.structure).length, built: new Set(structures.map(b => b.name)).size, councils: councils.length, skills: skills.size },
+    progress: { elements: chem.substances.filter(x => x.tier === 0).length, makeable: chem.substances.filter(x => x.tier > 0).length, found: new Set(agents.flatMap(a => a.made)).size,
+      structures: chem.substances.filter(x => x.structure).length, built: new Set(structures.map(b => b.name)).size, councils: councils.length, skills: skills.size, hypotheses: hypTotal, hypothesesRight: hypRight, ideas: ideas.length, chemistry: CHEMISTRY },
     councils: councils.filter(c => !c.closedAt || Date.now() - c.closedAt < 6000).map(c => ({ id: c.id, chair: c.chair, members: c.members, problem: c.problem, mode: c.mode, open: !c.closedAt, winner: c.winner })),
     agents: agents.map(a => ({ id: a.id, name: a.name, x: a.x, y: a.y, z: a.z, activity: a.activity, thought: a.thought,
       said: Date.now() - a.saidAt < 8000 ? a.said : '', saidAt: a.saidAt, thinking: a.thinking, inventory: a.inventory, known: a.made, facts: a.known.length, knownIds: a.known,
-      skills: a.skills ?? [], runningSkill: a.running ? `${a.running.skill} (step ${a.running.step} of ${skills.get(a.running.skill)?.steps.length ?? 0})` : '',
+      hyp: a.hyp ?? { tried: 0, right: 0 }, skills: a.skills ?? [], runningSkill: a.running ? `${a.running.skill} (step ${a.running.step} of ${skills.get(a.running.skill)?.steps.length ?? 0})` : '',
       council: a.council, doing: a.running ? `running skill ${a.running.skill}` : a.council !== null ? 'in council' : a.path.length ? a.doing ?? 'walking' : a.doing ?? 'waiting', outcome: a.outcome ?? '' })) });
 }, 250);
 
@@ -554,6 +583,7 @@ createServer(async (req, res) => {
     return;
   }
   if (req.url === '/api/skills') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify([...skills.values()])); return; }
+  if (req.url === '/api/ideas') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(ideas)); return; }
   if (req.url === '/api/facts') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(facts)); return; }
   if (req.url === '/api/usage') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(usage())); return; }
   if (req.url === '/api/councils') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(councils)); return; }

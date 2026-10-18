@@ -32,7 +32,7 @@ if (!serverLog.includes('sandbox server on')) { console.log(serverLog); try { pr
 await api('/api/control', { cmd: 'start' });
 
 // Watch the stream for the whole run: the carry law must hold at every state.
-const seen = { types: new Set(), maxCarry: 0, states: 0, agents: 0, drops: 0, actions: 0 };
+const seen = { types: new Set(), maxCarry: 0, states: 0, agents: 0, drops: 0, actions: 0, realItems: 0, hyps: 0 };
 const stream = await fetch(`http://localhost:${PORT}/api/events`);
 const reader = stream.body.getReader();
 let buffer = '';
@@ -46,7 +46,7 @@ let buffer = '';
       if (!data) continue;
       const d = JSON.parse(data);
       if (kind === 'state') { seen.states++; seen.agents = d.agents.length; for (const a of d.agents) if (a.council === null) seen.maxCarry = Math.max(seen.maxCarry, a.inventory.length); }
-      if (kind === 'event') { seen.types.add(d.type); if (/^sets down /.test(d.text)) seen.drops++; if (['action', 'result', 'thought', 'say'].includes(d.type)) seen.actions++; }
+      if (kind === 'event') { seen.types.add(d.type); if (/^sets down /.test(d.text)) seen.drops++; if (['action', 'result', 'thought', 'say'].includes(d.type)) seen.actions++; if (/^gathers (sand|shell|seaweed|driftwood|water|wood|plant fibre|resin|fruit|clay|dry grass|red berries|flint|stone|pyrite)$/.test(d.text)) seen.realItems++; if (d.type === 'hypothesis') seen.hyps++; }
     }
   }
 })().catch(() => {});
@@ -146,6 +146,8 @@ await sleep(30000);
 check('agents can set things down', seen.types.has('action') && seen.drops > 0, `${seen.drops} set down`);
 check('the carry law holds (six or fewer)', seen.maxCarry <= 6, `max carried ${seen.maxCarry} over ${seen.states} states`);
 check('knowledge passes between agents', seen.types.has('learn'));
+check('materials are real-world things', seen.realItems > 0, `${seen.realItems} gathers of real materials`);
+check('predictions are judged against the world', seen.types.has('hypothesis'), `${seen.hyps} hypotheses`);
 check('agents write and run skills', seen.types.has('skill_written') && seen.types.has('skill_run'), [...seen.types].filter(t => t.startsWith('skill') || t === 'learn_skill').join(','));
 check('no page errors', errors.length === 0, errors.slice(0, 2).join(' | '));
 // Layout: at every width the camera and panel controls stay whole and on screen.

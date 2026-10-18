@@ -3,10 +3,11 @@ export interface LiveAgent {
   id: number; name: string; x: number; y: number; z: number; activity: string;
   thought: string; said: string; saidAt: number; thinking: boolean; inventory: string[]; known: string[]; facts: number; knownIds: number[];
   council: number | null; doing: string; outcome: string; skills: string[]; runningSkill: string;
+  hyp: { tried: number; right: number };
 }
 export interface LiveState {
   tick: number; running: boolean; mindMode: string; mix: string[]; backends: string[]; calls: number; failed: number; perMin: number; cap: number;
-  progress: { elements: number; makeable: number; found: number; structures: number; built: number; councils: number; skills: number };
+  progress: { elements: number; makeable: number; found: number; structures: number; built: number; councils: number; skills: number; hypotheses: number; hypothesesRight: number; ideas: number; chemistry: string };
   agents: LiveAgent[]; councilCalls: number; facts: number; mindError: string;
   councils: Array<{ id: number; chair: number; members: number[]; problem: string; mode: string; open: boolean; winner: number | null }>;
 }
