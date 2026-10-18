@@ -1,0 +1,31 @@
+{
+  "matrixBuild": [
+    {
+      "file": "index-31GLRKIQ.js",
+      "sha256": "f05d37859e5a8b6ea59dbf16f9dff99d9bc27ffa37955dfb05e41a809f934f88"
+    },
+    {
+      "file": "index-Bjl7zu7U.css",
+      "sha256": "8c2e1a98b040c818f2cd236b26f608171bf04502ca25d5fc4fc2cb1d308fb6ac"
+    },
+    {
+      "file": "worker-CJNIHsUX.js",
+      "sha256": "5191b53c45fbb60eb5bd3b9b3b7836742f882fbe4bb0d5bf84a6dee9ed8de3e5"
+    }
+  ],
+  "note": "Full 30-load normal-mode matrix before debug mesh-label correction; final focused debug/crowd checks follow the metadata-only correction.",
+  "finalBuild": [
+    {
+      "file": "index-BGl1uObF.js",
+      "sha256": "d691a469c568bc5ddd8bbc38ef823ef9367d1fa9084b3f45b2849c0c45cd4992"
+    },
+    {
+      "file": "index-Bjl7zu7U.css",
+      "sha256": "8c2e1a98b040c818f2cd236b26f608171bf04502ca25d5fc4fc2cb1d308fb6ac"
+    },
+    {
+      "file": "worker-CJNIHsUX.js",
+      "sha256": "5191b53c45fbb60eb5bd3b9b3b7836742f882fbe4bb0d5bf84a6dee9ed8de3e5"
+    }
+  ]
+}

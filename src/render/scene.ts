@@ -499,16 +499,20 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
     let meshes = 0;
     let triangles = 0;
     let treeDrawMeshes = 0;
+    let agentDrawMeshes = 0;
     scene.traverse((object) => {
       if (!(object instanceof Mesh)) return;
       meshes += 1;
       const count = object instanceof InstancedMesh ? object.count : 1;
-      if (object instanceof InstancedMesh) treeDrawMeshes += 1;
+      if (object instanceof InstancedMesh) {
+        if (object.userData.agentFigure) agentDrawMeshes += 1;
+        else treeDrawMeshes += 1;
+      }
       triangles += (object.geometry.index?.count ?? object.geometry.attributes.position.count) / 3 * count;
     });
     options.diagnostics.report.scene = {
       backend: label, viewport: [innerWidth, innerHeight], pixelRatio: renderer.getPixelRatio(), initialPixelRatio: renderer.getPixelRatio(),
-      shadowMap: [sun.shadow.mapSize.x, sun.shadow.mapSize.y], meshes, triangles, treeDrawMeshes,
+      shadowMap: [sun.shadow.mapSize.x, sun.shadow.mapSize.y], meshes, triangles, treeDrawMeshes, agentDrawMeshes, initialAgentInstances: options.snapshot?.agents.length ?? 0,
       trees: world.trees.length, terrainVertices: (world.resolution + 2) ** 2, oceanVertices: 225 ** 2,
       postEnabled: options.postEnabled !== false, ao: options.postEnabled !== false, bloom: options.postEnabled !== false,
     };

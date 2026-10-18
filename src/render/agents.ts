@@ -35,7 +35,7 @@ export class AgentFigures {
     this.selection=new Mesh(new RingGeometry(0.23,0.28,24),selectionMaterial);
     this.selection.rotation.x=-Math.PI/2;this.selection.visible=false;
     for(const mesh of [this.torso,this.heads,this.legs,this.arms,this.cues]){
-      mesh.count=0;mesh.frustumCulled=false;mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);
+      mesh.userData.agentFigure=true;mesh.count=0;mesh.frustumCulled=false;mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);
     }
     scene.add(this.selection);
     if(initial)this.receive(initial,0);
