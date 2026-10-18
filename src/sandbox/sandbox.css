@@ -109,3 +109,5 @@ canvas.overlay, .tags { pointer-events: none; }
 .hyp-list li.right span::before { content: '✓ '; color: var(--mint); }
 .hyp-list li.wrong span::before { content: '✗ '; color: #ff6b5c; }
 .hyp-list li.idea span { color: #c49bff; }
+@media (max-width: 900px) { .mixer { width: 170px; } .top .cam button { padding: 5px 7px; } .top > .title { display: none; } }
+@media (max-width: 680px) { .mixer { width: 120px; } .top > .fps, .top > .web-link { display: none; } }

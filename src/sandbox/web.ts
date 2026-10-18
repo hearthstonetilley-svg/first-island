@@ -55,7 +55,9 @@ const orbitRadius = () => Math.min(innerWidth - inspectorWidth(), innerHeight - 
 function factPos(i: number) {
   // Golden-angle packing keeps the core even however many facts there are.
   // A fixed capacity keeps every fact where it is as new ones arrive.
-  const c = centre(), r = coreRadius() * Math.sqrt((i + 0.5) / Math.max(160, facts.length));
+  // Capacity doubles when full, so positions shift only on those rare occasions.
+  let cap = 160; while (cap < facts.length) cap *= 2;
+  const c = centre(), r = coreRadius() * Math.sqrt((i + 0.5) / cap);
   const a = i * 2.39996323;
   return { x: c.x + Math.cos(a) * r, y: c.y + Math.sin(a) * r };
 }
@@ -192,9 +194,6 @@ let lastFrame: number | undefined, smoothed: number | undefined, lastHud = 0;
 const fpsLine = app.querySelector('.fps')!;
 function draw(now: number) {
   requestAnimationFrame(draw);
-// The debug counter must exist even while idle, so a test can see that nothing is drawn.
-if (new URLSearchParams(location.search).get('debug') === '1') setInterval(() => { (window as unknown as { __WEB__: unknown }).__WEB__ = { draws, packets: packets.length, fps: smoothed ? 1000 / smoothed : 0, litLinks, knowers: selected && 'fact' in selected ? knowers(selected.fact).length : -1,
-  selectFact: (f: number) => { selected = { fact: f }; dirty = true; renderInspector(); } }; }, 200);
   if (openCouncil && Date.now() > openCouncil.until) { openCouncil = undefined; dirty = true; }
   // The static layer is redrawn only when what it shows has changed.
   const signature = `${facts.length}|${(state?.agents ?? []).map(a => `${a.knownIds.length}${a.thinking ? 't' : ''}${a.skills.length}`).join(',')}|${state?.progress.found}|${speech.size}|${openCouncil?.members.join('.') ?? ''}`;
@@ -227,7 +226,6 @@ if (new URLSearchParams(location.search).get('debug') === '1') setInterval(() =>
     ctx.fillStyle = pk.colour; ctx.globalAlpha = 0.25; ctx.beginPath(); ctx.arc(at.x, at.y, pk.size * 2.6, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(at.x, at.y, pk.size, 0, Math.PI * 2); ctx.fill();
   }
-  if (new URLSearchParams(location.search).get('debug') === '1') (window as unknown as { __WEB__: unknown }).__WEB__ = { draws, packets: packets.length, fps: smoothed ? 1000 / smoothed : 0 };
 }
 
 connect({
@@ -237,3 +235,12 @@ connect({
   down() { summary.textContent = 'Lost the island server.'; },
 });
 requestAnimationFrame(draw);
+
+// ?debug=1: one stable object, created once, read through getters. Nothing runs per frame.
+if (new URLSearchParams(location.search).get('debug') === '1') {
+  (window as unknown as { __WEB__: unknown }).__WEB__ = {
+    get draws() { return draws; }, get packets() { return packets.length; }, get fps() { return smoothed ? 1000 / smoothed : 0; },
+    get litLinks() { return litLinks; }, get knowers() { return selected && 'fact' in selected ? knowers(selected.fact).length : -1; },
+    selectFact: (f: number) => { selected = { fact: f }; dirty = true; renderInspector(); },
+  };
+}

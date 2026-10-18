@@ -207,6 +207,8 @@ export interface IslandScene {
   frameAgents(ids?: number[]): void;
   /** Keep the scene's centre clear of a panel this many pixels wide on the left (and right). */
   setInsets(left: number, right: number): void;
+  /** The quality actually being drawn, which can lag a request while a path compiles. */
+  appliedQuality(): string;
   waitForGPU(): Promise<void>;
   onLost(listener: () => void): () => void;
   dispose(): void;
@@ -502,9 +504,10 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
   await paintLoading();
 
   const drawWithAO = draw;
-  let directReady = false;
+  let directReady = false, applied = 'high', qualityRequest = 0;
   const setQuality = (change: QualityChange) => {
     watch.assert();
+    const request = ++qualityRequest;
     renderer.setPixelRatio(change.pixelRatio);
     if (change.shadowMapSize && sun.shadow.mapSize.x !== change.shadowMapSize) {
       sun.shadow.mapSize.set(change.shadowMapSize, change.shadowMapSize);
@@ -513,11 +516,13 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
     if (change.postEnabled === false) {
       // Minimal tier: render straight to the screen, no bloom pass. Compile that path
       // first, then switch, so the change itself does not stall a frame.
-      if (directReady) draw = drawDirect;
-      else void renderer.compileAsync(scene, camera).then(() => { directReady = true; draw = drawDirect; }).catch(() => {});
+      if (directReady) { draw = drawDirect; applied = change.level; return; }
+      // Only the latest request may switch the path when its compile finishes.
+      void renderer.compileAsync(scene, camera).then(() => { directReady = true; if (request === qualityRequest) { draw = drawDirect; applied = change.level; } })
+        .catch(() => { if (request === qualityRequest) applied = `${applied} (minimal failed to compile)`; });
       return;
     }
-    draw = change.aoEnabled ? drawWithAO : drawWithoutAO;
+    draw = change.aoEnabled ? drawWithAO : drawWithoutAO; applied = change.level;
     if (options.diagnostics) Object.assign(options.diagnostics.report.scene, {
       pixelRatio: change.pixelRatio, ao: change.aoEnabled,
     });
@@ -533,7 +538,8 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
   let glide: { target: Vector3; distance: number; pitch: number } | undefined;
   // Any automatic movement (a follow or a glide) ends the moment the owner takes the camera.
   function cancelAutomatic() { followed = undefined; glide = undefined; lastGlide = 0; }
-  function manualCamera() { if (followed !== undefined || glide) { cancelAutomatic(); options.onManualCamera?.(); } }
+  // A real drag or wheel always hands the camera to the owner, whatever was animating.
+  function manualCamera() { cancelAutomatic(); options.onManualCamera?.(); }
   let lastGlide = 0;
   let insets = { left: 0, right: 0 };
   const applyInsets = () => {
@@ -564,6 +570,7 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
   if (options.agentColours) figures.colours = options.agentColours;
   const limit = world.size / 2;
   return { renderer, label, render, resize, setQuality, dispose,
+    appliedQuality: () => applied,
     addStructure: (structure) => structures.add(structure),
     frameAgents: (ids) => {
       const list = figures.update(performance.now(), 0).filter(a => !ids || ids.includes(a.id));

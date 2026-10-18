@@ -56,7 +56,7 @@ let trees: Snapshot['trees'] = [];
 let selected: number | undefined, mode: 'agents' | 'island' | 'free' | 'follow' = 'island';
 let showLeft = true, showRight = true;
 const debug = new URLSearchParams(location.search).get('debug') === '1';
-declare global { interface Window { __SANDBOX__?: { camera: { y: number; ground: number; tx: number; tz: number; yaw: number; pitch: number; distance: number }; tags: number; mode: string; fps: number; quality: string; entered: boolean; qualitySamples: number } } }
+declare global { interface Window { __SANDBOX__?: { camera: { y: number; ground: number; tx: number; tz: number; yaw: number; pitch: number; distance: number }; tags: number; mode: string; fps: number; quality: string; requested: string; entered: boolean; qualitySamples: number } } }
 
 const activity = (a: string): Activity => (['wandering', 'seeking food', 'eating', 'resting', 'seeking cover', 'socialising'].includes(a) ? a : 'wandering') as Activity;
 function snapshot(s: LiveState): Snapshot {
@@ -154,7 +154,7 @@ function ensureCards() {
     if (cardEls[i]) return;
     const c = document.createElement('div');
     c.className = 'card'; c.style.setProperty('--c', COLOURS[i]);
-    c.innerHTML = `<div class="head"><span class="dot"></span><b></b><span class="model"></span><span class="hit" title="Hypotheses right out of tried"></span><span class="doing"></span></div><div class="outcome"></div><div class="thought"></div><div class="said"></div>`;
+    c.innerHTML = `<div class="head"><span class="dot"></span><b></b><span class="model"></span><span class="hit" title="Predictions that agreed with the island, out of those scored; +N? are tries made without a prediction"></span><span class="doing"></span></div><div class="outcome"></div><div class="thought"></div><div class="said"></div>`;
     c.querySelector('b')!.textContent = name;
     c.onclick = () => select(selected === i ? undefined : i);
     c.ondblclick = () => follow(i);
@@ -181,7 +181,7 @@ function updateCards(s: LiveState) {
     const said = l && Date.now() - l.saidAt < 10000 ? `"${l.said}"` : '';
     c.querySelector('.said')!.textContent = said;
     c.classList.toggle('in-council', a.council !== null);
-    const hit = c.querySelector<HTMLElement>('.hit')!, hitText = a.hyp.tried ? `${a.hyp.right}/${a.hyp.tried}` : '';
+    const hit = c.querySelector<HTMLElement>('.hit')!, hitText = a.hyp.tried ? `${a.hyp.right}/${a.hyp.tried}${a.hyp.missing ? ` +${a.hyp.missing}?` : ''}` : '';
     if (hit.textContent !== hitText) hit.textContent = hitText;
     const m = s.mix[a.id] ?? 'scripted', chip = c.querySelector<HTMLElement>('.model')!;
     if (chip.textContent !== MIND_LABELS[m]) { chip.textContent = MIND_LABELS[m] ?? m; chip.style.background = MIND_COLOURS[m] ?? '#555'; }
@@ -360,7 +360,13 @@ function onEvent(e: FeedEvent, live = true) {
   if (e.type === 'council_split') ((e.data?.parts as Array<{ agent: number }>) ?? []).forEach((p, i) => { if (p.agent !== agent) packets.push({ from: agent, to: p.agent, at: now + i * 120, colour: GOLD, size: 7, ms: 1800 }); });
   if (e.type === 'council_part' && e.to?.[0] !== undefined && e.to[0] !== agent) packets.push({ from: agent, to: e.to[0], at: now, colour: e.data?.made ? GOLD : '#9aa8b2', size: e.data?.made ? 9 : 6, ms: 1600 });
   // Bound the queue: drop the oldest decorative packets first, never a thought on its way to a box.
-  while (packets.length > MAX_PACKETS) { const k = packets.findIndex(f => !f.land); if (k < 0) break; packets.splice(k, 1); }
+  // Bound the queue: drop decorative packets first; if only thoughts remain, land the oldest at once.
+  while (packets.length > MAX_PACKETS) {
+    const k = packets.findIndex(f => !f.land);
+    if (k >= 0) { packets.splice(k, 1); continue; }
+    const oldest = packets.reduce((m, f, i) => (f.at < packets[m].at ? i : m), 0);
+    const [f] = packets.splice(oldest, 1); f.land?.();
+  }
 
 }
 
@@ -529,10 +535,10 @@ async function runIsland(scene: IslandScene) {
     const positions = new Map(scene.agentPositions().map(p => [p.id, p]));
     const shown = draw(positions, performance.now());
     if (time - lastHud > 250 && smoothed !== undefined) {
-      fpsLine.textContent = `${(1000 / smoothed).toFixed(0)} fps · ${smoothed.toFixed(1)} ms · ${quality.level} · ${scene.label}`;
+      fpsLine.textContent = `${(1000 / smoothed).toFixed(0)} fps · ${smoothed.toFixed(1)} ms · ${scene.appliedQuality()} · ${scene.label}`;
       fpsLine.classList.toggle('slow', smoothed > 33); lastHud = time;
     }
-    if (debug) window.__SANDBOX__ = { get camera() { return scene.cameraInfo(); }, tags: shown, mode, fps: smoothed ? 1000 / smoothed : 0, quality: quality.level, entered, qualitySamples };
+    if (debug) window.__SANDBOX__ = { get camera() { return scene.cameraInfo(); }, tags: shown, mode, fps: smoothed ? 1000 / smoothed : 0, quality: scene.appliedQuality(), requested: quality.level, entered, qualitySamples };
     frameRequest = requestAnimationFrame(t => { try { tick(t); } catch (err) { void controller?.reportFailure(scene, err); } });
   };
   frameRequest = requestAnimationFrame(tick);
@@ -554,7 +560,7 @@ connect({
     mixOptions = s.backends;
     if (!dragging && !mixDraft) drawMixer(countsOf(s.mix, mixOptions));
     const p = s.progress;
-    const hs = $('.hyp-score'), hsText = p.hypotheses ? `${p.hypothesesRight}/${p.hypotheses} right${p.ideas ? ` · ${p.ideas} ideas` : ''}` : '';
+    const hs = $('.hyp-score'), hsText = p.hypotheses || p.hypothesesMissing ? `${p.hypothesesRight}/${p.hypotheses} agree with the island${p.hypothesesMissing ? ` · ${p.hypothesesMissing} without a prediction` : ''}${p.ideas ? ` · ${p.ideas} untested ideas` : ''}` : '';
     if (hs.textContent !== hsText) hs.textContent = hsText;
     $('.progress').innerHTML = `<span class="slots">${Array.from({ length: p.makeable }, (_, i) => `<i class="${i < p.found ? 'on' : ''}"></i>`).join('')}</span>
       <span class="slots big">${Array.from({ length: p.structures }, (_, i) => `<i class="${i < p.built ? 'on' : ''}"></i>`).join('')}</span>
