@@ -17,7 +17,11 @@ export function readClaim(text: string, names: Iterable<string>): { pair: string
   const nameIn = (x: string) => {
     const s = x.trim(), n = sorted.find(k => s === k || s.endsWith(` ${k}`));
     if (!n) return undefined;
-    return /\b(?:no|not|never|or|nor|and)\b/.test(s.slice(0, s.length - n.length)) ? undefined : n;
+    const lead = s.slice(0, s.length - n.length);
+    if (/\b(?:no|not|never|or|nor|and|with|plus)\b/.test(lead)) return undefined;
+    // The lead may set the scene but may not name another material: a claim has two ingredients.
+    if (sorted.some(k => new RegExp(`\\b${k}\\b`).test(lead))) return undefined;
+    return n;
   };
   const x = nameIn(m[1]), y = nameIn(m[2]);
   const raw = m[3].trim().replace(/^(?:a|an|some)\s+/, '');

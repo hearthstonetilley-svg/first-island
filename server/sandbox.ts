@@ -345,7 +345,9 @@ function act(a: SandboxAgent, d: Decision) {
     if (claim) for (const o of listeners) {
       const knownFact = o.known.map(f => facts[f]).find(t => readClaim(t)?.pair === claim.pair);
       const theirs = knownFact ? readClaim(knownFact) : undefined;
-      if (theirs && theirs.product !== claim.product && o.council === null && a.council === null && !o.collapsedUntil && Date.now() - (lastDisagreement[claim.pair] ?? 0) > 60000) {
+      // A reserved fixture agent only disagrees with another reserved agent, so outsiders cannot start its council.
+      const fenced = (x: SandboxAgent) => !!x.reservedUntil && x.reservedUntil > Date.now();
+      if (theirs && theirs.product !== claim.product && o.council === null && a.council === null && !o.collapsedUntil && fenced(o) === fenced(a) && Date.now() - (lastDisagreement[claim.pair] ?? 0) > 60000) {
         lastDisagreement[claim.pair] = Date.now();
         emit('disagreement', `disagrees with ${a.name}: ${a.name} says ${claim.pair} makes ${claim.product}, ${o.name} knows it makes ${theirs.product}`, o.id, [a.id], { pair: claim.pair });
         void council(o, `${a.name} says ${claim.pair} makes ${claim.product}; I know it makes ${theirs.product}. Test it together and settle it.`);
@@ -861,7 +863,10 @@ createServer(async (req, res) => {
     // council chaired by a reserved agent may recruit them, until the reservation ends.
     if (process.env.SANDBOX_TEST === '1' && b.cmd === 'reserve') {
       for (const k of Object.keys(lastDisagreement)) delete lastDisagreement[k];
-      const until = Date.now() + 15000, picked = agents.filter(a => a.council === null && !a.collapsedUntil && !a.thinking && !(a.reservedUntil && a.reservedUntil > Date.now())).slice(0, Math.max(0, Number(b.count) || 0));
+      const want = Math.max(0, Number(b.count) || 0), until = Date.now() + 15000;
+      const free = agents.filter(a => a.council === null && !a.collapsedUntil && !a.thinking && !(a.reservedUntil && a.reservedUntil > Date.now()));
+      // All or nothing: a partial reservation would strand agents the fixture cannot use.
+      const picked = free.length >= want ? free.slice(0, want) : [];
       for (const a of picked) { a.reservedUntil = until; a.energy = 1; a.running = null; a.path = []; a.busyUntil = until; a.nextThink = until; }
       reply.reserved = picked.map(a => a.id);
     }
