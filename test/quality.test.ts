@@ -90,3 +90,29 @@ describe('adaptive rendering quality', () => {
     expect(changes).toEqual([expect.objectContaining({ level: 'high', pixelRatio: 1, aoEnabled: false })]);
   });
 });
+
+describe('sandbox minimal tier (opt-in)', () => {
+  it('goes below low only when allowed: post off and smaller shadows', () => {
+    const quality = new AdaptiveQuality(1.5, true, true);
+    windowOf(quality, 0, 50);
+    windowOf(quality, 2100, 50);
+    expect(quality.level).toBe('low');
+    expect(windowOf(quality, 4200, 50)).toMatchObject({ level: 'minimal', aoEnabled: false, postEnabled: false, shadowMapSize: 1024 });
+    expect(windowOf(quality, 6300, 50)).toBeUndefined();
+  });
+  it('climbs back from minimal to low with post restored', () => {
+    const quality = new AdaptiveQuality(1.5, true, true);
+    for (let k = 0; k < 3; k++) windowOf(quality, k * 2100, 50);
+    expect(quality.level).toBe('minimal');
+    quality.reset();
+    let first;
+    for (let time = 10000; time <= 18000 && !first; time += 10) first = quality.sample(time);
+    expect(first).toMatchObject({ level: 'low', postEnabled: true, shadowMapSize: 2048 });
+  });
+  it('leaves the world page contract alone by default', () => {
+    const quality = new AdaptiveQuality(1.5, true);
+    windowOf(quality, 0, 50); windowOf(quality, 2100, 50);
+    expect(windowOf(quality, 4200, 50)).toBeUndefined();
+    expect(quality.level).toBe('low');
+  });
+});

@@ -344,7 +344,8 @@ function curve(p: { x: number; y: number }, q: { x: number; y: number }, t: numb
   return { x: u * u * p.x + 2 * u * t * cx + t * t * q.x, y: u * u * p.y + 2 * u * t * cy + t * t * q.y };
 }
 function draw(positions: Map<number, { x: number; y: number; visible: boolean }>, now: number) {
-  const ratio = devicePixelRatio;
+  // The overlay is lines, dots and text: it never needs more than 1.25x resolution.
+  const ratio = Math.min(devicePixelRatio, 1.25);
   if (overlay.width !== innerWidth * ratio || overlay.height !== innerHeight * ratio) { overlay.width = innerWidth * ratio; overlay.height = innerHeight * ratio; }
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0); ctx.clearRect(0, 0, innerWidth, innerHeight); ctx.lineCap = 'round';
   // Name tags: stack so none hides another, with a thin leader line to the head.
@@ -464,7 +465,7 @@ async function runIsland(scene: IslandScene) {
   applyPanels();
   if (savedPose) { scene.setPose(savedPose); savedPose = undefined; if (mode === 'follow' && selected !== undefined) scene.followAgent(selected); }
   else wholeIsland();
-  const quality = new AdaptiveQuality(pixelRatio, postEnabled), readiness = new ReadinessGate();
+  const quality = new AdaptiveQuality(pixelRatio, postEnabled, true), readiness = new ReadinessGate();
   let entered = false, playing = false, start: number | undefined, previous: number | undefined, smoothed: number | undefined, lastHud = 0;
   const enter = () => {
     if (entered || !active()) return;

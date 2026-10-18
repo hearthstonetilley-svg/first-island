@@ -279,7 +279,7 @@ function scriptedMind(a: SandboxAgent): Decision {
   if (a.skills?.length && Math.random() < 0.2) d.teach_skill = [pick(a.skills)];
   if (a.inventory.length >= 6 && Math.random() < 0.5) { d.action = 'drop'; d.target = pick(a.inventory); }
   else if (a.skills?.length && r < 0.12) { d.action = 'use_skill'; d.target = pick(a.skills); }
-  else if (r > 0.88 && a.known.some(f => / makes (?!nothing)/.test(facts[f]))) {
+  else if ((!a.skills?.length ? Math.random() < 0.3 : r > 0.95) && a.known.some(f => / makes (?!nothing)/.test(facts[f]))) {
     const f = facts[a.known.filter(x => / makes (?!nothing)/.test(facts[x]))[0]], m = f.match(/^(\S+) \+ (\S+) makes (\S+)$/);
     if (m) { d.action = 'write_skill'; d.skill_name = `make ${m[3]}`; d.steps = [{ action: 'gather', target: m[1] }, { action: 'gather', target: m[2] }, { action: 'combine', target: m[1], with: m[2] }]; }
   }

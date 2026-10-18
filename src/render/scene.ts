@@ -409,6 +409,7 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
 
   options.diagnostics?.phase('sceneBuild', performance.now() - buildStarted);
   let draw: () => void = () => { renderer.render(scene, camera); };
+  const drawDirect = draw;
   let drawWithoutAO = draw;
   let compileScene = () => renderer.compileAsync(scene, camera);
   let compileWater = () => renderer.compileAsync(ocean.mesh, camera, scene);
@@ -501,9 +502,21 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
   await paintLoading();
 
   const drawWithAO = draw;
+  let directReady = false;
   const setQuality = (change: QualityChange) => {
     watch.assert();
     renderer.setPixelRatio(change.pixelRatio);
+    if (change.shadowMapSize && sun.shadow.mapSize.x !== change.shadowMapSize) {
+      sun.shadow.mapSize.set(change.shadowMapSize, change.shadowMapSize);
+      sun.shadow.map?.dispose(); sun.shadow.map = null;
+    }
+    if (change.postEnabled === false) {
+      // Minimal tier: render straight to the screen, no bloom pass. Compile that path
+      // first, then switch, so the change itself does not stall a frame.
+      if (directReady) draw = drawDirect;
+      else void renderer.compileAsync(scene, camera).then(() => { directReady = true; draw = drawDirect; }).catch(() => {});
+      return;
+    }
     draw = change.aoEnabled ? drawWithAO : drawWithoutAO;
     if (options.diagnostics) Object.assign(options.diagnostics.report.scene, {
       pixelRatio: change.pixelRatio, ao: change.aoEnabled,

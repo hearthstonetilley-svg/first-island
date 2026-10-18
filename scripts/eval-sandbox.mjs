@@ -65,6 +65,9 @@ await sleep(2000);
 const info = () => page.evaluate(() => { const d = window.__SANDBOX__; return d && { camera: d.camera, tags: d.tags, mode: d.mode, entered: d.entered, qualitySamples: d.qualitySamples }; });
 check('island page renders', !!(await info()), errors[0] ?? '');
 const perf = await page.evaluate(() => ({ text: document.querySelector('.top .fps')?.textContent ?? '', q: window.__SANDBOX__?.quality, fps: window.__SANDBOX__?.fps }));
+// On a very slow renderer, quality must keep stepping down until it reaches the minimal tier.
+const reached = await page.waitForFunction(() => window.__SANDBOX__?.quality === 'minimal', null, { timeout: 40000 }).then(() => true, () => false);
+check('quality steps down to the minimal tier on a slow renderer', reached, await page.evaluate(() => document.querySelector('.top .fps')?.textContent ?? ''));
 const q0 = (await info()).qualitySamples; await sleep(3000); const q1 = (await info()).qualitySamples;
 check('frame-rate readout shows and adaptive quality keeps sampling after entry', /\d+ fps/.test(perf.text) && ['high', 'balanced', 'low'].includes(perf.q) && q1 > q0, `${perf.text}; samples ${q0} to ${q1}`);
 check('eight named boxes', (await page.locator('.card').count()) === 8);
