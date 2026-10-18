@@ -1,4 +1,5 @@
 import { generateWorld, WorldData } from '../world/generate';
+import { Bodies } from './bodies';
 import { Dials, Intervention, resolveDials, RunRecord, SimEvent, Snapshot, Speed } from './types';
 
 /** One tick = one simulated second. No timers, DOM, unseeded random or render state. */
@@ -11,13 +12,16 @@ export class Simulation {
   protected generationProgress = 0;
   protected speed: Speed = 1;
   private readonly log: SimEvent[] = [];
+  private readonly bodies: Bodies;
+  get playbackSpeed(): Speed { return this.speed; }
 
   constructor(readonly seed: number, dials: Partial<Dials> = {}, world?: WorldData) {
-    this.initialDials = resolveDials(dials);
+    this.initialDials = Object.freeze(resolveDials(dials));
     this.dials = { ...this.initialDials };
     this.world = world ?? generateWorld(seed);
     if (this.world.seed !== seed) throw new Error('World seed mismatch');
     this.emit('generation', { generation: 1, seed });
+    this.bodies = new Bodies(this.world, this.dials, (type, data) => this.emit(type, data));
   }
 
   protected emit(type: SimEvent['type'], data: SimEvent['data']): void {
@@ -28,6 +32,7 @@ export class Simulation {
     if (!Number.isSafeInteger(ticks) || ticks < 0) throw new Error('Ticks must be a non-negative integer');
     for (let i = 0; i < ticks; i++) {
       this.tick++;
+      this.bodies.step(this.dials, this.tick);
       this.generationProgress += 1 / this.dials.generationSeconds;
       if (this.generationProgress + 1e-10 >= 1) {
         this.generationProgress = Math.max(0, this.generationProgress - 1);
@@ -50,7 +55,9 @@ export class Simulation {
 
   snapshot(): Snapshot {
     return { tick: this.tick, seconds: this.tick, generation: this.generation,
-      speed: this.speed, dials: { ...this.dials }, eventCount: this.log.length };
+      speed: this.speed, dials: { ...this.dials }, eventCount: this.log.length, agents: this.bodies.snapshotAgents(),
+      plants: this.bodies.plants.map(plant => ({ ...plant })), environment: { ...this.bodies.environment },
+      stats: structuredClone(this.bodies.stats) };
   }
 
   record(): RunRecord {

@@ -39,10 +39,10 @@ onmessage = async ({ data }: MessageEvent<Request>) => {
 setInterval(() => {
   const now = performance.now();
   if (simulation && running) {
-    accumulatedMs += (now - previous) * simulation.snapshot().speed;
+    accumulatedMs += (now - previous) * simulation.playbackSpeed;
     const ticks = Math.min(100, Math.floor(accumulatedMs / 1000));
     if (ticks > 0) { simulation.step(ticks); accumulatedMs -= ticks * 1000; }
-    if (simulation.snapshot().tick !== publishedTick) publish();
+    if (ticks > 0 || publishedTick < 0) publish();
   }
   previous = now;
 }, 50);

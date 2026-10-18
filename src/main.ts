@@ -5,6 +5,7 @@ import { SceneRecovery } from './render/recovery';
 import { FrameDiagnostics } from './render/diagnostics';
 import { AdaptiveQuality } from './render/quality';
 import { ReadinessGate } from './render/readiness';
+import { Dials } from './sim/types';
 import { SimulationClient } from './sim/client';
 import { SimulationHUD } from './ui/simulation';
 import { LoadingProgress, LoadingScreen, paintLoading } from './ui/loading';
@@ -50,7 +51,6 @@ let frameRequest = 0;
 let sceneEvents: AbortController | undefined;
 let controller: SceneRecovery<IslandScene>;
 const stopped = () => {
-  simulation.running(false);
   generation += 1;
   cancelAnimationFrame(frameRequest);
   sceneEvents?.abort();
@@ -90,10 +90,14 @@ const progress = async (step: LoadingProgress) => {
 try {
   await progress({ stage: 'terrain', message: 'Generating terrain', percent: 1 });
   const worldStarted = performance.now();
+  const simDials: Partial<Dials> = {};
+  for (const key of ['generationSeconds', 'foodRegrowth', 'mutationRate', 'startingPopulation'] as const) {
+    if (params.has(key)) simDials[key] = Number(params.get(key));
+  }
   const world = await simulation.initialize(seed, ({ stage, fraction }) => {
     void progress({ stage, message: stage === 'terrain' ? 'Generating terrain' : 'Placing trees',
       percent: stage === 'terrain' ? 2 + fraction * 26 : 28 + fraction * 10 });
-  });
+  }, simDials);
   diagnostics?.phase('worldGeneration', performance.now() - worldStarted);
   controller = new SceneRecovery((forceWebGL) => createIslandScene(
     app.querySelector('canvas')!, world, forceWebGL, {
@@ -134,7 +138,7 @@ async function runScene(island: IslandScene): Promise<void> {
       // Quality windows begin only after the overlay and its fade are gone.
       quality.reset();
       playing = true;
-      simulation.running(!document.hidden);
+      simulation.running(true);
     });
   };
   const resetSampling = () => {
@@ -149,7 +153,7 @@ async function runScene(island: IslandScene): Promise<void> {
     if (!active()) return;
     try { island.resize(); resetSampling(); } catch (error) { void controller.reportFailure(island, error); }
   }, { signal: sceneEvents.signal });
-  document.addEventListener('visibilitychange', () => { resetSampling(); simulation.running(playing && !document.hidden); }, { signal: sceneEvents.signal });
+  document.addEventListener('visibilitychange', resetSampling, { signal: sceneEvents.signal });
   await progress({ stage: 'settling', message: 'Checking frame rate', percent: 92 });
   const readinessStarted = performance.now();
   if (!active()) return;

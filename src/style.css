@@ -61,3 +61,9 @@ canvas { display: block; width: 100%; height: 100%; }
 .simulation-hud button[aria-pressed="true"] { background: #a8d9ba; color: #102d39; }
 .simulation-hud button:focus-visible { outline: 2px solid #c1e9cf; outline-offset: 3px; }
 @media(max-width: 620px) { .simulation-hud { left: 12px; bottom: 12px; max-width: calc(100vw - 24px); gap: 8px; padding: 10px; } }
+
+.sim-dials summary { cursor: pointer; padding: 6px; }
+.sim-dials form { position: absolute; left: 0; bottom: calc(100% + 8px); padding: 16px; border-radius: 10px; border: 1px solid #ffffff40; background: #102d39; width: min(320px, calc(100vw - 40px)); display: grid; gap: 10px; }
+.sim-dials label { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.sim-dials input { width: 88px; padding: 6px; color: #e5f3eb; border: 1px solid #ffffff40; border-radius: 4px; background: #214653; }
+.sim-dials p { margin: 0; color: #a7c4c4; font-size: 11px; }
