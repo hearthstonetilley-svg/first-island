@@ -15,6 +15,7 @@ const PORT = Number(process.env.SANDBOX_PORT ?? 8787);
 const SEED = Number(process.env.SANDBOX_SEED ?? 1);
 const MAX_CALLS_PER_MIN = Number(process.env.MAX_CALLS_PER_MIN ?? 30);
 const CONCURRENCY = Number(process.env.MIND_CONCURRENCY ?? 2);
+const CLAUDE_BIN = process.env.CLAUDE_BIN ?? 'claude';
 const HEAR_RANGE = 9;
 const WALK_SPEED = 1.6;
 
@@ -163,6 +164,7 @@ let running = false;
 let calls: number[] = [];
 let totalCalls = 0, failedCalls = 0;
 let inFlight = 0;
+let lastMindError = '';
 
 const SCRIPT_THOUGHTS = ['What is beyond the trees?', 'This stone is sharp.', 'I should find others.', 'The peak looks far.',
   'Wood floats. Interesting.', 'I am hungry.', 'Maybe these two things fit together.', 'Someone is calling.'];
@@ -199,11 +201,13 @@ function prompt(a: SandboxAgent): string {
 
 function haikuMind(a: SandboxAgent): Promise<Decision> {
   return new Promise(resolve => {
-    const child = spawn('claude', ['-p', '--model', 'haiku', '--tools', '', '--setting-sources', '', '--strict-mcp-config',
+    const child = spawn(CLAUDE_BIN, ['-p', '--model', 'haiku', '--tools', '', '--setting-sources', '', '--strict-mcp-config',
       '--mcp-config', emptyMcp, '--no-session-persistence', '--system-prompt', SYSTEM, prompt(a)],
       { stdio: ['ignore', 'pipe', 'pipe'], cwd: tmpdir() });
     let out = '';
     const timer = setTimeout(() => child.kill(), 45000);
+    // A missing or broken model command must never stop the island.
+    child.on('error', err => { clearTimeout(timer); failedCalls++; lastMindError = String(err.message); resolve(scriptedMind(a)); });
     child.stdout.on('data', c => { out += c; });
     child.on('close', () => {
       clearTimeout(timer);
@@ -245,7 +249,7 @@ setInterval(() => {
 }, 100);
 setInterval(() => {
   tick++;
-  send('state', { tick, running, mindMode, calls: totalCalls, failed: failedCalls, perMin: calls.length, cap: MAX_CALLS_PER_MIN,
+  send('state', { tick, running, mindMode, calls: totalCalls, failed: failedCalls, mindError: lastMindError, perMin: calls.length, cap: MAX_CALLS_PER_MIN,
     agents: agents.map(a => ({ id: a.id, name: a.name, x: a.x, y: a.y, z: a.z, activity: a.activity, thought: a.thought,
       said: Date.now() - a.saidAt < 8000 ? a.said : '', thinking: a.thinking, inventory: a.inventory, known: a.known })) });
 }, 250);
