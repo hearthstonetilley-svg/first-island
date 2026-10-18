@@ -13,6 +13,9 @@ mkdirSync(OUT, { recursive: true });
 const results = [];
 const check = (name, ok, detail = '') => { results.push({ name, ok, detail }); console.log(`${ok ? 'PASS' : 'FAIL'} ${name}${detail ? `: ${detail}` : ''}`); };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+// Screenshots are evidence, not checks: on a slow software renderer one frame can take
+// many seconds, so allow a long time and never fail the run over a picture.
+const shot = (pg, path) => pg.screenshot({ path, timeout: 120000 }).catch(e => console.log(`screenshot skipped: ${path} (${String(e.message).split('\n')[0]})`));
 
 const server = spawn('npx', ['vite-node', 'server/sandbox.ts'], { stdio: ['ignore', 'pipe', 'pipe'], detached: true,
   env: { ...process.env, SANDBOX_PORT: String(PORT), SANDBOX_FRESH: '1', MIND_MODE: 'scripted', SANDBOX_STATE_DIR: mkdtempSync(join(tmpdir(), 'sandbox-eval-')) } });
@@ -73,7 +76,7 @@ await sleep(4000);
 check('name tags visible in island view', ((await info())?.tags ?? 0) >= 6, `${(await info())?.tags} visible`);
 await page.waitForFunction(() => [...document.querySelectorAll('.card .thought')].filter(l => l.textContent).length >= 4, null, { timeout: 40000 }).catch(() => {});
 check('thoughts land in the boxes', await page.evaluate(() => [...document.querySelectorAll('.card .thought')].filter(l => l.textContent).length >= 4));
-await page.screenshot({ path: `${OUT}/island.png` });
+await shot(page, `${OUT}/island.png`);
 
 // Keyboard camera: each key moves the view the right way and never into the land.
 const hold = async (key, ms) => { await page.keyboard.down(key); await sleep(ms); await page.keyboard.up(key); await sleep(150); };
@@ -96,7 +99,7 @@ await hold('w', 1800); const c5 = await sample();
 check('keys still move the view after using the controls', Math.hypot(c5.tx - c4.tx, c5.tz - c4.tz) > 0.3);
 for (const key of ['w', 'd', 'w', 'a', 'f', 'w', 'q', 'w', 'r', 'w']) { await hold(key, 900); await sample(); }
 check('camera never goes inside the land', low >= 1.0, `lowest clearance ${low.toFixed(2)}`);
-await page.screenshot({ path: `${OUT}/after-flying.png` });
+await shot(page, `${OUT}/after-flying.png`);
 
 // An observer council runs the whole torrent: open, split, parts, merge.
 await page.keyboard.press('Escape'); await sleep(1500);
@@ -115,7 +118,7 @@ const web = await browser.newPage({ viewport: { width: 1200, height: 800 } });
 await web.goto(`http://localhost:${WEB}/web.html`); await sleep(6000);
 const drawn = await web.evaluate(() => { const c = document.querySelector('canvas'); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 0) n++; return n; });
 check('web page draws the agents', drawn > 2000, `${drawn} pixels`);
-await web.screenshot({ path: `${OUT}/web.png` });
+await shot(web, `${OUT}/web.png`);
 
 await browser.close(); await vite.close();
 // npx starts the server as a child: end the whole process group so no old server outlives the run.
