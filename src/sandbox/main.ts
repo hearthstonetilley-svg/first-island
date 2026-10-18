@@ -199,7 +199,12 @@ function updateCards(s: LiveState) {
 const mixBar = $('.mix-bar'), mixLegend = $('.mix-legend');
 let mixDraft: number[] | undefined, mixOptions: string[] = [], dragging: { divider: number } | undefined;
 const countsOf = (mix: string[], options: string[]) => options.map(o => mix.filter(m => m === o).length);
+// Rebuilt only when the mix or the options change, so a handle is never replaced under the pointer.
+let mixerDrawn = '';
 function drawMixer(counts: number[]) {
+  const key = `${mixOptions.join(',')}|${counts.join(',')}`;
+  if (key === mixerDrawn) return;
+  mixerDrawn = key;
   const total = counts.reduce((n, c) => n + c, 0) || 1;
   mixBar.innerHTML = '';
   let acc = 0;

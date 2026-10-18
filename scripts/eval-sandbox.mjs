@@ -84,15 +84,19 @@ const meters = await page.waitForFunction(() => document.querySelectorAll('.mete
 check('usage meters show', meters);
 // The mixer: drag the first divider right and the agents' minds change on the server.
 const handle = page.locator('.mix-bar .handle').first();
-const hb = await handle.boundingBox().catch(() => null), bb = await page.locator('.mix-bar').boundingBox().catch(() => null);
+let hb = null; for (let i = 0; i < 10 && !hb; i++) { hb = await handle.boundingBox({ timeout: 5000 }).catch(() => null); if (!hb) await sleep(500); }
+const bb = await page.locator('.mix-bar').boundingBox().catch(() => null);
 const options = await page.evaluate(() => document.querySelectorAll('.mix-bar .seg').length);
 check('mixer offers the connected models', options >= 3, `${options} options`);
+// Record what the press actually lands on, so a miss explains itself.
+await page.evaluate(() => { window.__mixPress = []; addEventListener('pointerdown', e => window.__mixPress.push(`${e.target.className}@${Math.round(e.clientX)}`), { capture: true }); });
 if (hb && bb) { await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2); await page.mouse.down();
 await page.mouse.move(bb.x + bb.width * 0.5, hb.y + hb.height / 2, { steps: 6 }); await page.mouse.up();
 // The new mix goes to the server and comes back on the stream: wait for it rather than a fixed pause.
 await page.waitForFunction(() => new Set([...document.querySelectorAll('.card .model')].map(m => m.textContent)).size >= 2, null, { timeout: 60000 }).catch(() => {}); }
 const mixNow = await page.evaluate(() => [...document.querySelectorAll('.card .model')].map(m => m.textContent));
-check('dragging the mixer reassigns minds', new Set(mixNow).size >= 2, mixNow.join(','));
+const mixWhy = await page.evaluate(() => (window.__mixPress ?? []).join(' '));
+check('dragging the mixer reassigns minds', new Set(mixNow).size >= 2, `${mixNow.join(',')}; pressed ${mixWhy}; handle at ${hb && Math.round(hb.x + hb.width / 2)}, bar ${bb && Math.round(bb.x)} to ${bb && Math.round(bb.x + bb.width)}; server mix ${(seen.last?.mix ?? []).join(',')}`);
 if (hb && bb) { await page.mouse.move(bb.x + 2, hb.y + hb.height / 2); await page.mouse.down(); await page.mouse.up(); }
 await api('/api/control', { minds: 'scripted' }); await sleep(1000);
 await sleep(4000);
