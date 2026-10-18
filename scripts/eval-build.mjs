@@ -77,13 +77,31 @@ async function evaluateLoad(page, mode, seed, run, r) {
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text().replace(/\s+/g, ' ').slice(0, 160)); });
   const t0 = Date.now();
   await page.goto(`${base}?seed=${seed}${mode.query}`);
-  try {
-    await page.waitForFunction(() => /WebGPU|WebGL2/.test(document.querySelector('.label')?.textContent ?? ''),
-      null, { timeout: START_DEADLINE_MS });
+  // Ready means the loading screen reached `complete` (or there is no loading screen and the label names a renderer).
+  // On slow devices the loader stops at `limited` and offers an Enter button; the eval presses it and records that.
+  const loaderState = () => page.evaluate(() => {
+    const el = document.querySelector('.loading-screen');
+    if (!el) return /WebGPU|WebGL2/.test(document.querySelector('.label')?.textContent ?? '') ? 'complete' : 'loading';
+    return el.getAttribute('data-state') ?? 'loading';
+  });
+  const waitFor = async (states) => {
+    const end = Date.now() + START_DEADLINE_MS;
+    while (Date.now() < end) { const st = await loaderState(); if (states.includes(st)) return st; await page.waitForTimeout(250); }
+    return await loaderState();
+  };
+  let state = await waitFor(['complete', 'limited', 'error']);
+  if (state === 'limited') {
+    r.enteredManually = true;
+    await page.click('.loading-screen button').catch(() => {});
+    state = await waitFor(['complete', 'error']);
+  }
+  if (state === 'complete') {
     r.startMs = Date.now() - t0;
-    r.renderer = (await page.textContent('.label')).includes('WebGPU') ? 'WebGPU' : 'WebGL2';
-  } catch {
-    r.failures.push(`start-up did not finish within ${START_DEADLINE_MS / 1000} s (label: "${await page.textContent('.label').catch(() => '?')}")`);
+    await page.waitForTimeout(1500); // let the fade finish
+    r.renderer = /WebGPU/.test(await page.textContent('.label').catch(() => '')) ? 'WebGPU' : 'WebGL2';
+  } else {
+    const shown = await page.evaluate(() => (document.querySelector('.loading-screen')?.textContent ?? document.querySelector('.label')?.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 140));
+    r.failures.push(`start-up ended in state "${state}" within ${START_DEADLINE_MS / 1000} s: ${shown}`);
   }
   if (!r.failures.length) {
     const frames = await sampleFrames(page);
@@ -112,7 +130,7 @@ for (const mode of MODES) for (const seed of SEEDS) {
     if (outcome === 'cap') r.failures.push(`load exceeded the ${LOAD_CAP_MS / 1000} s cap`);
     r.ok = r.failures.length === 0;
     results.push(r);
-    console.log(`${r.ok ? 'PASS' : 'FAIL'} ${mode.name} seed ${seed} run ${run}` + (r.ok ? ` ${r.renderer} start ${r.startMs} ms` : `: ${r.failures.join('; ')}`));
+    console.log(`${r.ok ? 'PASS' : 'FAIL'} ${mode.name} seed ${seed} run ${run}` + (r.ok ? ` ${r.renderer} start ${r.startMs} ms${r.enteredManually ? ' (slow device: pressed Enter)' : ''}` : `: ${r.failures.join('; ')}`));
     await page.close().catch(() => {});
   }
 }
@@ -126,7 +144,7 @@ const lines = [
   `Modes ${MODES.map((m) => m.name).join(', ')}; seeds ${SEEDS.join(', ')}; ${RUNS} loads each. Timing ${STRICT_TIMING ? 'gated' : 'reported only (software rendering)'}.`, '',
   '| mode | seed | run | result | renderer | start ms | median frame ms | blue | land | black | flat |',
   '|---|---|---|---|---|---|---|---|---|---|---|',
-  ...results.map((r) => `| ${r.mode} | ${r.seed} | ${r.run} | ${r.ok ? 'pass' : 'FAIL: ' + r.failures.join('; ')} | ${r.renderer ?? '-'} | ${r.startMs ?? '-'} | ${r.frames?.medianMs ?? '-'} | ${r.pixels ? pct(r.pixels.blue) : '-'} | ${r.pixels ? pct(r.pixels.land) : '-'} | ${r.pixels ? pct(r.pixels.black) : '-'} | ${r.pixels ? pct(r.pixels.flat) : '-'} |`),
+  ...results.map((r) => `| ${r.mode} | ${r.seed} | ${r.run} | ${r.ok ? 'pass' : 'FAIL: ' + r.failures.join('; ')} | ${r.renderer ?? '-'}${r.enteredManually ? ' (Enter)' : ''} | ${r.startMs ?? '-'} | ${r.frames?.medianMs ?? '-'} | ${r.pixels ? pct(r.pixels.blue) : '-'} | ${r.pixels ? pct(r.pixels.land) : '-'} | ${r.pixels ? pct(r.pixels.black) : '-'} | ${r.pixels ? pct(r.pixels.flat) : '-'} |`),
 ];
 writeFileSync(`${OUT}/report.json`, JSON.stringify(results, null, 1));
 writeFileSync(`${OUT}/summary.md`, lines.join('\n') + '\n');
