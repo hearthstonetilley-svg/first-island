@@ -36,6 +36,7 @@ as much about how the world gets built as about the world itself.
 | v0.2.0 | Round 6, accepted: start-up can no longer hang (8/8 loads); the round 5 island look ships ([review](docs/reviews/v0.2.0.md)) |
 | v0.2.1 | Round 7, accepted: dark volcanic rock with crevices, softer sun glitter, branched canopies ([review](docs/reviews/v0.2.1.md)) |
 | v0.3.0 | Round 8, accepted: shaders warmed before the first frame, adaptive quality, staged loading screen; build eval 5/5 on WebGL2, WebGPU device-lost bug outstanding ([review](docs/reviews/v0.3.0.md)) |
+| v0.3.1 | Round 9, accepted: a lost WebGPU device now rebuilds on WebGL2 without reloading; build eval 10/10 in both modes ([review](docs/reviews/v0.3.1.md)) |
 
 ## Run it
 
