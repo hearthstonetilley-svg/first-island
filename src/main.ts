@@ -1,10 +1,12 @@
 import './style.css';
-import { generateWorldAsync, parseSeed } from './world/generate';
+import { parseSeed } from './world/generate';
 import { createIslandScene, IslandScene } from './render/scene';
 import { SceneRecovery } from './render/recovery';
 import { FrameDiagnostics } from './render/diagnostics';
 import { AdaptiveQuality } from './render/quality';
 import { ReadinessGate } from './render/readiness';
+import { SimulationClient } from './sim/client';
+import { SimulationHUD } from './ui/simulation';
 import { LoadingProgress, LoadingScreen, paintLoading } from './ui/loading';
 
 const params = new URLSearchParams(window.location.search);
@@ -32,6 +34,11 @@ label.textContent = `seed ${seed} · starting renderer…`;
 fps.textContent = '… fps · … ms · warming up';
 app.append(canvas, label, fps);
 let loading = new LoadingScreen(app, seed);
+const simulation = new SimulationClient();
+const simulationHUD = new SimulationHUD(app, simulation);
+simulation.onSnapshot = (snapshot) => simulationHUD.update(snapshot);
+simulation.onError = (message) => { simulation.running(false); simulationHUD.fail(message); };
+window.addEventListener('pagehide', () => simulation.dispose());
 const notice = document.createElement('div');
 notice.className = 'graphics-notice';
 notice.setAttribute('role', 'status');
@@ -43,6 +50,7 @@ let frameRequest = 0;
 let sceneEvents: AbortController | undefined;
 let controller: SceneRecovery<IslandScene>;
 const stopped = () => {
+  simulation.running(false);
   generation += 1;
   cancelAnimationFrame(frameRequest);
   sceneEvents?.abort();
@@ -82,8 +90,8 @@ const progress = async (step: LoadingProgress) => {
 try {
   await progress({ stage: 'terrain', message: 'Generating terrain', percent: 1 });
   const worldStarted = performance.now();
-  const world = await generateWorldAsync(seed, 256, 64, async ({ stage, fraction }) => {
-    await progress({ stage, message: stage === 'terrain' ? 'Generating terrain' : 'Placing trees',
+  const world = await simulation.initialize(seed, ({ stage, fraction }) => {
+    void progress({ stage, message: stage === 'terrain' ? 'Generating terrain' : 'Placing trees',
       percent: stage === 'terrain' ? 2 + fraction * 26 : 28 + fraction * 10 });
   });
   diagnostics?.phase('worldGeneration', performance.now() - worldStarted);
@@ -126,6 +134,7 @@ async function runScene(island: IslandScene): Promise<void> {
       // Quality windows begin only after the overlay and its fade are gone.
       quality.reset();
       playing = true;
+      simulation.running(!document.hidden);
     });
   };
   const resetSampling = () => {
@@ -140,7 +149,7 @@ async function runScene(island: IslandScene): Promise<void> {
     if (!active()) return;
     try { island.resize(); resetSampling(); } catch (error) { void controller.reportFailure(island, error); }
   }, { signal: sceneEvents.signal });
-  document.addEventListener('visibilitychange', resetSampling, { signal: sceneEvents.signal });
+  document.addEventListener('visibilitychange', () => { resetSampling(); simulation.running(playing && !document.hidden); }, { signal: sceneEvents.signal });
   await progress({ stage: 'settling', message: 'Checking frame rate', percent: 92 });
   const readinessStarted = performance.now();
   if (!active()) return;

@@ -43,7 +43,8 @@ These archive numbers identify retained captures, not 21 historical code commits
 | [026](026.md) | Staged loading screen, real generation/compilation progress, GPU-fenced readiness and fade. Loading, mobile, failure and multi-seed captures. |
 | [027](027.md) | WebGPU device-loss recovery; unchanged build eval passes 30/30. Bare-device probe, recovery notice and stopped-counter checks. |
 | [028](028.md) | Normal-play readiness without per-frame fences; preserve high quality through loading/fade, then adapt both down and up. Tracked readiness, entry, play and device-loss checks plus full multi-seed eval captures. |
+| [029](029.md) | 3a: worker-owned world and fixed clock, logged controls and replay. Four checked captures retain the island and show readable paused-time controls. |
 
 ## Next iteration
 
-Start with step `029`. Capture and inspect the screenshots, record what changed and what they show, and commit the code, note and images immediately, even if the result needs another fix. Complete that commit before starting another iteration. Multiple seeds from one code version can share a step prefix. Use a distinct step suffix for repeat captures of the same seed, such as `022-webgl2-seed-1.png`, and never overwrite earlier images. Never push; the owner pushes.
+Start with step `030`. Capture and inspect the screenshots, record what changed and what they show, and commit the code, note and images immediately, even if the result needs another fix. Complete that commit before starting another iteration. Multiple seeds from one code version can share a step prefix. Use a distinct step suffix for repeat captures of the same seed, such as `022-webgl2-seed-1.png`, and never overwrite earlier images. Never push; the owner pushes.

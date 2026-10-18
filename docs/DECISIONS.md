@@ -30,3 +30,5 @@ Every decision that shapes the project, newest last. "Owner" decisions are final
 | 24 | 18 Oct 2026 | Advisor consulted before each brief and before accepting each round; findings recorded in reviews | Check the work against the spec, catch what was missed | Owner |
 | 25 | 18 Oct 2026 | Keep this file and JOURNAL.md current at every checkpoint, curated, never a raw transcript | A full record of the thinking, without unrelated or personal material | Owner |
 | 26 | 18 Oct 2026 | Stage 2 reviews read event logs and population curves, not just screenshots | A screenshot of dots passes even when the simulation is wrong (advisor) | Claude |
+| 27 | 18 Oct 2026 | Stage 3a (the clock) is published alone before bodies | Prove the foundation in isolation so a later determinism failure points at the bodies (advisor) | Claude |
+| 28 | 18 Oct 2026 | Viability counts biological generations (a third-generation birth), never the clock | A clock-based count would pass with nobody having reproduced (advisor) | Claude |
