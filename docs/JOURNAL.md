@@ -127,7 +127,23 @@ The owner's reaction: "that's the design equivalent of the Matrix."
 - The leak review on the live run (docs/reviews/leak-review-2026-10-19.md) found no recitation: wrong guesses are human
   ones and the two real discoveries came from trials. The hypothesis score is inflated by "expected nothing" guesses.
 
+## 19 Oct 2026, night: shipping the stack
+
+- PR #23 (v0.7) was merged and tagged v0.7.0 on a red CI run. The wait command reported success while the check had
+  failed, and the merge did not check the result itself. The failures were the eval, not the build: on the CI machine a
+  frame takes about three seconds, so Playwright's click on the Enter button timed out, the page never entered, and the
+  quality and mixer checks failed after it. From here on, a merge happens only after reading the run's conclusion.
+- Fixed at the base of the stack (v0.8) and merged up through tools and sky: Enter and box selection click through the
+  page, the mixer check waits for the new mix, and two checks left stale by v0.8 were corrected (the place-aware wake
+  text, and a food test that ate flint the agent did not hold).
+- Two more causes, found by instrumenting the checks rather than retrying them: the boar charges whoever in the open is
+  nearest, so its checks now pick an agent standing apart; and the page rebuilt the mixer on every state message, so a
+  press could land on a handle that had just been replaced. The mixer now redraws only when the mix changes.
+- Local evals after the fixes: v0.8 58/58, tools 63/63, sky 67/67, all with zero model calls.
+- The owner asked to keep the island off while fixes are made, so no live minds run until the preview is rebuilt from
+  main.
+
 ## Next
 
-The first play test with the owner: a fresh island, start to finish. Then pressure (hunger, night, storms, shelter),
-agents naming their own places, and councils called on disagreement.
+The owner's Later list, one version at a time: photorealism (the day cycle first), boats and other islands, rival
+societies, and the awakening gate with law rewriting.

@@ -58,6 +58,7 @@ as about the world itself.
 | v0.4.1 | Round 12, rejected: the first agents (bodies, traits, display) pass the builder's 90-minute eval but every seed goes extinct on a long run ([review](docs/reviews/v0.4.1.md)) |
 | v0.4.2 | Round 13, changes requested: extinction fixed with a measured cause, exact replay across processes and browser, pace at one generation; but only the cap limits the population ([review](docs/reviews/v0.4.2.md)) |
 | v0.7.0 | The sandbox: councils, chemistry, skills, the minds mixer, usage meters, the knowledge nucleus, and the restored performance contract ([review](docs/reviews/v0.7.0.md)) |
+| v0.7.1 | Survival readable on the page: strength on every box, shelter and food knowledge in the inspector, the survival rules written out |
 | v0.8.0 | Places, councils on disagreement, the recitation score, the director, fading strands, tools that matter, the night boar, the sky panel and rain in storms ([audit](docs/reviews/astra-audit-13-2026-10-19.md)) |
 
 ## Run it
