@@ -32,3 +32,5 @@ Every decision that shapes the project, newest last. "Owner" decisions are final
 | 26 | 18 Oct 2026 | Stage 2 reviews read event logs and population curves, not just screenshots | A screenshot of dots passes even when the simulation is wrong (advisor) | Claude |
 | 27 | 18 Oct 2026 | Stage 3a (the clock) is published alone before bodies | Prove the foundation in isolation so a later determinism failure points at the bodies (advisor) | Claude |
 | 28 | 18 Oct 2026 | Viability counts biological generations (a third-generation birth), never the clock | A clock-based count would pass with nobody having reproduced (advisor) | Claude |
+| 33 | 18 Oct 2026 | Viability means a 12-generation run with population above zero throughout and ending between 0.5x and 1.5x the start, in 4 of 5 seeds | A 90-minute eval passed worlds that all went extinct (round 12) | Claude, advisor |
+| 34 | 18 Oct 2026 | A biological generation is the mean parent age at a child's birth, about one generation dial; lifespan about 2.5 to 3 dials | Bodies were breeding three times faster than the owner's 30-minute pace | Claude, advisor |
