@@ -79,3 +79,14 @@ canvas.overlay, .tags { pointer-events: none; }
 .mix-legend i { display: inline-block; width: 7px; height: 7px; border-radius: 2px; margin-right: 3px; }
 .mix-legend small { opacity: .7; }
 .card .model { font-size: 9.5px; font-weight: 700; color: #0c161e; padding: 0 5px; border-radius: 3px; }
+.cam { display: inline-flex; border: 1px solid #2c4252; border-radius: 6px; overflow: hidden; }
+.top .cam button { border: 0; border-radius: 0; background: #16242e; }
+.top .cam button.on, .top .toggle-left.on, .top .toggle-right.on { background: #2b4558; color: #fff; }
+.rail.hidden { display: none; }
+.top { gap: 8px; white-space: nowrap; }
+.top .cam button { padding: 5px 9px; }
+.mixer { width: 250px; flex: none; }
+.mix-legend { gap: 6px; overflow: hidden; }
+.progress { flex: 1 1 auto; min-width: 0; overflow: hidden; }
+.progress .count { overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 1250px) { .progress .count, .top .history { display: none; } }

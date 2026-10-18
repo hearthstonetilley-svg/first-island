@@ -52,7 +52,7 @@ const gatherable = (n: GNode): Item[] => chem.substances.filter(s => s.tier === 
 const describeItem = (name: string) => { const s = substance(chem, name); return s ? `${name} (${s.description})` : name; };
 const LAWS = [
   'Each kind of ground (shore, grove, meadow, high rock) yields its own material, and only there.',
-  'You can carry six things.',
+  'You can carry six things, and set down anything you carry to make room.',
   'Two things you carry may be combined. Some pairs make something new; most do nothing. Some things change when struck alone.',
   'Some things you make can be set down and built where you stand; what is built stays.',
   'Words carry only a short distance; others hear you only if they are near.',
@@ -158,7 +158,7 @@ function act(a: SandboxAgent, d: Decision) {
   for (const f of shared) teach(a, f, listeners, 'told');
   const action = String(d.action ?? 'wait').toLowerCase(), target = String(d.target ?? '').toLowerCase();
   a.doing = ({ walk: `walking to ${target || 'somewhere'}`, gather: `gathering ${target || 'what is here'}`, combine: `combining ${target} + ${String(d.with ?? '').toLowerCase()}`,
-    strike: `striking ${target}`, build: `building ${target}`, rest: 'resting', council: 'calling a council' } as Record<string, string>)[action] ?? (d.say ? 'talking' : 'waiting');
+    strike: `striking ${target}`, build: `building ${target}`, drop: `setting down ${target}`, rest: 'resting', council: 'calling a council' } as Record<string, string>)[action] ?? (d.say ? 'talking' : 'waiting');
   const here = nodes[a.node];
   if (action === 'walk') {
     const friend = byName(target);
@@ -203,6 +203,10 @@ function act(a: SandboxAgent, d: Decision) {
       a.lastResult = `You built ${target} at ${nearestPlace(a.x, a.z)}. It stays there.`;
       emit('built', `BUILDS ${target} at ${nearestPlace(a.x, a.z)}`, a.id, undefined, { structure: b });
     }
+  } else if (action === 'drop') {
+    const i = a.inventory.indexOf(target);
+    if (i < 0) a.lastResult = `You have no ${target}.`;
+    else { a.inventory.splice(i, 1); a.lastResult = `You set down ${target}. Your hands have room.`; emit('action', `sets down ${target}`, a.id); }
   } else if (action === 'rest') {
     a.activity = 'resting'; a.busyUntil = Date.now() + 5000; a.lastResult = 'You rested.'; emit('action', 'rests', a.id);
   } else if (action === 'council') {
@@ -227,7 +231,8 @@ const SCRIPT_THOUGHTS = ['What is beyond the trees?', 'This one is sharp.', 'I s
 function scriptedMind(a: SandboxAgent): Decision {
   const r = Math.random(), d: Decision = { thought: pick(SCRIPT_THOUGHTS) };
   if (a.known.length) d.share = [pick(a.known)];
-  if (r < 0.08 && near(a).length >= 2) { d.action = 'council'; d.problem = 'What can we make that none of us has made?'; }
+  if (a.inventory.length >= 6 && Math.random() < 0.5) { d.action = 'drop'; d.target = pick(a.inventory); }
+  else if (r < 0.08 && near(a).length >= 2) { d.action = 'council'; d.problem = 'What can we make that none of us has made?'; }
   else if (r < 0.38) { d.action = 'walk'; d.target = pick([...Object.keys(PLACES), ...agents.filter(o => o !== a).map(o => o.name)]); }
   else if (r < 0.65) d.action = 'gather';
   else if (a.inventory.some(i => substance(chem, i)?.structure)) { d.action = 'build'; d.target = a.inventory.find(i => substance(chem, i)?.structure); }
@@ -242,7 +247,7 @@ const SYSTEM = `You are one inhabitant of a small island. You and seven others w
 Island laws: ${LAWS.join(' ')} Facts pass between minds only when spoken: share the numbers of facts you want nearby listeners to learn.
 A council: when a problem is too big for one mind, you may call the people near you into a council. The council may split the problem into parts, try competing plans side by side, and merge what worked.
 You control only yourself. Each turn reply with ONE JSON object and nothing else:
-{"thought": "<one short private thought>", "say": "<words spoken aloud, or empty>", "share": [<fact numbers to teach listeners>], "action": "walk|gather|combine|strike|build|rest|wait|council", "target": "<place, person or thing>", "with": "<second thing for combine>", "problem": "<for council: the problem>"}
+{"thought": "<one short private thought>", "say": "<words spoken aloud, or empty>", "share": [<fact numbers to teach listeners>], "action": "walk|gather|combine|strike|build|drop|rest|wait|council", "target": "<place, person or thing>", "with": "<second thing for combine>", "problem": "<for council: the problem>"}
 Places: ${Object.keys(PLACES).join(', ')}. Nothing here is like anything you remember: the materials have their own names and ways, and you must learn them by trying.
 Be curious, share what you learn, and call a council when working together would help. Keep words short.`;
 
@@ -401,7 +406,7 @@ setInterval(() => {
   send('state', { tick, running, mindMode, mix, backends: ['scripted', ...available()], calls: stats.total, failed: stats.failed, mindError: stats.lastError, perMin: perMinute(), cap: MIND_CAP + COUNCIL_CAP,
     councilCalls: stats.byPurpose.council ?? 0, facts: facts.length,
     progress: { elements: 6, makeable: chem.substances.filter(x => x.tier > 0).length, found: new Set(agents.flatMap(a => a.made)).size,
-      structures: chem.substances.filter(x => x.structure).length, built: structures.length, councils: councils.length },
+      structures: chem.substances.filter(x => x.structure).length, built: new Set(structures.map(b => b.name)).size, councils: councils.length },
     councils: councils.filter(c => !c.closedAt || Date.now() - c.closedAt < 6000).map(c => ({ id: c.id, chair: c.chair, members: c.members, problem: c.problem, mode: c.mode, open: !c.closedAt, winner: c.winner })),
     agents: agents.map(a => ({ id: a.id, name: a.name, x: a.x, y: a.y, z: a.z, activity: a.activity, thought: a.thought,
       said: Date.now() - a.saidAt < 8000 ? a.said : '', saidAt: a.saidAt, thinking: a.thinking, inventory: a.inventory, known: a.made, facts: a.known.length, knownIds: a.known,

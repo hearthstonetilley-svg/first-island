@@ -186,7 +186,8 @@ export interface IslandScene {
   updateSnapshot(snapshot: Snapshot, timestamp: number): void;
   selectAgent(id: number | undefined): void;
   followAgent(id: number | undefined): void;
-  islandView(): void;
+  /** Whole island; pitch and fill let a page with side panels frame it to its free space. */
+  islandView(pitch?: number, fill?: number): void;
   agentPositions(): ReturnType<AgentFigures['projected']>;
   addStructure(structure: StructureData): void;
   project(x: number, y: number, z: number): { x: number; y: number; visible: boolean };
@@ -508,6 +509,7 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
     renderer.setSize(innerWidth, innerHeight);
   };
   let glide: { target: Vector3; distance: number; pitch: number } | undefined;
+  let lastGlide = 0;
   let insets = { left: 0, right: 0 };
   const applyInsets = () => {
     if (!insets.left && !insets.right) { camera.clearViewOffset(); return; }
@@ -517,8 +519,10 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
     watch.assert();
     const agents = figures.update(performance.now(), time * 0.001);
     if (glide) {
-      target.lerp(glide.target, 0.08); distance += (glide.distance - distance) * 0.08; orbitPitch += (glide.pitch - orbitPitch) * 0.08;
-      if (target.distanceTo(glide.target) < 0.05 && Math.abs(distance - glide.distance) < 0.05) glide = undefined;
+      // Time-based easing: the same glide on a slow machine as on a fast one.
+      const nowMs = performance.now(), k = 1 - Math.exp(-Math.min(1, (nowMs - (lastGlide || nowMs)) / 1000) * 4); lastGlide = nowMs;
+      target.lerp(glide.target, k); distance += (glide.distance - distance) * k; orbitPitch += (glide.pitch - orbitPitch) * k;
+      if (target.distanceTo(glide.target) < 0.05 && Math.abs(distance - glide.distance) < 0.05) { glide = undefined; lastGlide = 0; }
       updateCamera();
     }
     if (followed !== undefined) {
@@ -563,7 +567,12 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
     updateSnapshot: (snapshot, timestamp) => { trees.receive(snapshot); figures.receive(snapshot, timestamp); },
     selectAgent: (id) => { figures.selected = id; },
     followAgent: (id) => { followed = id; glide = undefined; if (id !== undefined) { distance = 12; orbitPitch = 0.45; } },
-    islandView: () => { followed = undefined; glide = undefined; target.copy(islandTarget); distance = islandDistance; orbitYaw = 0.58; orbitPitch = 0.13; updateCamera(); },
+    islandView: (pitch, fill) => {
+      followed = undefined; glide = undefined;
+      if (pitch === undefined) { target.copy(islandTarget); distance = islandDistance; orbitYaw = 0.58; orbitPitch = 0.13; updateCamera(); return; }
+      // Ease to the whole island seen from higher up, scaled to the free part of the screen.
+      glide = { target: islandTarget.clone(), distance: islandDistance * (fill ?? 1), pitch };
+    },
     agentPositions: () => figures.projected(camera),
     waitForGPU: () => watch.run(() => renderer.waitForGPU()), onLost: (listener) => watch.subscribe(listener) };
 }

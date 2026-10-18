@@ -27,7 +27,7 @@ if (!serverLog.includes('sandbox server on')) { console.log(serverLog); try { pr
 await api('/api/control', { cmd: 'start' });
 
 // Watch the stream for the whole run: the carry law must hold at every state.
-const seen = { types: new Set(), maxCarry: 0, states: 0, agents: 0 };
+const seen = { types: new Set(), maxCarry: 0, states: 0, agents: 0, drops: 0 };
 const stream = await fetch(`http://localhost:${PORT}/api/events`);
 const reader = stream.body.getReader();
 let buffer = '';
@@ -41,7 +41,7 @@ let buffer = '';
       if (!data) continue;
       const d = JSON.parse(data);
       if (kind === 'state') { seen.states++; seen.agents = d.agents.length; for (const a of d.agents) if (a.council === null) seen.maxCarry = Math.max(seen.maxCarry, a.inventory.length); }
-      if (kind === 'event') seen.types.add(d.type);
+      if (kind === 'event') { seen.types.add(d.type); if (/^sets down /.test(d.text)) seen.drops++; }
     }
   }
 })().catch(() => {});
@@ -99,14 +99,19 @@ check('camera never goes inside the land', low >= 1.0, `lowest clearance ${low.t
 await page.screenshot({ path: `${OUT}/after-flying.png` });
 
 // An observer council runs the whole torrent: open, split, parts, merge.
-await page.keyboard.press('Escape'); await sleep(1500);
-check('Esc frames the agents', (await info()).mode === 'agents');
+await page.keyboard.press('Escape'); await sleep(5000);
+check('Esc returns to the whole island', (await info()).mode === 'island');
+// The camera never moves by itself in island mode: a council must not pull it.
+const still0 = (await info()).camera;
 await page.click('.card >> nth=0');
 await page.click('.inspector .ask');
 for (let i = 0; i < 30 && !seen.types.has('council_merge'); i++) await sleep(1000);
+const still1 = (await info()).camera;
+check('the camera stays put unless a follow mode is on', Math.hypot(still1.tx - still0.tx, still1.tz - still0.tz) < 0.05, `${Math.hypot(still1.tx - still0.tx, still1.tz - still0.tz).toFixed(3)} units`);
 check('the council card shows the parts', await page.evaluate(() => document.querySelectorAll('.c-parts li').length >= 2));
 check('a council opens, splits and merges', ['council_open', 'council_split', 'council_part', 'council_merge'].every(t => seen.types.has(t)), [...seen.types].filter(t => t.startsWith('council')).join(','));
 await sleep(30000);
+check('agents can set things down', seen.types.has('action') && seen.drops > 0, `${seen.drops} set down`);
 check('the carry law holds (six or fewer)', seen.maxCarry <= 6, `max carried ${seen.maxCarry} over ${seen.states} states`);
 check('knowledge passes between agents', seen.types.has('learn'));
 check('no page errors', errors.length === 0, errors.slice(0, 2).join(' | '));

@@ -15,11 +15,13 @@ app.innerHTML = `
   <canvas class="overlay"></canvas>
   <div class="tags"></div>
   <header class="top">
-    <strong class="title">First Island</strong>
+    <strong class="title">First&nbsp;Island</strong>
     <button class="run">Pause</button>
     <div class="mixer" title="Drag the dividers to share the eight minds between the models your plans connect"><div class="mix-bar"></div><div class="mix-legend"></div></div>
     <span class="sep"></span>
-    <button class="frame" title="Frame the agents (Esc)">Agents</button><button class="overview">Island</button>
+    <div class="cam" role="group" title="Camera. W A S D move, Q E turn, R F zoom, drag to orbit, Esc returns to the island">
+      <button data-cam="island" class="on">Island</button><button data-cam="agents">Follow</button><button data-cam="free">Free</button></div>
+    <button class="toggle-left" title="Show or hide the minds">Minds</button><button class="toggle-right" title="Show or hide usage, council and discoveries">Panels</button>
     <label class="history" title="Show every connection so far, not just live ones"><input type="checkbox"> History</label>
     <span class="sep"></span>
     <div class="progress" title="Things made and structures built"></div>
@@ -41,7 +43,8 @@ let names: string[] = [];
 let island: IslandScene | undefined;
 let state: LiveState | undefined;
 let trees: Snapshot['trees'] = [];
-let selected: number | undefined, following = false, mode: 'agents' | 'island' | 'free' | 'follow' = 'agents';
+let selected: number | undefined, mode: 'agents' | 'island' | 'free' | 'follow' = 'island';
+let showLeft = true, showRight = true;
 const debug = new URLSearchParams(location.search).get('debug') === '1';
 declare global { interface Window { __SANDBOX__?: { camera: { y: number; ground: number; tx: number; tz: number }; tags: number; mode: string } } }
 
@@ -58,18 +61,38 @@ function snapshot(s: LiveState): Snapshot {
 // ---------- camera modes ----------
 function setMode(next: typeof mode) {
   mode = next;
+  app.querySelectorAll<HTMLButtonElement>('[data-cam]').forEach(b => b.classList.toggle('on', b.dataset.cam === next || (next === 'follow' && b.dataset.cam === 'agents' && false)));
   modeLine.textContent = next === 'follow' && selected !== undefined ? `Following ${names[selected]} · Esc to frame everyone`
-    : next === 'free' ? 'Free camera · W A S D · Q E · R F · Esc to frame everyone' : next === 'island' ? 'Whole island' : 'Framing the agents';
+    : next === 'free' ? 'Free camera · W A S D move · Q E turn · R F zoom · Esc for the whole island' : next === 'island' ? 'Whole island · W A S D to fly' : 'Following the agents as they move';
 }
-function frame() { following = false; island?.frameAgents(); setMode('agents'); }
+// The camera only moves on its own in "Follow agents" or when following one agent.
+const insets = () => ({ left: showLeft ? LEFT : 0, right: showRight ? RIGHT : 0 });
+function wholeIsland() {
+ 
+  const { left, right } = insets(), free = Math.max(0.35, (innerWidth - left - right) / innerWidth);
+  island?.setInsets(left, right);
+  island?.islandView(0.5, 0.62 / free);
+  setMode('island');
+}
+let lastGroupFrame = 0;
+function frame() { island?.frameAgents(); lastGroupFrame = performance.now(); setMode('agents'); }
 function select(id: number | undefined) {
   selected = id; island?.selectAgent(id);
   cardEls.forEach((c, i) => c.classList.toggle('selected', i === id));
   renderInspector();
 }
-function follow(id: number) { select(id); following = true; island?.followAgent(id); setMode('follow'); }
-$<HTMLButtonElement>('.frame').onclick = frame;
-$<HTMLButtonElement>('.overview').onclick = () => { following = false; island?.islandView(); setMode('island'); };
+function follow(id: number) { select(id); island?.followAgent(id); setMode('follow'); }
+app.querySelectorAll<HTMLButtonElement>('[data-cam]').forEach(b => b.onclick = () => {
+  if (b.dataset.cam === 'island') wholeIsland(); else if (b.dataset.cam === 'agents') frame(); else { setMode('free'); }
+});
+function applyPanels() {
+  $('.rail.left').classList.toggle('hidden', !showLeft); $('.rail.right').classList.toggle('hidden', !showRight);
+  $('.toggle-left').classList.toggle('on', showLeft); $('.toggle-right').classList.toggle('on', showRight);
+  const { left, right } = insets(); island?.setInsets(left, right);
+  if (mode === 'island') wholeIsland();
+}
+$<HTMLButtonElement>('.toggle-left').onclick = () => { showLeft = !showLeft; applyPanels(); };
+$<HTMLButtonElement>('.toggle-right').onclick = () => { showRight = !showRight; applyPanels(); };
 run.onclick = () => control({ cmd: state?.running ? 'pause' : 'start' });
 history.onchange = () => history.blur();
 app.querySelectorAll('button').forEach(b => b.addEventListener('click', () => b.blur()));
@@ -79,7 +102,7 @@ const held = new Set<string>();
 const CAMERA_KEYS = new Set(['w', 'a', 's', 'd', 'q', 'e', 'r', 'f', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright']);
 addEventListener('keydown', e => {
   const key = e.key.toLowerCase();
-  if (key === 'escape') { frame(); return; }
+  if (key === 'escape') { wholeIsland(); return; }
   if (e.ctrlKey || e.metaKey || e.altKey || !CAMERA_KEYS.has(key)) return;
   if (e.target instanceof HTMLSelectElement) { if (key.startsWith('arrow')) return; e.target.blur(); }
   e.preventDefault();
@@ -96,7 +119,7 @@ function applyKeys(now: number) {
   if (!island || !held.size) return;
   const k = (c: string) => (held.has(c) ? 1 : 0);
   const forward = k('w') + k('arrowup') - k('s') - k('arrowdown'), right = k('d') + k('arrowright') - k('a') - k('arrowleft');
-  if (forward || right || k('q') || k('e') || k('r') || k('f')) { if (mode !== 'free') { following = false; setMode('free'); } }
+  if (forward || right || k('q') || k('e') || k('r') || k('f')) { if (mode !== 'free') { setMode('free'); } }
   if (forward || right) island.move(forward * dt * 60, right * dt * 60);
   if (k('q') || k('e')) island.turn((k('q') - k('e')) * dt * 1.4);
   if (k('r') || k('f')) island.zoom(Math.exp((k('f') - k('r')) * dt * 1.6));
@@ -159,7 +182,7 @@ function drawMixer(counts: number[]) {
       mixBar.append(h);
     }
   });
-  mixLegend.innerHTML = mixOptions.map((o, i) => `<span><i style="background:${MIND_COLOURS[o]}"></i>${MIND_LABELS[o] ?? o} ${counts[i]} <small>${MIND_PLAN[o] ?? ''}</small></span>`).join('');
+  mixLegend.innerHTML = mixOptions.map((o, i) => `<span title="${MIND_PLAN[o] ?? ''}"><i style="background:${MIND_COLOURS[o]}"></i>${MIND_LABELS[o] ?? o} ${counts[i]}</span>`).join('');
 }
 mixBar.addEventListener('pointerdown', e => {
   const t = e.target as HTMLElement; if (!t.classList.contains('handle') || !state) return;
@@ -247,7 +270,9 @@ function renderCouncil() {
   }
   body.querySelector('.c-merge')!.textContent = c.merge ?? '';
 }
+const findSeen = new Set<number>();
 function addFind(e: FeedEvent) {
+  if (findSeen.has(e.seq)) return; findSeen.add(e.seq);
   const li = document.createElement('li');
   li.innerHTML = `<b style="color:${COLOURS[e.agent ?? 0]}"></b> <span></span>`;
   li.querySelector('b')!.textContent = names[e.agent ?? 0]; li.querySelector('span')!.textContent = e.text.replace(/^DISCOVERS /, 'found ').replace(/^BUILDS /, 'built ');
@@ -290,7 +315,7 @@ function onEvent(e: FeedEvent, live = true) {
   if (e.type === 'learn') for (const to of e.to ?? []) packets.push({ from: agent, to, at: now, colour: LEARN, size: 5, ms: 1600 });
   if (e.type === 'council_split') ((e.data?.parts as Array<{ agent: number }>) ?? []).forEach((p, i) => { if (p.agent !== agent) packets.push({ from: agent, to: p.agent, at: now + i * 120, colour: GOLD, size: 7, ms: 1800 }); });
   if (e.type === 'council_part' && e.to?.[0] !== undefined && e.to[0] !== agent) packets.push({ from: agent, to: e.to[0], at: now, colour: e.data?.made ? GOLD : '#9aa8b2', size: e.data?.made ? 9 : 6, ms: 1600 });
-  if (e.type === 'council_open') { const members = (e.data?.members as number[]) ?? []; if (!following && mode !== 'free') island?.frameAgents(members); }
+
 }
 
 // ---------- drawing: tags with leader lines, packets, rings ----------
@@ -310,7 +335,7 @@ function draw(positions: Map<number, { x: number; y: number; visible: boolean }>
     let t = tagEls.get(a.id);
     if (!t) { t = document.createElement('div'); t.className = 'tag'; t.style.setProperty('--c', COLOURS[a.id]); t.onclick = () => select(a.id); t.ondblclick = () => follow(a.id); tags.append(t); tagEls.set(a.id, t); }
     const p = positions.get(a.id);
-    t.hidden = !p?.visible || p.x < LEFT || p.x > innerWidth - RIGHT; if (t.hidden || !p) continue;
+    t.hidden = !p?.visible || p.x < insets().left || p.x > innerWidth - insets().right; if (t.hidden || !p) continue;
     t.textContent = a.name; t.classList.toggle('selected', selected === a.id); t.classList.toggle('thinking', a.thinking);
     const w = t.offsetWidth || 50, h = t.offsetHeight || 18;
     let top = p.y - h - 14, left = p.x - w / 2;
@@ -361,15 +386,16 @@ connect({
     island = await createIslandScene(canvas, world, new URLSearchParams(location.search).get('renderer') === 'webgl2',
       { onSelect: id => select(id), snapshot: state ? snapshot(state) : undefined, figureScale: 2.2, agentColours: COLOURS });
     island.setInsets(LEFT, RIGHT);
+    applyPanels(); wholeIsland();
     if (state) island.updateSnapshot(snapshot(state), performance.now());
     ((h as unknown as { structures?: never[] }).structures ?? []).forEach(b => island!.addStructure(b));
-    setTimeout(frame, 300);
     status.hidden = true; refreshMeters();
-    addEventListener('resize', () => island?.resize());
+    addEventListener('resize', () => { island?.resize(); if (mode === 'island') wholeIsland(); });
     let startTime: number | undefined;
     const tick = (time: number) => {
       startTime ??= time;
       applyKeys(performance.now());
+      if (mode === 'agents' && performance.now() - lastGroupFrame > 2500) { island!.frameAgents(); lastGroupFrame = performance.now(); }
       island!.render(time - startTime);
       const positions = new Map(island!.agentPositions().map(p => [p.id, p]));
       const shown = draw(positions, performance.now());
@@ -394,4 +420,4 @@ connect({
   event: e => onEvent(e),
   down() { status.hidden = false; status.textContent = 'Lost the island server. Is it running?'; },
 });
-setMode('agents');
+setMode('island');
