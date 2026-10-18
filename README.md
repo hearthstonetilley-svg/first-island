@@ -44,6 +44,7 @@ as much about how the world gets built as about the world itself.
 | v0.3.0 | Round 8, accepted: shaders warmed before the first frame, adaptive quality, staged loading screen; build eval 5/5 on WebGL2, WebGPU device-lost bug outstanding ([review](docs/reviews/v0.3.0.md)) |
 | v0.3.1 | Round 9, accepted: a lost WebGPU device now rebuilds on WebGL2 without reloading; build eval 10/10 in both modes ([review](docs/reviews/v0.3.1.md)) |
 | v0.3.2 | Round 10, accepted: the loader measures real play frames and quality steps back up; owner confirmed on real WebGPU hardware ([review](docs/reviews/v0.3.2.md)) |
+| v0.4.0 | Round 11, accepted: stage 3a, the simulation clock in a worker with an event log and exact replay; deterministic across processes ([review](docs/reviews/v0.4.0.md)) |
 
 ## Run it
 
