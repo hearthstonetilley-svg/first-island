@@ -91,4 +91,6 @@ canvas.overlay, .tags { pointer-events: none; }
 .find-list li.skill span { color: #c49bff; }
 .top .fps { position: static; padding: 3px 8px; border: 1px solid var(--line); border-radius: 10px; background: none; box-shadow: none; font-size: 11.5px; color: var(--muted); opacity: 1; }
 .top .fps.slow { color: #ffb347; border-color: #ffb347; }
-#app.is-loading > .top, #app.is-loading > .rail, #app.is-loading > .mode { opacity: 0; }
+#app.is-loading > .top, #app.is-loading > .rail, #app.is-loading > .mode, #app.is-loading > .tags, #app.is-loading > canvas.overlay { opacity: 0; pointer-events: none; }
+.top, .rail, .mode { transition: opacity .4s ease; }
+@media (prefers-reduced-motion: reduce) { .top, .rail, .mode { transition: none; } }

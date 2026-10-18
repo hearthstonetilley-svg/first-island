@@ -260,6 +260,13 @@ let mix: Mind[] = NAMES.map(() => mindMode);
 const mindOf = (a: SandboxAgent): Mind => mix[a.id] ?? 'scripted';
 let running = false;
 let inFlight = 0;
+// One limit for every model call, minds and councils alike.
+const MAX_IN_FLIGHT = Number(process.env.MAX_IN_FLIGHT ?? 3);
+const waitForSlot = async (): Promise<boolean> => {
+  for (let i = 0; i < 600; i++) { if (!running || viewers.size === 0) return false; if (inFlight < MAX_IN_FLIGHT) { inFlight++; return true; } await new Promise(r => setTimeout(r, 100)); }
+  return false;
+};
+const canSpend = () => running && viewers.size > 0;
 const mindCalls: number[] = [], councilCalls: number[] = [];
 const within = (xs: number[], cap: number) => { const now = Date.now(); while (xs.length && now - xs[0] > 60000) xs.shift(); return xs.length < cap; };
 const pick = <T,>(xs: T[]) => xs[Math.floor(Math.random() * xs.length)];
@@ -311,7 +318,7 @@ async function think(a: SandboxAgent) {
   try {
     let d: Decision;
     const m = mindOf(a);
-    if (m !== 'scripted' && within(mindCalls, MIND_CAP)) {
+    if (m !== 'scripted' && within(mindCalls, MIND_CAP) && inFlight < MAX_IN_FLIGHT && canSpend()) {
       mindCalls.push(Date.now()); inFlight++;
       try { d = await callModel(m, SYSTEM, prompt(a), 'mind') as Decision; } catch { d = scriptedMind(a); } finally { inFlight--; }
     } else d = scriptedMind(a);
@@ -344,7 +351,7 @@ function scheduleMinds() {
   const now = Date.now();
   const ready = agents.filter(a => !a.thinking && !a.running && a.council === null && !a.path.length && now >= a.busyUntil && now >= a.nextThink)
     .sort((x, y) => x.nextThink - y.nextThink);
-  for (const a of ready) { if (mindOf(a) !== 'scripted' && inFlight >= CONCURRENCY) continue; void think(a); }
+  for (const a of ready) { if (mindOf(a) !== 'scripted' && inFlight >= MAX_IN_FLIGHT) continue; void think(a); }
 }
 
 // ---------- councils: the torrent ----------
@@ -353,9 +360,11 @@ interface CouncilRecord { id: number; chair: number; members: number[]; problem:
 let councils: CouncilRecord[] = [];
 async function councilCall(system: string, user: string, rec: CouncilRecord, fallback: () => Record<string, unknown>, who?: SandboxAgent): Promise<Record<string, unknown>> {
   const m = who ? mindOf(who) : mindOf(agents[rec.chair]);
-  if (m === 'scripted' || !within(councilCalls, COUNCIL_CAP)) return fallback();
+  // Pause or an empty room stops the council spending: it falls back without a call.
+  if (m === 'scripted' || !canSpend() || !within(councilCalls, COUNCIL_CAP)) return fallback();
+  if (!(await waitForSlot())) return fallback();
   councilCalls.push(Date.now()); rec.calls++;
-  try { return await callModel(m, system, user, 'council'); } catch { return fallback(); }
+  try { return await callModel(m, system, user, 'council'); } catch { return fallback(); } finally { inFlight--; }
 }
 const COUNCIL_SYSTEM = `You are inhabitants of a small island holding a council. Island laws: ${LAWS.join(' ')}
 The materials have their own names; use them exactly. Reply with ONE JSON object and nothing else.`;
@@ -394,7 +403,7 @@ async function council(chair: SandboxAgent, problem: string, observer = false) {
     const results = await Promise.all(parts.map(async (p, i) => {
       const dealt = hands[i];
       const mine = dealt.map(d => d.item);
-      const answer = await councilCall(COUNCIL_SYSTEM, [`You are ${p.agent.name} in a council chaired by ${chair.name}. Problem: ${rec.problem}`,
+      const answer = mine.length < 2 ? { finding: 'too few items to try anything', try: {} } : await councilCall(COUNCIL_SYSTEM, [`You are ${p.agent.name} in a council chaired by ${chair.name}. Problem: ${rec.problem}`,
         `Your part (${rec.mode}): ${p.task}`, `Items dealt to you for this part: ${mine.join(', ') || 'none'}.`, `Facts the council knows: ${factList(pooled)}.`,
         mine.length >= 2 ? 'Pick one pair from your items to combine for your part, avoiding pairs already known to make nothing.' : 'You have too few items to combine; report what the council should do next.',
         'Reply: {"finding": "<one short line>", "try": {"a": "<item>", "b": "<item>"}}'].join('\n'), rec,
@@ -435,7 +444,7 @@ async function council(chair: SandboxAgent, problem: string, observer = false) {
 function save() {
   try {
     mkdirSync(STATE_DIR, { recursive: true });
-    const data = { version: 2, seed: SEED, facts, seq, structures, mix, skills: [...skills.values()], events: events.slice(-400), councils: councils.slice(-100),
+    const data = { version: 2, seed: SEED, running, facts, seq, structures, mix, skills: [...skills.values()], events: events.slice(-400), councils: councils.slice(-100),
       agents: agents.map(a => ({ ...a, path: [], thinking: false, council: null, running: null })) };
     writeFileSync(STATE_FILE + '.tmp', JSON.stringify(data)); renameSync(STATE_FILE + '.tmp', STATE_FILE);
   } catch (err) { console.error('save failed', (err as Error).message); }
@@ -444,7 +453,7 @@ function load() {
   try {
     const data = JSON.parse(readFileSync(STATE_FILE, 'utf8'));
     if (data.version !== 2 || data.seed !== SEED) return;
-    structures = data.structures ?? []; if (Array.isArray(data.mix)) mix = data.mix;
+    structures = data.structures ?? []; if (Array.isArray(data.mix)) mix = data.mix; if (typeof data.running === 'boolean') running = data.running;
     for (const k of data.skills ?? []) skills.set(k.name, k);
     facts.push(...data.facts); seq = data.seq; events = data.events; councils = data.councils ?? [];
     agents = data.agents.map((a: SandboxAgent) => ({ ...a, nextThink: Date.now() + 1000 + a.id * 500, busyUntil: 0 }));
@@ -527,7 +536,7 @@ function claudeMeter(): unknown {
 }
 function usage() {
   return { codex: codexMeter(), claude: claudeMeter(),
-    island: { byBackend: stats.byBackend, calls: stats.total, failed: stats.failed, costUsd: stats.costUsd, inputTokens: stats.inputTokens, outputTokens: stats.outputTokens,
+    island: { byBackend: stats.byBackend, codexCostMeasured: false, calls: stats.total, failed: stats.failed, costUsd: stats.costUsd, inputTokens: stats.inputTokens, outputTokens: stats.outputTokens,
       perMinute: perMinute(), cap: MIND_CAP + COUNCIL_CAP, byPurpose: stats.byPurpose } };
 }
 

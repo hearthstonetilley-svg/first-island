@@ -18,7 +18,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const shot = (pg, path) => pg.screenshot({ path, timeout: 120000 }).catch(e => console.log(`screenshot skipped: ${path} (${String(e.message).split('\n')[0]})`));
 
 const server = spawn('npx', ['vite-node', 'server/sandbox.ts'], { stdio: ['ignore', 'pipe', 'pipe'], detached: true,
-  env: { ...process.env, SANDBOX_PORT: String(PORT), SANDBOX_FRESH: '1', MIND_MODE: 'scripted', SANDBOX_STATE_DIR: mkdtempSync(join(tmpdir(), 'sandbox-eval-')) } });
+  env: { ...process.env, SANDBOX_PORT: String(PORT), SANDBOX_FRESH: '1', MIND_MODE: 'scripted', SANDBOX_STATE_DIR: mkdtempSync(join(tmpdir(), 'sandbox-eval-')),
+    // The eval must never spend: both call caps are zero, whatever the mixer is set to.
+    MAX_CALLS_PER_MIN: '0', COUNCIL_CALLS_PER_MIN: '0' } });
 let serverLog = ''; server.stdout.on('data', c => { serverLog += c; }); server.stderr.on('data', c => { serverLog += c; });
 process.env.SANDBOX_PORT = String(PORT);
 const vite = await createServer({ server: { port: WEB, strictPort: true }, logLevel: 'silent' });
@@ -30,7 +32,7 @@ if (!serverLog.includes('sandbox server on')) { console.log(serverLog); try { pr
 await api('/api/control', { cmd: 'start' });
 
 // Watch the stream for the whole run: the carry law must hold at every state.
-const seen = { types: new Set(), maxCarry: 0, states: 0, agents: 0, drops: 0 };
+const seen = { types: new Set(), maxCarry: 0, states: 0, agents: 0, drops: 0, actions: 0 };
 const stream = await fetch(`http://localhost:${PORT}/api/events`);
 const reader = stream.body.getReader();
 let buffer = '';
@@ -44,7 +46,7 @@ let buffer = '';
       if (!data) continue;
       const d = JSON.parse(data);
       if (kind === 'state') { seen.states++; seen.agents = d.agents.length; for (const a of d.agents) if (a.council === null) seen.maxCarry = Math.max(seen.maxCarry, a.inventory.length); }
-      if (kind === 'event') { seen.types.add(d.type); if (/^sets down /.test(d.text)) seen.drops++; }
+      if (kind === 'event') { seen.types.add(d.type); if (/^sets down /.test(d.text)) seen.drops++; if (['action', 'result', 'thought', 'say'].includes(d.type)) seen.actions++; }
     }
   }
 })().catch(() => {});
@@ -60,10 +62,11 @@ check('loading screen finishes', ['complete', 'limited', 'gone'].includes(loadSt
 if (loadState === 'limited') await page.click('.loading-action').catch(() => {});
 await page.waitForFunction(() => window.__SANDBOX__?.entered, null, { timeout: 30000 }).catch(() => {});
 await sleep(2000);
-const info = () => page.evaluate(() => { const d = window.__SANDBOX__; return d && { camera: d.camera, tags: d.tags, mode: d.mode, entered: d.entered }; });
+const info = () => page.evaluate(() => { const d = window.__SANDBOX__; return d && { camera: d.camera, tags: d.tags, mode: d.mode, entered: d.entered, qualitySamples: d.qualitySamples }; });
 check('island page renders', !!(await info()), errors[0] ?? '');
 const perf = await page.evaluate(() => ({ text: document.querySelector('.top .fps')?.textContent ?? '', q: window.__SANDBOX__?.quality, fps: window.__SANDBOX__?.fps }));
-check('frame-rate readout and adaptive quality are live', /\d+ fps/.test(perf.text) && ['high', 'balanced', 'low'].includes(perf.q), `${perf.text}`);
+const q0 = (await info()).qualitySamples; await sleep(3000); const q1 = (await info()).qualitySamples;
+check('frame-rate readout shows and adaptive quality keeps sampling after entry', /\d+ fps/.test(perf.text) && ['high', 'balanced', 'low'].includes(perf.q) && q1 > q0, `${perf.text}; samples ${q0} to ${q1}`);
 check('eight named boxes', (await page.locator('.card').count()) === 8);
 const fit = await page.evaluate(() => [...document.querySelectorAll('.card')].every(c => c.getBoundingClientRect().bottom <= innerHeight));
 check('all eight boxes fit on screen', fit);
@@ -112,6 +115,19 @@ await shot(page, `${OUT}/after-flying.png`);
 // An observer council runs the whole torrent: open, split, parts, merge.
 await page.keyboard.press('Escape'); await sleep(5000);
 check('Esc returns to the whole island', (await info()).mode === 'island');
+// Camera ownership: follow an agent, press Free, and the whole pose must stay put while agents move.
+await page.click('.card >> nth=1'); await page.click('.inspector .follow'); await sleep(3000);
+await page.click('[data-cam="free"]'); await sleep(800);
+const pose0 = (await info()).camera; await sleep(6000); const pose1 = (await info()).camera;
+const poseMoved = Math.max(...['tx', 'tz', 'yaw', 'pitch', 'distance'].map(k => Math.abs(pose1[k] - pose0[k])));
+check('Free stops a follow: the camera pose holds while agents move', poseMoved < 1e-3, `largest change ${poseMoved.toExponential(1)}`);
+// Taking the camera by hand ends a follow too.
+await page.click('.inspector .follow'); await sleep(1500);
+const cv = await page.locator('canvas').first().boundingBox();
+await page.mouse.move(cv.x + cv.width / 2, cv.y + cv.height / 2); await page.mouse.down();
+await page.mouse.move(cv.x + cv.width / 2 + 80, cv.y + cv.height / 2 + 10, { steps: 5 }); await page.mouse.up(); await sleep(800);
+check('dragging the view ends a follow', (await info()).mode === 'free', (await info()).mode);
+await page.keyboard.press('Escape'); await sleep(3000);
 // The camera never moves by itself in island mode: a council must not pull it.
 const still0 = (await info()).camera;
 await page.click('.card >> nth=0');
@@ -127,6 +143,13 @@ check('the carry law holds (six or fewer)', seen.maxCarry <= 6, `max carried ${s
 check('knowledge passes between agents', seen.types.has('learn'));
 check('agents write and run skills', seen.types.has('skill_written') && seen.types.has('skill_run'), [...seen.types].filter(t => t.startsWith('skill') || t === 'learn_skill').join(','));
 check('no page errors', errors.length === 0, errors.slice(0, 2).join(' | '));
+const spent = await (await api('/api/usage')).json();
+check('the eval spent nothing (zero model calls)', spent.island.calls === 0, `${spent.island.calls} calls`);
+// Pause stops everything: no new actions while paused.
+await api('/api/control', { cmd: 'pause' }); await sleep(1500);
+const before = seen.actions; await sleep(6000);
+check('Pause stops the agents', seen.actions === before, `${seen.actions - before} actions while paused`);
+await api('/api/control', { cmd: 'start' });
 
 const web = await browser.newPage({ viewport: { width: 1200, height: 800 } });
 await web.goto(`http://localhost:${WEB}/web.html`); await sleep(6000);

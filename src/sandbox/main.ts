@@ -15,6 +15,8 @@ import { COLOURS, connect, control, FeedEvent, GOLD, LEARN, LiveState, MIND_COLO
 // the live council and the discoveries so far.
 const LEFT = 316, RIGHT = 312;
 const app = document.querySelector<HTMLDivElement>('#app')!;
+// Hidden chrome until the island is ready: the toolbar must not appear, vanish, then reappear.
+app.classList.add('is-loading');
 app.innerHTML = `
   <canvas></canvas>
   <canvas class="overlay"></canvas>
@@ -53,7 +55,7 @@ let trees: Snapshot['trees'] = [];
 let selected: number | undefined, mode: 'agents' | 'island' | 'free' | 'follow' = 'island';
 let showLeft = true, showRight = true;
 const debug = new URLSearchParams(location.search).get('debug') === '1';
-declare global { interface Window { __SANDBOX__?: { camera: { y: number; ground: number; tx: number; tz: number }; tags: number; mode: string; fps: number; quality: string; entered: boolean } } }
+declare global { interface Window { __SANDBOX__?: { camera: { y: number; ground: number; tx: number; tz: number; yaw: number; pitch: number; distance: number }; tags: number; mode: string; fps: number; quality: string; entered: boolean; qualitySamples: number } } }
 
 const activity = (a: string): Activity => (['wandering', 'seeking food', 'eating', 'resting', 'seeking cover', 'socialising'].includes(a) ? a : 'wandering') as Activity;
 function snapshot(s: LiveState): Snapshot {
@@ -90,7 +92,7 @@ function select(id: number | undefined) {
 }
 function follow(id: number) { select(id); island?.followAgent(id); setMode('follow'); }
 app.querySelectorAll<HTMLButtonElement>('[data-cam]').forEach(b => b.onclick = () => {
-  if (b.dataset.cam === 'island') wholeIsland(); else if (b.dataset.cam === 'agents') frame(); else { setMode('free'); }
+  if (b.dataset.cam === 'island') wholeIsland(); else if (b.dataset.cam === 'agents') frame(); else { island?.cancelAutomaticCamera(); setMode('free'); }
 });
 function applyPanels() {
   $('.rail.left').classList.toggle('hidden', !showLeft); $('.rail.right').classList.toggle('hidden', !showRight);
@@ -135,7 +137,7 @@ function applyKeys(now: number) {
 // ---------- the eight minds ----------
 const cardEls: HTMLDivElement[] = [];
 const recent = new Map<number, FeedEvent[]>();
-const latest = new Map<number, { thought: string; said: string; saidAt: number }>();
+const latest = new Map<number, { thought: string; said: string; saidAt: number; seq: number }>();
 function ensureCards() {
   names.forEach((name, i) => {
     if (cardEls[i]) return;
@@ -148,8 +150,11 @@ function ensureCards() {
     cards.append(c); cardEls[i] = c;
   });
 }
-function land(agent: number, kind: 'thought' | 'say', text: string, t: number) {
-  const l = latest.get(agent) ?? { thought: '', said: '', saidAt: 0 };
+function land(agent: number, kind: 'thought' | 'say', text: string, t: number, seq = 0) {
+  const l = latest.get(agent) ?? { thought: '', said: '', saidAt: 0, seq: 0 };
+  // Never let an older thought overwrite a newer one, however frames fall.
+  if (seq && seq < l.seq) return;
+  if (seq) l.seq = seq;
   if (kind === 'thought') l.thought = text; else { l.said = text; l.saidAt = t; }
   latest.set(agent, l);
   const c = cardEls[agent]; if (!c) return;
@@ -255,7 +260,7 @@ async function refreshMeters() {
         bar('Claude 5-hour', u.claude.fiveHourPercent, `${u.claude.fiveHourResetsAt ? `resets ${fmtTime(u.claude.fiveHourResetsAt)} · ` : ''}as of ${fmtAgo(u.claude.asOf)}`),
         bar('Claude weekly', u.claude.sevenDayPercent, `${u.claude.sevenDayResetsAt ? `resets ${fmtTime(u.claude.sevenDayResetsAt)} · ` : ''}as of ${fmtAgo(u.claude.asOf)}`),
       ] : [bar('Claude plan', undefined, 'not connected: needs the status line hook')]),
-      bar('This island', (u.island.perMinute / u.island.cap) * 100, `${u.island.calls} calls · $${u.island.costUsd.toFixed(3)} · ${(u.island.inputTokens / 1000).toFixed(0)}k in / ${(u.island.outputTokens / 1000).toFixed(1)}k out · ${u.island.perMinute}/${u.island.cap} per min`),
+      bar('This island', (u.island.perMinute / u.island.cap) * 100, `${u.island.calls} calls · Claude $${u.island.costUsd.toFixed(3)}, ${(u.island.inputTokens / 1000).toFixed(0)}k in / ${(u.island.outputTokens / 1000).toFixed(1)}k out${(u.island.byBackend.luna ?? 0) + (u.island.byBackend.sol ?? 0) ? ` · Codex ${(u.island.byBackend.luna ?? 0) + (u.island.byBackend.sol ?? 0)} calls, cost not measured` : ''} · ${u.island.perMinute}/${u.island.cap} per min`),
     ].join('');
   } catch { /* server down */ }
 }
@@ -277,6 +282,8 @@ function renderCouncil() {
   body.querySelector('.c-merge')!.textContent = c.merge ?? '';
 }
 const findSeen = new Set<number>();
+// Everything built so far, kept here so a graphics recovery can rebuild all of it.
+const builtMap = new Map<number, never>();
 function addFind(e: FeedEvent) {
   if (findSeen.has(e.seq)) return; findSeen.add(e.seq);
   const li = document.createElement('li');
@@ -291,6 +298,7 @@ function addFind(e: FeedEvent) {
 const strands = new Map<string, { a: number; b: number; count: number; last: number; kind: 'chat' | 'learn' }>();
 type Packet = { from: number; to: number | 'card'; at: number; colour: string; size: number; ms: number; land?: () => void };
 const packets: Packet[] = [];
+const MAX_PACKETS = 200;
 const queueEnd = new Map<number, number>();
 function onEvent(e: FeedEvent, live = true) {
   if (e.agent === undefined) return;
@@ -309,20 +317,22 @@ function onEvent(e: FeedEvent, live = true) {
     renderCouncil();
   }
   if (e.type === 'discovery' || e.type === 'built' || e.type === 'skill_written') addFind(e);
-  if (e.type === 'built' && live) island?.addStructure(e.data?.structure as never);
-  if (!live) { if (e.type === 'thought' || e.type === 'say') land(agent, e.type, e.text, e.t); return; }
+  if (e.type === 'built' && e.data?.structure) { const b = e.data.structure as { id: number }; builtMap.set(b.id, b as never); island?.addStructure(b as never); }
+  if (!live) { if (e.type === 'thought' || e.type === 'say') land(agent, e.type, e.text, e.t, e.seq); return; }
   const now = performance.now();
   if (e.type === 'thought' || e.type === 'say') {
     // Thoughts leave the agent in order and land in its box; the text appears on arrival.
     const start = Math.max(now, queueEnd.get(agent) ?? 0); queueEnd.set(agent, start + 700);
     const k = e.type;
-    packets.push({ from: agent, to: 'card', at: start, colour: k === 'say' ? '#ffffff' : COLOURS[agent], size: 5, ms: 700, land: () => land(agent, k, e.text, e.t) });
+    packets.push({ from: agent, to: 'card', at: start, colour: k === 'say' ? '#ffffff' : COLOURS[agent], size: 5, ms: 700, land: () => land(agent, k, e.text, e.t, e.seq) });
   }
   if (e.type === 'say') for (const to of e.to ?? []) packets.push({ from: agent, to, at: now, colour: COLOURS[agent], size: 3, ms: 1200 });
   if (e.type === 'learn') for (const to of e.to ?? []) packets.push({ from: agent, to, at: now, colour: LEARN, size: 5, ms: 1600 });
   if (e.type === 'learn_skill') for (const to of e.to ?? []) packets.push({ from: agent, to, at: now, colour: SKILL, size: 7, ms: 1800 });
   if (e.type === 'council_split') ((e.data?.parts as Array<{ agent: number }>) ?? []).forEach((p, i) => { if (p.agent !== agent) packets.push({ from: agent, to: p.agent, at: now + i * 120, colour: GOLD, size: 7, ms: 1800 }); });
   if (e.type === 'council_part' && e.to?.[0] !== undefined && e.to[0] !== agent) packets.push({ from: agent, to: e.to[0], at: now, colour: e.data?.made ? GOLD : '#9aa8b2', size: e.data?.made ? 9 : 6, ms: 1600 });
+  // Bound the queue: drop the oldest decorative packets first, never a thought on its way to a box.
+  while (packets.length > MAX_PACKETS) { const k = packets.findIndex(f => !f.land); if (k < 0) break; packets.splice(k, 1); }
 
 }
 
@@ -373,11 +383,16 @@ function draw(positions: Map<number, { x: number; y: number; visible: boolean }>
       ctx.beginPath(); ctx.ellipse(p.x, p.y + 4, 16, 6, 0, 0, Math.PI * 2); ctx.stroke();
     }
   }
+  // Card positions are read once per frame, not once per packet.
+  const cardAt = cardEls.map(c => { const r = c.getBoundingClientRect(); return { x: r.right - 8, y: r.top + 16 }; });
+  // Packets that have arrived land oldest first, so a slow frame cannot reorder thoughts.
+  const arrived = packets.filter(f => (now - f.at) / f.ms >= 1).sort((x, y) => x.at - y.at);
+  for (const f of arrived) { packets.splice(packets.indexOf(f), 1); f.land?.(); }
   for (let i = packets.length - 1; i >= 0; i--) {
     const f = packets[i], t = (now - f.at) / f.ms; if (t < 0) continue;
     const p = positions.get(f.from);
     let q: { x: number; y: number } | undefined;
-    if (f.to === 'card') { const r = cardEls[f.from]?.getBoundingClientRect(); q = r && { x: r.right - 8, y: r.top + 16 }; }
+    if (f.to === 'card') q = cardAt[f.from];
     else { const v = positions.get(f.to); q = v?.visible ? v : undefined; }
     if (t >= 1 || !p || !q) { packets.splice(i, 1); f.land?.(); continue; }
     if (f.to === 'card' && !p.visible) { packets.splice(i, 1); f.land?.(); continue; }
@@ -400,7 +415,11 @@ const fpsLine = $('.fps'), notice = $('.graphics-notice');
 let controller: SceneRecovery<IslandScene> | undefined;
 let loading: LoadingScreen | undefined;
 let generation = 0, frameRequest = 0;
+let everEntered = false, islandSeed = 1, qualitySamples = 0;
+let savedPose: ReturnType<IslandScene['getPose']> | undefined;
 async function startIsland(seed: number, built: never[]) {
+  islandSeed = seed;
+  for (const b of built) builtMap.set((b as { id: number }).id, b);
   status.hidden = true;
   app.classList.add('is-loading');
   loading = new LoadingScreen(app, seed);
@@ -414,34 +433,53 @@ async function startIsland(seed: number, built: never[]) {
     controller = new SceneRecovery(force => createIslandScene(app.querySelector('canvas')!, world, force, {
       postEnabled, pixelRatio, onProgress: progress, onFallback: () => { notice.textContent = 'Graphics interrupted · switching to WebGL2'; notice.hidden = false; },
       snapshot: state ? snapshot(state) : undefined, onSelect: id => select(id), figureScale: 2.2, agentColours: COLOURS,
-    }), forceWebGL2, () => { island = undefined; generation++; cancelAnimationFrame(frameRequest); },
+      onManualCamera: () => setMode('free'),
+    }), forceWebGL2, () => {
+      // A scene is going away (startup or a lost device): remember the view, stop its loop,
+      // and make sure there is a live loading screen for the replacement to report to.
+      if (island) savedPose = island.getPose();
+      island = undefined; generation++; cancelAnimationFrame(frameRequest);
+      if (!loading?.element.isConnected || ['complete', 'error', 'limited'].includes(loading.element.dataset.state ?? '')) {
+        loading?.element.remove(); loading = new LoadingScreen(app, islandSeed);
+        if (everEntered) loading.element.classList.add('is-recovering');
+      }
+    },
     () => { notice.textContent = 'Graphics interrupted · switching to WebGL2'; notice.hidden = false; },
-    scene => { void runIsland(scene, built).catch(err => { void controller?.reportFailure(scene, err); }); },
+    scene => { void runIsland(scene).catch(err => { void controller?.reportFailure(scene, err); }); },
     err => { loading?.fail(err instanceof Error ? err.message : 'Graphics unavailable. Reload to retry.'); });
     await controller.start();
   } catch (err) { loading?.fail(err instanceof Error ? err.message : 'Graphics unavailable. Reload to retry.'); }
 }
-async function runIsland(scene: IslandScene, built: never[]) {
+async function runIsland(scene: IslandScene) {
   island = scene;
   const token = generation, active = () => token === generation;
   if (state) scene.updateSnapshot(snapshot(state), performance.now());
-  built.forEach(b => scene.addStructure(b));
-  applyPanels(); wholeIsland();
+  builtMap.forEach(b => scene.addStructure(b));
+  applyPanels();
+  if (savedPose) { scene.setPose(savedPose); savedPose = undefined; if (mode === 'follow' && selected !== undefined) scene.followAgent(selected); }
+  else wholeIsland();
   const quality = new AdaptiveQuality(pixelRatio, postEnabled), readiness = new ReadinessGate();
   let entered = false, playing = false, start: number | undefined, previous: number | undefined, smoothed: number | undefined, lastHud = 0;
   const enter = () => {
     if (entered || !active()) return;
-    entered = true; app.classList.remove('is-loading');
+    entered = true; everEntered = true; app.classList.remove('is-loading');
     void loading?.finish().then(() => { if (active()) { quality.reset(); playing = true; } });
   };
   addEventListener('resize', () => { if (active()) { scene.resize(); quality.reset(); readiness.reset(); if (mode === 'island') wholeIsland(); } });
-  await loading?.update({ stage: 'settling', message: 'Checking frame rate', percent: 92 });
-  app.classList.add('is-measuring'); loading?.measure();
+  if (everEntered) {
+    // Recovering after the owner was already in: no second gate, quality adapts at once.
+    entered = true; playing = true; app.classList.remove('is-loading', 'is-measuring');
+    void loading?.finish(); notice.textContent = `Graphics restored · ${scene.label}`; setTimeout(() => { notice.hidden = true; }, 5000);
+  } else {
+    loading?.update({ stage: 'settling', message: 'Checking frame rate', percent: 92 });
+    app.classList.add('is-measuring'); loading?.measure();
+  }
   const tick = (time: number) => {
     if (!active()) return;
     const frameTime = previous === undefined ? undefined : Math.max(0.1, time - previous); previous = time;
     if (frameTime !== undefined) smoothed = smoothed === undefined ? frameTime : smoothed * 0.9 + frameTime * 0.1;
     const change = quality.sample(time, playing);
+    if (playing) qualitySamples++;
     if (change) { scene.setQuality(change); readiness.reset(); }
     if (!entered) {
       const r = readiness.sample(time);
@@ -457,7 +495,7 @@ async function runIsland(scene: IslandScene, built: never[]) {
       fpsLine.textContent = `${(1000 / smoothed).toFixed(0)} fps · ${smoothed.toFixed(1)} ms · ${quality.level} · ${scene.label}`;
       fpsLine.classList.toggle('slow', smoothed > 33); lastHud = time;
     }
-    if (debug) window.__SANDBOX__ = { get camera() { return scene.cameraInfo(); }, tags: shown, mode, fps: smoothed ? 1000 / smoothed : 0, quality: quality.level, entered };
+    if (debug) window.__SANDBOX__ = { get camera() { return scene.cameraInfo(); }, tags: shown, mode, fps: smoothed ? 1000 / smoothed : 0, quality: quality.level, entered, qualitySamples };
     frameRequest = requestAnimationFrame(t => { try { tick(t); } catch (err) { void controller?.reportFailure(scene, err); } });
   };
   frameRequest = requestAnimationFrame(tick);
