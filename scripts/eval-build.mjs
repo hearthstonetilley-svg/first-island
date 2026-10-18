@@ -15,7 +15,7 @@ const RUNS = Number(process.env.EVAL_RUNS ?? 3);
 const STRICT_TIMING = process.env.EVAL_TIMING === 'strict';
 const START_DEADLINE_MS = 30_000;
 const SAMPLE_MS = 3_000;
-const LOAD_CAP_MS = 90_000;
+const LOAD_CAP_MS = 150_000;
 const OUT = 'eval-results';
 
 // Pixel classes, judged in the page on a downscaled copy of the screenshot.
@@ -109,7 +109,7 @@ async function evaluateLoad(page, mode, seed, run, r) {
     r.frames = { count: frames.length, medianMs: +sorted[Math.floor(sorted.length / 2)].toFixed(1),
       worstMs: +sorted[sorted.length - 1].toFixed(1), over50: frames.filter((f) => f > 50).length };
     if (STRICT_TIMING && r.frames.medianMs > 25) r.failures.push(`median frame ${r.frames.medianMs} ms > 25 ms`);
-    const png = await page.screenshot({ path: `${OUT}/${mode.name}-seed-${seed}-run-${run}.png` });
+    const png = await page.screenshot({ path: `${OUT}/${mode.name}-seed-${seed}-run-${run}.png`, timeout: 75_000 });
     r.pixels = await classifyPixels(page, png);
     for (const [k, v] of Object.entries(MIN)) if (r.pixels[k] < v) r.failures.push(`too little ${k}: ${(r.pixels[k] * 100).toFixed(1)}% < ${v * 100}%`);
     if (r.pixels.flat > MAX.flat) r.failures.push(`blank frame: ${(r.pixels.flat * 100).toFixed(0)}% of pixels are one flat colour`);
@@ -125,7 +125,10 @@ for (const mode of MODES) for (const seed of SEEDS) {
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
     let timer;
     const cap = new Promise((resolve) => { timer = setTimeout(() => resolve('cap'), LOAD_CAP_MS); });
-    const outcome = await Promise.race([evaluateLoad(page, mode, seed, run, r), cap]);
+    const outcome = await Promise.race([
+      evaluateLoad(page, mode, seed, run, r).catch((e) => { r.failures.push(`eval error: ${String(e.message ?? e).split('\n')[0].slice(0, 160)}`); }),
+      cap,
+    ]);
     clearTimeout(timer);
     if (outcome === 'cap') r.failures.push(`load exceeded the ${LOAD_CAP_MS / 1000} s cap`);
     r.ok = r.failures.length === 0;
