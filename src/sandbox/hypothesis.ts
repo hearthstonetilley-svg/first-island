@@ -56,6 +56,9 @@ export function readPrediction(raw: unknown, names: string[]): Prediction {
     while (re.test(rest)) { found.add(name); rest = rest.replace(re, ' | '); }
   }
   if (found.size > 1) return { kind: 'missing' };
+  // Anything left over that is neither an outcome nor a filler word is a second claim we cannot read
+  // ("cord steel", "cord not nothing"): reject rather than guess.
+  if (found.size === 1 && rest.replace(/\|/g, ' ').replace(/\b(nothing|none)\b/g, ' X ').trim().split(/\s+/).filter(w => w && w !== '|').length > 0) return { kind: 'missing' };
   if (found.size === 1) { const name = [...found][0]; return negated ? { kind: 'not', name } : { kind: 'thing', name }; }
   return negated ? { kind: 'missing' } : { kind: 'other', text: t.slice(0, 60) };
 }

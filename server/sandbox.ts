@@ -91,11 +91,12 @@ interface SandboxAgent {
 // Every gather adds one, every use, meal, build, set-down or collapse removes what it removes.
 // Outside councils (which hold items in hand while they work), what the agents carry must
 // equal the ledger; any difference is a duplication or a loss, and the eval fails on it.
-let itemLedger = 0;
+let itemLedger = 0, ledgerChecks = 0;
 function checkLedger() {
   if (councils.some(c => !c.closedAt)) return;
   const held = agents.reduce((n, a) => n + a.inventory.length, 0);
   if (held !== itemLedger) { emit('ledger_mismatch', `items held ${held}, ledger ${itemLedger}`); itemLedger = held; }
+  else if (++ledgerChecks % 10 === 0) emit('ledger_check', `ledger matches: ${held} items held`);
 }
 
 // ---------- pressure: hunger, day and night, storms, shelter ----------
@@ -267,9 +268,9 @@ function act(a: SandboxAgent, d: Decision) {
     for (const o of listeners) { o.heard.push(`${a.name}: ${a.said}`); if (o.heard.length > 6) o.heard.shift(); }
     emit('say', a.said, a.id, listeners.map(o => o.id));
   }
-  const shared = (Array.isArray(d.share) ? d.share : []).map(Number).filter(f => a.known.includes(f)).slice(0, 4);
+  const shared = (Array.isArray(d.share) ? d.share : []).filter(f => typeof f === 'number' || typeof f === 'string').map(Number).filter(f => a.known.includes(f)).slice(0, 4);
   for (const f of shared) teach(a, f, listeners, 'told');
-  const skillsTaught = (Array.isArray(d.teach_skill) ? d.teach_skill : d.teach_skill ? [d.teach_skill] : []).map(n => String(n).toLowerCase()).filter(n => a.skills?.includes(n)).slice(0, 2);
+  const skillsTaught = (Array.isArray(d.teach_skill) ? d.teach_skill : d.teach_skill ? [d.teach_skill] : []).filter(n => typeof n === 'string').map(n => (n as string).toLowerCase()).filter(n => a.skills?.includes(n)).slice(0, 2);
   for (const n of skillsTaught) {
     const learners = listeners.filter(o => { o.skills ??= []; if (o.skills.includes(n)) return false; o.skills.push(n); return true; });
     if (learners.length) emit('learn_skill', `${n}: ${skillLine(skills.get(n)!)}`, a.id, learners.map(o => o.id), { skill: n });
@@ -595,7 +596,7 @@ async function council(chair: SandboxAgent, problem: string, observer = false) {
 function save() {
   try {
     mkdirSync(STATE_DIR, { recursive: true });
-    const data = { version: 3, simMs, chemistry: CHEMISTRY, hypTotal, hypRight, hypMissing, hypUntested, ideas, seed: SEED, running, facts, seq, structures, mix, skills: [...skills.values()], events: events.slice(-400), councils: councils.slice(-100),
+    const data = { version: 3, simMs, weather: { storm, nextStorm }, chemistry: CHEMISTRY, hypTotal, hypRight, hypMissing, hypUntested, ideas, seed: SEED, running, facts, seq, structures, mix, skills: [...skills.values()], events: events.slice(-400), councils: councils.slice(-100),
       agents: agents.map(a => ({ ...a, path: [], thinking: false, council: null, running: null })) };
     writeFileSync(STATE_FILE + '.tmp', JSON.stringify(data)); renameSync(STATE_FILE + '.tmp', STATE_FILE);
   } catch (err) { console.error('save failed', (err as Error).message); }
@@ -606,13 +607,17 @@ function load() {
     if (data.version !== 3 || data.seed !== SEED || data.chemistry !== CHEMISTRY) return;
     // The island clock is saved with the island, so every saved deadline keeps its meaning.
     // An older save without it gets a fresh clock, and any deadline far beyond it is reset.
-    simMs = typeof data.simMs === 'number' ? data.simMs : 0;
+    const hadClock = typeof data.simMs === 'number';
+    simMs = hadClock ? data.simMs : 0;
+    if (data.weather && typeof data.weather.nextStorm === 'number') { nextStorm = data.weather.nextStorm; storm = data.weather.storm ?? null; }
+    else nextStorm = simMs + 300000 + Math.random() * 300000;
     hypTotal = data.hypTotal ?? 0; hypRight = data.hypRight ?? 0; hypMissing = data.hypMissing ?? 0; hypUntested = data.hypUntested ?? 0; ideas.push(...(data.ideas ?? []));
     structures = data.structures ?? []; if (Array.isArray(data.mix)) mix = data.mix; if (typeof data.running === 'boolean') running = data.running;
     for (const k of data.skills ?? []) skills.set(k.name, k);
     facts.push(...data.facts); seq = data.seq; events = data.events; councils = data.councils ?? [];
     agents = data.agents.map((a: SandboxAgent) => ({ ...a, nextThink: Date.now() + 1000 + a.id * 500, busyUntil: 0,
-      collapsedUntil: a.collapsedUntil && a.collapsedUntil > simMs + 60000 ? simMs + 20000 : a.collapsedUntil }));
+      // Without a saved clock no deadline can be trusted: every collapse restarts its 20 seconds.
+      collapsedUntil: a.collapsedUntil ? (hadClock ? a.collapsedUntil : simMs + 20000) : undefined }));
     console.log(`resumed ${agents.length} agents, ${facts.length} facts, ${councils.length} councils`);
   } catch { /* fresh island */ }
 }

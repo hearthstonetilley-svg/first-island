@@ -34,6 +34,12 @@ describe('hypothesis marking', () => {
     expect(mark('cord not fire', 'cord')).toBe('missing');
     expect(mark('cord - fire', 'cord')).toBe('missing');
   });
+  it('rejects words it cannot account for (fifth audit)', () => {
+    expect(mark('cord not nothing', 'cord')).toBe('missing');
+    expect(mark('cord steel', 'cord')).toBe('missing');
+    expect(mark('I think it makes sparks', 'sparks')).toBe('correct');
+    expect(mark('probably fire', 'fire')).toBe('correct');
+  });
   it('marks plain predictions', () => {
     expect(mark('sparks', 'sparks')).toBe('correct');
     expect(mark('a spark', 'sparks')).toBe('correct');

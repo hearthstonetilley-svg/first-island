@@ -33,7 +33,7 @@ if (!serverLog.includes('sandbox server on')) { console.log(serverLog); try { pr
 await api('/api/control', { cmd: 'start' });
 
 // Watch the stream for the whole run: the carry law must hold at every state.
-const seen = { councilOpens: 0, types: new Set(), maxCarry: 0, states: 0, agents: 0, drops: 0, actions: 0, realItems: 0, hyps: 0, adjourned: false, minEnergy: 1, maxDay: 0, minDay: 1, eats: 0 };
+const seen = { ledgerChecks: 0, councilOpens: 0, types: new Set(), maxCarry: 0, states: 0, agents: 0, drops: 0, actions: 0, realItems: 0, hyps: 0, adjourned: false, minEnergy: 1, maxDay: 0, minDay: 1, eats: 0 };
 const stream = await fetch(`http://localhost:${PORT}/api/events`);
 const reader = stream.body.getReader();
 let buffer = '';
@@ -46,8 +46,8 @@ let buffer = '';
       const kind = block.match(/^event: (\w+)/)?.[1], data = block.match(/\ndata: (.*)$/s)?.[1];
       if (!data) continue;
       const d = JSON.parse(data);
-      if (kind === 'state') { seen.states++; seen.agents = d.agents.length; seen.maxDay = Math.max(seen.maxDay, d.world.daylight); seen.minDay = Math.min(seen.minDay, d.world.daylight); for (const a of d.agents) seen.minEnergy = Math.min(seen.minEnergy, a.energy); for (const a of d.agents) if (a.council === null) seen.maxCarry = Math.max(seen.maxCarry, a.inventory.length); }
-      if (kind === 'event') { seen.types.add(d.type); if (/^sets down /.test(d.text)) seen.drops++; if (['action', 'result', 'thought', 'say'].includes(d.type)) seen.actions++; if (/^gathers (sand|shell|seaweed|driftwood|water|wood|plant fibre|resin|fruit|clay|dry grass|red berries|flint|stone|pyrite)$/.test(d.text)) seen.realItems++; if (d.type === 'hypothesis') seen.hyps++; if (/^(eats|tries to eat) /.test(d.text)) seen.eats++; if (d.type === 'council_merge' && /^ADJOURNED/.test(d.text)) seen.adjourned = true; if (d.type === 'ledger_mismatch') seen.ledger = d.text; if (d.type === 'council_open') seen.councilOpens++; }
+      if (kind === 'state') { seen.last = d; seen.states++; seen.agents = d.agents.length; seen.maxDay = Math.max(seen.maxDay, d.world.daylight); seen.minDay = Math.min(seen.minDay, d.world.daylight); for (const a of d.agents) seen.minEnergy = Math.min(seen.minEnergy, a.energy); for (const a of d.agents) if (a.council === null) seen.maxCarry = Math.max(seen.maxCarry, a.inventory.length); }
+      if (kind === 'event') { seen.types.add(d.type); if (/^sets down /.test(d.text)) seen.drops++; if (['action', 'result', 'thought', 'say'].includes(d.type)) seen.actions++; if (/^gathers (sand|shell|seaweed|driftwood|water|wood|plant fibre|resin|fruit|clay|dry grass|red berries|flint|stone|pyrite)$/.test(d.text)) seen.realItems++; if (d.type === 'hypothesis') seen.hyps++; if (/^(eats|tries to eat) /.test(d.text)) seen.eats++; if (d.type === 'council_merge' && /^ADJOURNED/.test(d.text)) seen.adjourned = true; if (d.type === 'ledger_mismatch') seen.ledger = d.text; if (d.type === 'council_open') seen.councilOpens++; if (d.type === 'ledger_check') seen.ledgerChecks++; }
     }
   }
 })().catch(() => {});
@@ -154,6 +154,9 @@ check('the camera stays put unless a follow mode is on', Math.hypot(still1.tx - 
 check('the council card shows the parts', await page.evaluate(() => document.querySelectorAll('.c-parts li').length >= 2));
 check('a council opens, splits and merges', ['council_open', 'council_split', 'council_part', 'council_merge'].every(t => seen.types.has(t)), [...seen.types].filter(t => t.startsWith('council')).join(','));
 await sleep(30000);
+// Deterministic: tell an agent that is carrying something to set one thing down.
+const carrier = seen.last?.agents.find(a => a.inventory.length && a.council === null && !a.collapsed);
+if (carrier) { await api('/api/control', { cmd: 'act', agent: carrier.id, decision: { action: 'drop', target: carrier.inventory[0] } }); await sleep(1500); }
 check('agents can set things down', seen.types.has('action') && seen.drops > 0, `${seen.drops} set down`);
 check('the carry law holds (six or fewer)', seen.maxCarry <= 6, `max carried ${seen.maxCarry} over ${seen.states} states`);
 check('knowledge passes between agents', seen.types.has('learn'));
@@ -202,9 +205,12 @@ for (let k = 0; k < 8 && seen.councilOpens === opensBefore; k++) { await api('/a
 await api('/api/control', { cmd: 'pause' });
 for (let i = 0; i < 20 && !seen.adjourned; i++) await sleep(500);
 check('Pause adjourns a council in progress', seen.adjourned, seen.adjourned ? 'adjourned' : 'no adjournment seen');
-await api('/api/control', { cmd: 'start' }); await sleep(3000);
+const checksBefore = seen.ledgerChecks;
+await api('/api/control', { cmd: 'start' });
+for (let i = 0; i < 40 && seen.ledgerChecks === checksBefore; i++) await sleep(500);
 // Conservation is judged last, after councils (one with a deliberately malformed part) and a cancellation.
 check('a malformed council part was really injected', seen.types.has('test_bad_part'));
+check('a full ledger comparison ran after the cancellation', seen.ledgerChecks > checksBefore, `${seen.ledgerChecks - checksBefore} comparisons`);
 check('items are conserved: never duplicated or lost, councils included', !seen.types.has('ledger_mismatch'), seen.ledger ?? 'ledger matched throughout');
 const spent = await (await api('/api/usage')).json();
 check('the eval spent nothing (zero model calls)', spent.island.calls === 0, `${spent.island.calls} calls`);
@@ -248,10 +254,16 @@ check('the island resumes after a restart', /resumed/.test(againLog), againLog.s
 const watcher = await fetch(`http://localhost:${PORT}/api/events`); const wr = watcher.body.getReader();
 await api('/api/control', { cmd: 'start' });
 let woke = false; const until = Date.now() + 40000; let wbuf = '';
+// Only a live event for agent 7 counts: the hello replays saved history, which is ignored here.
 while (!woke && Date.now() < until) {
   const { value } = await Promise.race([wr.read(), sleep(2000).then(() => ({ value: undefined }))]);
   if (value) wbuf += new TextDecoder().decode(value);
-  if (/wakes on the south shore/.test(wbuf)) woke = true;
+  let cut; while ((cut = wbuf.indexOf('\n\n')) >= 0) {
+    const block = wbuf.slice(0, cut); wbuf = wbuf.slice(cut + 2);
+    if (!block.startsWith('event: event')) continue;
+    const ev = JSON.parse(block.slice(block.indexOf('data: ') + 6));
+    if (ev.agent === 7 && /wakes on the south shore/.test(ev.text)) woke = true;
+  }
 }
 check('a collapsed agent wakes on time after a restart', woke, woke ? 'woke' : 'still collapsed after 40 s');
 wr.cancel().catch(() => {});
