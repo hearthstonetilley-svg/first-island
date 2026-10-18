@@ -8,7 +8,7 @@ export interface LiveAgent {
 }
 export interface LiveState {
   tick: number; running: boolean; mindMode: string; mix: string[]; backends: string[];
-  world: { daylight: number; night: boolean; storm: boolean }; calls: number; failed: number; perMin: number; cap: number;
+  world: { daylight: number; night: boolean; storm: boolean; boar?: { x: number; y: number; z: number } | null }; calls: number; failed: number; perMin: number; cap: number;
   progress: { elements: number; makeable: number; found: number; structures: number; built: number; councils: number; skills: number; recall: Record<string, { first: number; right: number }>; regions: number; explored: number; named: number; hypotheses: number; hypothesesRight: number; hypothesesMissing: number; ideas: number; chemistry: string };
   agents: LiveAgent[]; councilCalls: number; facts: number; mindError: string;
   councils: Array<{ id: number; chair: number; members: number[]; problem: string; mode: string; open: boolean; winner: number | null }>;

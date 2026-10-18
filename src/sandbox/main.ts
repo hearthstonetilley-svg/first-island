@@ -471,6 +471,16 @@ function draw(positions: Map<number, { x: number; y: number; visible: boolean }>
     const w = ctx.measureText(r.name).width + 10; ctx.fillRect(p.x - w / 2, p.y - 13, w, 17);
     ctx.fillStyle = '#f2e7c9'; ctx.fillText(r.name, p.x, p.y);
   }
+  // The night boar, drawn where it is while it is out.
+  const boarAt = state?.world.boar;
+  if (boarAt && island) {
+    const p = island.project(boarAt.x, boarAt.y + 0.6, boarAt.z);
+    if (p.visible && p.x > frameInsets.left && p.x < innerWidth - frameInsets.right) {
+      ctx.fillStyle = '#3a2418'; ctx.strokeStyle = '#ff6b5c'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(p.x, p.y, 9, 6, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.font = '600 11px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = '#ffb3a8'; ctx.fillText('boar', p.x, p.y - 11);
+    }
+  }
   for (const c of state?.councils ?? []) {
     for (const m of c.members) {
       const p = positions.get(m); if (!p?.visible) continue;
