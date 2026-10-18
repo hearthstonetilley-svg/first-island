@@ -16,7 +16,7 @@ export const LEARN = '#5cffc1';
 export const GOLD = '#ffd34d';
 
 export function connect(handlers: { hello(h: Hello): void; state(s: LiveState): void; event(e: FeedEvent): void; down(): void }): EventSource {
-  const source = new EventSource('/api/events');
+  const source = new EventSource(new URLSearchParams(location.search).get('silent') === '1' ? '/api/events?silent=1' : '/api/events');
   source.addEventListener('hello', e => handlers.hello(JSON.parse((e as MessageEvent).data)));
   source.addEventListener('state', e => handlers.state(JSON.parse((e as MessageEvent).data)));
   source.addEventListener('event', e => handlers.event(JSON.parse((e as MessageEvent).data)));

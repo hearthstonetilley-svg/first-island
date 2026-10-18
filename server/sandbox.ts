@@ -15,8 +15,8 @@ import { Backend, BACKENDS, available, callModel, CODEX_HOME, describe, perMinut
 
 const PORT = Number(process.env.SANDBOX_PORT ?? 8787);
 const SEED = Number(process.env.SANDBOX_SEED ?? 1);
-const MIND_CAP = Number(process.env.MAX_CALLS_PER_MIN ?? 30);
-const COUNCIL_CAP = Number(process.env.COUNCIL_CALLS_PER_MIN ?? 40);
+const MIND_CAP = Number(process.env.MAX_CALLS_PER_MIN ?? 15);
+const COUNCIL_CAP = Number(process.env.COUNCIL_CALLS_PER_MIN ?? 20);
 const CONCURRENCY = Number(process.env.MIND_CONCURRENCY ?? 2);
 const HEAR_RANGE = 9;
 const WALK_SPEED = 1.6;
@@ -112,6 +112,8 @@ interface FeedEvent { seq: number; t: number; type: string; agent?: number; text
 let events: FeedEvent[] = [];
 let seq = 0;
 const clients = new Set<ServerResponse>();
+// Viewers who wake the minds. A silent connection (screenshots, probes) watches without spending.
+const viewers = new Set<ServerResponse>();
 function emit(type: string, text: string, agent?: number, to?: number[], data?: Record<string, unknown>) {
   const e: FeedEvent = { seq: ++seq, t: Date.now(), type, agent, text: scrub(text), to, data };
   // Each agent's latest outcome is the plain record of what last happened to it.
@@ -337,7 +339,7 @@ function stepSkills() {
   }
 }
 function scheduleMinds() {
-  if (!running || clients.size === 0) return;
+  if (!running || viewers.size === 0) return;
   stepSkills();
   const now = Date.now();
   const ready = agents.filter(a => !a.thinking && !a.running && a.council === null && !a.path.length && now >= a.busyUntil && now >= a.nextThink)
@@ -534,10 +536,12 @@ function body(req: IncomingMessage): Promise<Record<string, unknown>> {
   return new Promise(r => { let s = ''; req.on('data', c => { s += c; }); req.on('end', () => { try { r(JSON.parse(s || '{}')); } catch { r({}); } }); });
 }
 createServer(async (req, res) => {
-  if (req.url === '/api/events') {
+  if (req.url?.startsWith('/api/events')) {
+    const silent = req.url.includes('silent=1');
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
     res.write(`event: hello\ndata: ${JSON.stringify({ seed: SEED, names: NAMES, history: events.slice(-200), councils: councils.slice(-30), structures })}\n\n`);
-    clients.add(res); req.on('close', () => clients.delete(res));
+    clients.add(res); if (!silent) viewers.add(res);
+    req.on('close', () => { clients.delete(res); viewers.delete(res); });
     return;
   }
   if (req.url === '/api/skills') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify([...skills.values()])); return; }

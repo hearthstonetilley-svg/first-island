@@ -1,6 +1,11 @@
+import '../style.css';
 import './sandbox.css';
 import { generateWorldAsync } from '../world/generate';
 import { createIslandScene, IslandScene } from '../render/scene';
+import { SceneRecovery } from '../render/recovery';
+import { AdaptiveQuality } from '../render/quality';
+import { ReadinessGate } from '../render/readiness';
+import { LoadingProgress, LoadingScreen, paintLoading } from '../ui/loading';
 import { Agent, DEFAULT_DIALS, Snapshot, Activity } from '../sim/types';
 import { COLOURS, connect, control, FeedEvent, GOLD, LEARN, LiveState, MIND_COLOURS, MIND_LABELS, MIND_PLAN, SKILL, usage } from './stream';
 
@@ -25,6 +30,7 @@ app.innerHTML = `
     <label class="history" title="Show every connection so far, not just live ones"><input type="checkbox"> History</label>
     <span class="sep"></span>
     <div class="progress" title="Things made and structures built"></div>
+    <span class="fps" title="Frame rate, frame time and the quality the island has settled on">… fps</span>
     <a class="web-link" href="/web.html" target="_blank">The web ↗</a>
   </header>
   <aside class="rail left"><div class="cards"></div><section class="inspector" hidden></section></aside>
@@ -34,9 +40,10 @@ app.innerHTML = `
     <section class="panel finds"><h3>Discoveries</h3><ol class="find-list"></ol></section>
   </aside>
   <div class="mode" title="W A S D move · Q E turn · R F zoom · drag to orbit · Esc frames the agents"></div>
-  <div class="status">Connecting to the island…</div>`;
+  <div class="status">Connecting to the island…</div>
+  <div class="graphics-notice" role="status" hidden></div>`;
 const $ = <T extends Element = HTMLElement>(q: string) => app.querySelector(q) as unknown as T;
-const canvas = $<HTMLCanvasElement>('canvas'), overlay = $<HTMLCanvasElement>('canvas.overlay'), ctx = overlay.getContext('2d')!;
+const overlay = $<HTMLCanvasElement>('canvas.overlay'), ctx = overlay.getContext('2d')!;
 const tags = $('.tags'), cards = $('.cards'), inspector = $('.inspector'), status = $('.status'), modeLine = $('.mode');
 const run = $<HTMLButtonElement>('.run'), history = $<HTMLInputElement>('.history input');
 let names: string[] = [];
@@ -46,7 +53,7 @@ let trees: Snapshot['trees'] = [];
 let selected: number | undefined, mode: 'agents' | 'island' | 'free' | 'follow' = 'island';
 let showLeft = true, showRight = true;
 const debug = new URLSearchParams(location.search).get('debug') === '1';
-declare global { interface Window { __SANDBOX__?: { camera: { y: number; ground: number; tx: number; tz: number }; tags: number; mode: string } } }
+declare global { interface Window { __SANDBOX__?: { camera: { y: number; ground: number; tx: number; tz: number }; tags: number; mode: string; fps: number; quality: string; entered: boolean } } }
 
 const activity = (a: string): Activity => (['wandering', 'seeking food', 'eating', 'resting', 'seeking cover', 'socialising'].includes(a) ? a : 'wandering') as Activity;
 function snapshot(s: LiveState): Snapshot {
@@ -147,7 +154,6 @@ function land(agent: number, kind: 'thought' | 'say', text: string, t: number) {
   latest.set(agent, l);
   const c = cardEls[agent]; if (!c) return;
   c.querySelector('.thought')!.textContent = l.thought;
-  c.classList.remove('flash'); void c.offsetWidth; c.classList.add('flash');
   if (agent === selected) renderInspector();
 }
 function updateCards(s: LiveState) {
@@ -338,8 +344,13 @@ function draw(positions: Map<number, { x: number; y: number; visible: boolean }>
     if (!t) { t = document.createElement('div'); t.className = 'tag'; t.style.setProperty('--c', COLOURS[a.id]); t.onclick = () => select(a.id); t.ondblclick = () => follow(a.id); tags.append(t); tagEls.set(a.id, t); }
     const p = positions.get(a.id);
     t.hidden = !p?.visible || p.x < insets().left || p.x > innerWidth - insets().right; if (t.hidden || !p) continue;
-    t.textContent = a.name; t.classList.toggle('selected', selected === a.id); t.classList.toggle('thinking', a.thinking);
-    const w = t.offsetWidth || 50, h = t.offsetHeight || 18;
+    // Only touch the DOM when something changed, and measure a tag once: reading sizes
+    // every frame forces a layout per tag.
+    if (t.textContent !== a.name) { t.textContent = a.name; t.dataset.w = ''; }
+    if (t.classList.contains('selected') !== (selected === a.id)) t.classList.toggle('selected', selected === a.id);
+    if (t.classList.contains('thinking') !== a.thinking) t.classList.toggle('thinking', a.thinking);
+    if (!t.dataset.w) { t.dataset.w = String(t.offsetWidth || 50); t.dataset.h = String(t.offsetHeight || 18); }
+    const w = Number(t.dataset.w) + 12, h = Number(t.dataset.h);
     let top = p.y - h - 14, left = p.x - w / 2;
     for (let guard = 0; guard < 10; guard++) {
       const hit = boxes.find(o => left < o.r + 2 && left + w > o.l - 2 && top < o.b + 2 && top + h > o.t - 2);
@@ -377,34 +388,87 @@ function draw(positions: Map<number, { x: number; y: number; visible: boolean }>
   return boxes.length;
 }
 
+// ---------- the startup and performance contract (rounds 8 to 10) ----------
+// Loading screen, the frame-rate gate before entry, adaptive quality while running,
+// WebGPU loss falling back to WebGL2, and a live frame-rate readout. Same modules as
+// the world page, so both pages keep the same performance behaviour.
+const params = new URLSearchParams(location.search);
+const forceWebGL2 = params.get('renderer') === 'webgl2';
+const postEnabled = params.get('post') !== '0';
+const pixelRatio = Math.min(devicePixelRatio, 1.5);
+const fpsLine = $('.fps'), notice = $('.graphics-notice');
+let controller: SceneRecovery<IslandScene> | undefined;
+let loading: LoadingScreen | undefined;
+let generation = 0, frameRequest = 0;
+async function startIsland(seed: number, built: never[]) {
+  status.hidden = true;
+  app.classList.add('is-loading');
+  loading = new LoadingScreen(app, seed);
+  const progress = async (step: LoadingProgress) => { loading?.update(step); await paintLoading(); };
+  try {
+    await progress({ stage: 'terrain', message: 'Generating terrain', percent: 1 });
+    const world = await generateWorldAsync(seed, 256, 64, async ({ stage, fraction }) => {
+      await progress({ stage, message: stage === 'terrain' ? 'Generating terrain' : 'Placing trees', percent: stage === 'terrain' ? 2 + fraction * 26 : 28 + fraction * 10 });
+    });
+    trees = world.trees.map((t, id) => ({ ...t, id, foodId: null }));
+    controller = new SceneRecovery(force => createIslandScene(app.querySelector('canvas')!, world, force, {
+      postEnabled, pixelRatio, onProgress: progress, onFallback: () => { notice.textContent = 'Graphics interrupted · switching to WebGL2'; notice.hidden = false; },
+      snapshot: state ? snapshot(state) : undefined, onSelect: id => select(id), figureScale: 2.2, agentColours: COLOURS,
+    }), forceWebGL2, () => { island = undefined; generation++; cancelAnimationFrame(frameRequest); },
+    () => { notice.textContent = 'Graphics interrupted · switching to WebGL2'; notice.hidden = false; },
+    scene => { void runIsland(scene, built).catch(err => { void controller?.reportFailure(scene, err); }); },
+    err => { loading?.fail(err instanceof Error ? err.message : 'Graphics unavailable. Reload to retry.'); });
+    await controller.start();
+  } catch (err) { loading?.fail(err instanceof Error ? err.message : 'Graphics unavailable. Reload to retry.'); }
+}
+async function runIsland(scene: IslandScene, built: never[]) {
+  island = scene;
+  const token = generation, active = () => token === generation;
+  if (state) scene.updateSnapshot(snapshot(state), performance.now());
+  built.forEach(b => scene.addStructure(b));
+  applyPanels(); wholeIsland();
+  const quality = new AdaptiveQuality(pixelRatio, postEnabled), readiness = new ReadinessGate();
+  let entered = false, playing = false, start: number | undefined, previous: number | undefined, smoothed: number | undefined, lastHud = 0;
+  const enter = () => {
+    if (entered || !active()) return;
+    entered = true; app.classList.remove('is-loading');
+    void loading?.finish().then(() => { if (active()) { quality.reset(); playing = true; } });
+  };
+  addEventListener('resize', () => { if (active()) { scene.resize(); quality.reset(); readiness.reset(); if (mode === 'island') wholeIsland(); } });
+  await loading?.update({ stage: 'settling', message: 'Checking frame rate', percent: 92 });
+  app.classList.add('is-measuring'); loading?.measure();
+  const tick = (time: number) => {
+    if (!active()) return;
+    const frameTime = previous === undefined ? undefined : Math.max(0.1, time - previous); previous = time;
+    if (frameTime !== undefined) smoothed = smoothed === undefined ? frameTime : smoothed * 0.9 + frameTime * 0.1;
+    const change = quality.sample(time, playing);
+    if (change) { scene.setQuality(change); readiness.reset(); }
+    if (!entered) {
+      const r = readiness.sample(time);
+      if (r) { if (r.ready) enter(); else loading?.limited(1000 / r.medianMs, enter); }
+    }
+    start ??= time;
+    applyKeys(performance.now());
+    if (mode === 'agents' && performance.now() - lastGroupFrame > 2500) { scene.frameAgents(); lastGroupFrame = performance.now(); }
+    scene.render(time - start);
+    const positions = new Map(scene.agentPositions().map(p => [p.id, p]));
+    const shown = draw(positions, performance.now());
+    if (time - lastHud > 250 && smoothed !== undefined) {
+      fpsLine.textContent = `${(1000 / smoothed).toFixed(0)} fps · ${smoothed.toFixed(1)} ms · ${quality.level} · ${scene.label}`;
+      fpsLine.classList.toggle('slow', smoothed > 33); lastHud = time;
+    }
+    if (debug) window.__SANDBOX__ = { get camera() { return scene.cameraInfo(); }, tags: shown, mode, fps: smoothed ? 1000 / smoothed : 0, quality: quality.level, entered };
+    frameRequest = requestAnimationFrame(t => { try { tick(t); } catch (err) { void controller?.reportFailure(scene, err); } });
+  };
+  frameRequest = requestAnimationFrame(tick);
+}
+
 connect({
   async hello(h) {
     names = h.names; ensureCards();
     h.history.forEach(e => onEvent(e, false));
-    if (island) return;
-    status.textContent = 'Building the island…';
-    const world = await generateWorldAsync(h.seed);
-    trees = world.trees.map((t, id) => ({ ...t, id, foodId: null }));
-    island = await createIslandScene(canvas, world, new URLSearchParams(location.search).get('renderer') === 'webgl2',
-      { onSelect: id => select(id), snapshot: state ? snapshot(state) : undefined, figureScale: 2.2, agentColours: COLOURS });
-    island.setInsets(LEFT, RIGHT);
-    applyPanels(); wholeIsland();
-    if (state) island.updateSnapshot(snapshot(state), performance.now());
-    ((h as unknown as { structures?: never[] }).structures ?? []).forEach(b => island!.addStructure(b));
-    status.hidden = true; refreshMeters();
-    addEventListener('resize', () => { island?.resize(); if (mode === 'island') wholeIsland(); });
-    let startTime: number | undefined;
-    const tick = (time: number) => {
-      startTime ??= time;
-      applyKeys(performance.now());
-      if (mode === 'agents' && performance.now() - lastGroupFrame > 2500) { island!.frameAgents(); lastGroupFrame = performance.now(); }
-      island!.render(time - startTime);
-      const positions = new Map(island!.agentPositions().map(p => [p.id, p]));
-      const shown = draw(positions, performance.now());
-      if (debug) window.__SANDBOX__ = { get camera() { return island!.cameraInfo(); }, tags: shown, mode };
-      requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
+    if (controller) return;
+    startIsland(h.seed, (h as unknown as { structures?: never[] }).structures ?? []);
   },
   state(s) {
     state = s;
