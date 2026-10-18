@@ -32,6 +32,7 @@ let facts: string[] = [];
 let fetching = false;
 type Transfer = { teacher: number; learners: number[]; fact: number; text: string; t: number; via: string };
 const transfers: Transfer[] = [];
+const lastPassed = new Map<number, number>();
 const speech = new Map<string, number>();
 let discoveries = 0, councils = 0;
 type Packet = { from: number; to: number | { fact: number }; at: number; ms: number; colour: string; size: number };
@@ -76,6 +77,7 @@ function onEvent(e: FeedEvent, live = true) {
   if (e.type === 'learn') {
     const fact = Number(e.data?.fact);
     transfers.push({ teacher: e.agent, learners: e.to ?? [], fact, text: e.text, t: e.t, via: String(e.data?.via ?? 'told') });
+    lastPassed.set(fact, e.t);
     if (transfers.length > 400) transfers.shift();
     if (live) for (const to of e.to ?? []) { packets.push({ from: e.agent, to, at: now, ms: 1600, colour: LEARN, size: 4 }); packets.push({ from: e.agent, to: { fact }, at: now, ms: 900, colour: LEARN, size: 3 }); }
     if (live) pulses.push({ fact, at: now + 900, colour: LEARN });
@@ -162,8 +164,14 @@ function drawLayer(now: number) {
       g.beginPath(); g.moveTo(pa.x, pa.y); g.lineTo(q.x, q.y); g.stroke(); litLinks++; continue;
     }
     g.strokeStyle = COLOURS[a.id]; g.lineWidth = 1;
-    g.globalAlpha = focusAgent === undefined ? 0.1 : a.id === focusAgent ? 0.4 : 0.03;
-    for (const f of a.knownIds) { if (f >= facts.length) continue; const q = factPos(f); g.beginPath(); g.moveTo(pa.x, pa.y); g.lineTo(q.x, q.y); g.stroke(); }
+    const base = focusAgent === undefined ? 0.1 : a.id === focusAgent ? 0.4 : 0.03;
+    // A strand fades when that knowledge has not passed between minds for a while; teaching revives it.
+    for (const f of a.knownIds) {
+      if (f >= facts.length) continue;
+      const age = (Date.now() - (lastPassed.get(f) ?? 0)) / 60000;
+      g.globalAlpha = base * Math.max(0.25, 1 - age / 10);
+      const q = factPos(f); g.beginPath(); g.moveTo(pa.x, pa.y); g.lineTo(q.x, q.y); g.stroke();
+    }
   }
   g.globalAlpha = 1;
   const counts = new Map<number, number>();
@@ -196,7 +204,7 @@ function draw(now: number) {
   requestAnimationFrame(draw);
   if (openCouncil && Date.now() > openCouncil.until) { openCouncil = undefined; dirty = true; }
   // The static layer is redrawn only when what it shows has changed.
-  const signature = `${facts.length}|${(state?.agents ?? []).map(a => `${a.knownIds.length}${a.thinking ? 't' : ''}${a.skills.length}`).join(',')}|${state?.progress.found}|${speech.size}|${openCouncil?.members.join('.') ?? ''}`;
+  const signature = `${Math.floor(Date.now() / 30000)}|${facts.length}|${(state?.agents ?? []).map(a => `${a.knownIds.length}${a.thinking ? 't' : ''}${a.skills.length}`).join(',')}|${state?.progress.found}|${speech.size}|${openCouncil?.members.join('.') ?? ''}`;
   if (signature !== layerSignature) { layerSignature = signature; dirty = true; }
   const animating = packets.length > 0 || pulses.length > 0;
   if (!dirty && !animating) {

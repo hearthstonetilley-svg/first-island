@@ -21,7 +21,7 @@ const STATE_DIR = mkdtempSync(join(tmpdir(), 'sandbox-eval-'));
 const server = spawn('npx', ['vite-node', 'server/sandbox.ts'], { stdio: ['ignore', 'pipe', 'pipe'], detached: true,
   env: { ...process.env, SANDBOX_PORT: String(PORT), SANDBOX_FRESH: '1', MIND_MODE: 'scripted', SANDBOX_STATE_DIR: STATE_DIR,
     // The eval must never spend: both call caps are zero, whatever the mixer is set to.
-    MAX_CALLS_PER_MIN: '0', COUNCIL_CALLS_PER_MIN: '0', SANDBOX_TEST: '1', SANDBOX_COUNCIL_DELAY_MS: '1500', SANDBOX_DAY_MS: '60000', SANDBOX_TEST_BAD_PART: '1', SANDBOX_DRAIN: String(1 / 150) } });
+    MAX_CALLS_PER_MIN: '0', COUNCIL_CALLS_PER_MIN: '0', SANDBOX_TEST: '1', SANDBOX_COUNCIL_DELAY_MS: '1500', SANDBOX_DAY_MS: '60000', SANDBOX_TEST_BAD_PART: '1', SANDBOX_DIRECTOR_MS: '20000', SANDBOX_DRAIN: String(1 / 150) } });
 let serverLog = ''; server.stdout.on('data', c => { serverLog += c; }); server.stderr.on('data', c => { serverLog += c; });
 process.env.SANDBOX_PORT = String(PORT);
 const vite = await createServer({ server: { port: WEB, strictPort: true }, logLevel: 'silent' });
@@ -99,6 +99,12 @@ check('thoughts land in the boxes', await page.evaluate(() => [...document.query
 await shot(page, `${OUT}/island.png`);
 
 // Keyboard camera: each key moves the view the right way and never into the land.
+// Select a mind's box, making sure it ends up selected (clicking a selected box deselects it).
+const domClick = sel => page.evaluate(q => { const el = document.querySelector(q); if (el) el.click(); return !!el; }, sel);
+const selectCard = async n => {
+  await page.evaluate(k => document.querySelectorAll('.card')[k]?.click(), n); await sleep(400);
+  if (await page.evaluate(() => document.querySelector('.inspector')?.hidden !== false)) { await page.evaluate(k => document.querySelectorAll('.card')[k]?.click(), n); await sleep(400); }
+};
 const hold = async (key, ms) => { await page.keyboard.down(key); await sleep(ms); await page.keyboard.up(key); await sleep(150); };
 let low = Infinity;
 const sample = async () => { const c = (await info()).camera; low = Math.min(low, c.y - c.ground); return c; };
@@ -125,29 +131,30 @@ await shot(page, `${OUT}/after-flying.png`);
 await page.keyboard.press('Escape'); await sleep(5000);
 check('Esc returns to the whole island', (await info()).mode === 'island');
 // Camera ownership: follow an agent, press Free, and the whole pose must stay put while agents move.
-await page.click('.card >> nth=1'); await page.click('.inspector .follow'); await sleep(3000);
-await page.click('[data-cam="free"]'); await sleep(800);
+await selectCard(1); await domClick('.inspector .follow'); await sleep(3000);
+await domClick('[data-cam="free"]'); await sleep(800);
 const pose0 = (await info()).camera; await sleep(6000); const pose1 = (await info()).camera;
 const poseMoved = Math.max(...['tx', 'tz', 'yaw', 'pitch', 'distance'].map(k => Math.abs(pose1[k] - pose0[k])));
 check('Free stops a follow: the camera pose holds while agents move', poseMoved < 1e-3, `largest change ${poseMoved.toExponential(1)}`);
 // Taking the camera by hand ends a follow too.
-await page.click('.inspector .follow'); await sleep(1500);
+await domClick('.inspector .follow'); await sleep(1500);
 const cv = (await page.locator('canvas').first().boundingBox().catch(() => null)) ?? { x: 0, y: 0, width: 1400, height: 820 };
-await page.mouse.move(cv.x + cv.width / 2, cv.y + cv.height / 2); await page.mouse.down();
-await page.mouse.move(cv.x + cv.width / 2 + 80, cv.y + cv.height / 2 + 10, { steps: 5 }); await page.mouse.up(); await sleep(800);
+// Drag low on the screen: a followed agent's name tag sits at the centre.
+await page.mouse.move(cv.x + cv.width / 2, cv.y + cv.height * 0.85); await page.mouse.down();
+await page.mouse.move(cv.x + cv.width / 2 + 80, cv.y + cv.height * 0.85 + 10, { steps: 5 }); await page.mouse.up(); await sleep(800);
 check('dragging the view ends a follow', (await info()).mode === 'free', (await info()).mode);
 // Also from a settled group follow: wait for its glide to finish, then drag.
-await page.click('[data-cam="agents"]'); await sleep(6000);
-await page.mouse.move(cv.x + cv.width / 2, cv.y + cv.height / 2); await page.mouse.down();
-await page.mouse.move(cv.x + cv.width / 2 - 60, cv.y + cv.height / 2, { steps: 4 }); await page.mouse.up(); await sleep(800);
+await domClick('[data-cam="agents"]'); await sleep(6000);
+await page.mouse.move(cv.x + cv.width / 2, cv.y + cv.height * 0.85); await page.mouse.down();
+await page.mouse.move(cv.x + cv.width / 2 - 60, cv.y + cv.height * 0.85, { steps: 4 }); await page.mouse.up(); await sleep(800);
 check('dragging during a settled group follow takes the camera', (await info()).mode === 'free', (await info()).mode);
 await page.keyboard.press('Escape');
 // Let the glide back to the whole island finish before judging stillness.
 for (let i = 0; i < 90; i++) { await sleep(1000); if (!(await info()).camera.gliding) break; }
 // The camera never moves by itself in island mode: a council must not pull it.
 const still0 = (await info()).camera;
-await page.click('.card >> nth=0');
-await page.click('.inspector .ask');
+await selectCard(0);
+await domClick('.inspector .ask');
 for (let i = 0; i < 30 && !seen.types.has('council_merge'); i++) await sleep(1000);
 const still1 = (await info()).camera;
 check('the camera stays put unless a follow mode is on', Math.hypot(still1.tx - still0.tx, still1.tz - still0.tz) < 0.05, `${Math.hypot(still1.tx - still0.tx, still1.tz - still0.tz).toFixed(3)} units`);
@@ -169,6 +176,17 @@ for (let i = 0; i < 30 && !seen.types.has('skill_done'); i++) await sleep(500);
 await api('/api/control', { cmd: 'act', agent: 6, decision: { action: 'eat', target: 'flint' } });
 check('strength drains and agents try to eat', seen.minEnergy < 0.9 && seen.eats > 0, `lowest strength ${seen.minEnergy.toFixed(2)}, ${seen.eats} meals tried`);
 check('day turns to night', seen.maxDay > 0.8 && seen.minDay < 0.3, `daylight ${seen.minDay.toFixed(2)} to ${seen.maxDay.toFixed(2)}`);
+const placeInfo = await (await api('/api/places')).json();
+check('agents explore and name places themselves', seen.types.has('explored') && seen.types.has('named') && placeInfo.regions.some(r => r.name), `${placeInfo.regions.filter(r => r.explored).length}/${placeInfo.regions.length} explored, ${placeInfo.regions.filter(r => r.name).length} named`);
+check('the map panel shows their map', await page.evaluate(() => /explored/.test(document.querySelector('.map-score')?.textContent ?? '')));
+// Deterministic disagreement: Cassa knows flint + pyrite makes sparks; Brill, beside her, says it makes nothing.
+await api('/api/control', { cmd: 'know', agent: 2, fact: 'flint + pyrite makes sparks' });
+await api('/api/control', { cmd: 'meet', agent: 1, to: 2 });
+await api('/api/control', { cmd: 'act', agent: 1, decision: { action: 'wait', say: 'flint + pyrite makes nothing' } });
+for (let i = 0; i < 20 && !seen.types.has('disagreement'); i++) await sleep(300);
+check('a spoken claim that contradicts what a listener knows starts a council', seen.types.has('disagreement'), seen.types.has('disagreement') ? 'disagreement seen' : 'none seen');
+check('the director steps in when nothing new is found, and says so', seen.types.has('director'));
+check('first-try hits are counted per model (recitation)', !!seen.last?.progress?.recall && Object.keys(seen.last.progress.recall).length > 0, JSON.stringify(seen.last?.progress?.recall ?? {}));
 check('agents write and run skills', seen.types.has('skill_written') && seen.types.has('skill_run'), [...seen.types].filter(t => t.startsWith('skill') || t === 'learn_skill').join(','));
 check('no page errors', errors.length === 0, errors.slice(0, 2).join(' | '));
 // Layout: at every width the camera and panel controls stay whole and on screen.

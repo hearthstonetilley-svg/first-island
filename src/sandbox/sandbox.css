@@ -120,3 +120,8 @@ canvas.overlay, .tags { pointer-events: none; }
 .top .sky.night { color: #9fb4ff; }
 .top .sky.storm { color: #ffb347; border-color: #ffb347; }
 @media (prefers-reduced-motion: reduce) { .card .energy i { transition: none; } }
+.map-canvas { display: block; width: 100%; height: auto; border-radius: 4px; background: #0d1a24; }
+.map h3 .map-score { text-transform: none; letter-spacing: 0; color: var(--text); font-weight: 600; margin-left: 4px; }
+.find-list li.director b { color: #9fd8ff !important; }
+.find-list li.director span { color: #9fd8ff; font-style: italic; }
+.find-list li.disagree span { color: #ffb347; }

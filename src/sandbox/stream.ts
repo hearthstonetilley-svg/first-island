@@ -9,7 +9,7 @@ export interface LiveAgent {
 export interface LiveState {
   tick: number; running: boolean; mindMode: string; mix: string[]; backends: string[];
   world: { daylight: number; night: boolean; storm: boolean }; calls: number; failed: number; perMin: number; cap: number;
-  progress: { elements: number; makeable: number; found: number; structures: number; built: number; councils: number; skills: number; hypotheses: number; hypothesesRight: number; hypothesesMissing: number; ideas: number; chemistry: string };
+  progress: { elements: number; makeable: number; found: number; structures: number; built: number; councils: number; skills: number; recall: Record<string, { first: number; right: number }>; regions: number; explored: number; named: number; hypotheses: number; hypothesesRight: number; hypothesesMissing: number; ideas: number; chemistry: string };
   agents: LiveAgent[]; councilCalls: number; facts: number; mindError: string;
   councils: Array<{ id: number; chair: number; members: number[]; problem: string; mode: string; open: boolean; winner: number | null }>;
 }
@@ -40,3 +40,5 @@ export const MIND_LABELS: Record<string, string> = { scripted: 'Scripted', haiku
 export const MIND_COLOURS: Record<string, string> = { scripted: '#55636d', haiku: '#d9a066', sonnet: '#e0785a', luna: '#7cc4e8', sol: '#f2c14e' };
 export const MIND_PLAN: Record<string, string> = { scripted: 'no model', haiku: 'Claude', sonnet: 'Claude', luna: 'Codex', sol: 'Codex' };
 export const SKILL = '#c49bff';
+export interface Places { grid: number; size: number; regions: Array<{ id: number; x: number; y: number; z: number; soil: string; name: string | null; by: number | null; explored: boolean }> }
+export const places = (): Promise<Places> => fetch('/api/places').then(r => r.json());
