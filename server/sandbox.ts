@@ -10,7 +10,7 @@ import { generateWorld } from '../src/world/generate';
 import { Ground } from '../src/sim/navigation';
 import { makeScrubber } from '../src/sandbox/scrub';
 import { readClaim as parseClaim } from '../src/sandbox/claim';
-import { generateChemistry, react, strike, substance, Ground as Soil } from '../src/sandbox/chemistry';
+import { generateChemistry, react, strike, substance, missingTool, pickGather, Ground as Soil } from '../src/sandbox/chemistry';
 import { realWorldChemistry } from '../src/sandbox/realworld';
 import { markPrediction, readPrediction } from '../src/sandbox/hypothesis';
 type Item = string;
@@ -390,9 +390,15 @@ function act(a: SandboxAgent, d: Decision) {
     emit('action', `walks to ${where}`, a.id);
   } else if (action === 'gather') {
     const options = gatherable(here);
-    const want = options.find(i => target.includes(i)) ?? options[Math.floor(Math.random() * options.length)];
+    const want = pickGather(options, target);
+    const lacking = want ? missingTool(substance(chem, want), a.inventory) : undefined;
     if (!want) { a.lastResult = 'There is nothing to gather here.'; emit('result', 'finds nothing to gather here', a.id); }
     else if (a.inventory.length >= 6) { a.lastResult = 'Your hands are full.'; emit('result', 'has full hands', a.id); }
+    else if (lacking) {
+      const tools = lacking.length > 1 ? `${lacking.slice(0, -1).join(', ')} or ${lacking[lacking.length - 1]}` : lacking[0];
+      learn(a, factId(`gathering ${want} needs a ${tools}`));
+      a.lastResult = `You cannot get ${want} with bare hands. It needs a ${tools}.`; emit('result', `cannot gather ${want} without a ${tools}`, a.id);
+    }
     else {
       a.inventory.push(want); itemLedger += 1; a.activity = 'seeking food'; a.lastResult = `You gathered ${describeItem(want)}.`;
       learn(a, factId(`${want} is found on ${soilOf(here)} ground`)); emit('action', `gathers ${want}`, a.id);
@@ -872,6 +878,8 @@ createServer(async (req, res) => {
       for (const a of picked) { a.reservedUntil = until; a.energy = 1; a.running = null; a.path = []; a.busyUntil = until; a.nextThink = until; }
       reply.reserved = picked.map(a => a.id);
     }
+    if (process.env.SANDBOX_TEST === '1' && b.cmd === 'goto') { const ag = agents[Number(b.agent)], i = nodes.findIndex(n => soilOf(n) === b.ground); if (ag && i >= 0) { const n = nodes[i]; ag.node = i; ag.x = n.x; ag.y = n.y; ag.z = n.z; ag.path = []; } }
+    if (process.env.SANDBOX_TEST === '1' && b.cmd === 'hold') { const ag = agents[Number(b.agent)]; if (ag && Array.isArray(b.items)) { itemLedger += b.items.length - ag.inventory.length; ag.inventory = b.items.map(String).slice(0, 6); } }
     if (process.env.SANDBOX_TEST === '1' && b.cmd === 'act') { const ag = agents[Number(b.agent)]; if (ag) try { act(ag, cleanDecision(b.decision)); } catch (err) { console.error('act failed', (err as Error).message); } }
     if (b.cmd === 'council') {
       const a = agents[Number(b.agent)];

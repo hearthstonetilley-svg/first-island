@@ -6,7 +6,24 @@
 export type Ground = 'shore' | 'grove' | 'high rock' | 'meadow';
 export interface Substance { name: string; description: string; tier: number; ground?: Ground; structure?: string; colour: string; colourName: string;
   /** Strength gained (or lost) by eating it; undefined means it is not food. */
-  food?: number }
+  food?: number;
+  /** Tools any one of which must be carried to gather it (wood from a living tree needs an edge). */
+  needs?: string[] }
+/** The tools still missing to gather this, or undefined when it can be gathered by hand or with what is carried. */
+export function missingTool(s: Substance | undefined, inventory: string[]): string[] | undefined {
+  if (!s?.needs || s.needs.some(t => inventory.includes(t))) return undefined;
+  return s.needs;
+}
+
+/** Choose what a gather takes: an exact name first, then the longest name the request mentions, else a random option. */
+export function pickGather(options: string[], target: string, random: () => number = Math.random): string | undefined {
+  const t = target.trim().toLowerCase();
+  const exact = options.find(o => o === t);
+  if (exact) return exact;
+  const named = options.filter(o => new RegExp(`\\b${o.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(t)).sort((a, b) => b.length - a.length)[0];
+  return named ?? options[Math.floor(random() * options.length)];
+}
+
 export interface Reaction { a: string; b: string; product: string; struck?: boolean }
 export interface Chemistry { seed: number; substances: Substance[]; reactions: Reaction[] }
 
