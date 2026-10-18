@@ -440,8 +440,16 @@ function codexMeter(): unknown {
   codexCache = { at: Date.now(), value };
   return value;
 }
+// Claude Code hands its plan meter to the status line; ~/.claude/hooks/island-meter.sh records it.
 function claudeMeter(): unknown {
-  try { return JSON.parse(readFileSync(join(homedir(), '.claude', 'island-meter.json'), 'utf8')); } catch { return null; }
+  try {
+    const file = join(homedir(), '.claude', 'island-meter-raw.json');
+    const r = JSON.parse(readFileSync(file, 'utf8')).rate_limits ?? {};
+    const pct = (w: { used_percentage?: number } | undefined) => (typeof w?.used_percentage === 'number' ? w.used_percentage : undefined);
+    return { fiveHourPercent: pct(r.five_hour), fiveHourResetsAt: r.five_hour?.resets_at ? r.five_hour.resets_at * 1000 : undefined,
+      sevenDayPercent: pct(r.seven_day), sevenDayResetsAt: r.seven_day?.resets_at ? r.seven_day.resets_at * 1000 : undefined,
+      asOf: statSync(file).mtimeMs };
+  } catch { return null; }
 }
 function usage() {
   return { codex: codexMeter(), claude: claudeMeter(),

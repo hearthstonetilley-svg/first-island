@@ -28,7 +28,7 @@ export const control = (body: Record<string, string | string[]>) =>
 export const COLOURS = ['#ff8a5c', '#ffd35c', '#8be07a', '#5cd6ff', '#9d8bff', '#ff7ac8', '#f2f2f2', '#5cffc1'];
 export interface Usage {
   codex: { usedPercent: number; windowMinutes: number; resetsAt: number; plan: string } | null;
-  claude: { fiveHourPercent?: number; sevenDayPercent?: number; resetsAt?: number } | null;
+  claude: { fiveHourPercent?: number; fiveHourResetsAt?: number; sevenDayPercent?: number; sevenDayResetsAt?: number; asOf: number } | null;
   island: { byBackend: Record<string, number>; calls: number; failed: number; costUsd: number; inputTokens: number; outputTokens: number; perMinute: number; cap: number };
 }
 export const usage = (): Promise<Usage> => fetch('/api/usage').then(r => r.json());

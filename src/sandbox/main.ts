@@ -213,6 +213,7 @@ function renderInspector() {
 }
 
 // ---------- right rail: usage, council, discoveries ----------
+const fmtAgo = (ms: number) => { const m = Math.round((Date.now() - ms) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : `${Math.round(m / 60)} h ago`; };
 const fmtTime = (ms: number) => { const d = new Date(ms); return d.toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' }); };
 const bar = (label: string, pct: number | undefined, note: string) => `<div class="meter"><div class="m-row"><span>${label}</span><span>${pct === undefined ? '' : `${pct.toFixed(0)}%`}</span></div>
   ${pct === undefined ? '' : `<div class="m-bar"><i style="width:${Math.min(100, pct)}%"></i></div>`}<div class="m-note">${note}</div></div>`;
@@ -221,8 +222,10 @@ async function refreshMeters() {
     const u = await usage();
     $('.meter-list').innerHTML = [
       u.codex ? bar(`Codex weekly${u.codex.plan ? ` (${u.codex.plan})` : ''}`, u.codex.usedPercent, `resets ${fmtTime(u.codex.resetsAt)}`) : bar('Codex', undefined, 'no meter found'),
-      u.claude ? bar('Claude plan', u.claude.sevenDayPercent ?? u.claude.fiveHourPercent, u.claude.resetsAt ? `resets ${fmtTime(u.claude.resetsAt)}` : '')
-        : bar('Claude plan', undefined, 'not connected yet'),
+      ...(u.claude ? [
+        bar('Claude 5-hour', u.claude.fiveHourPercent, `${u.claude.fiveHourResetsAt ? `resets ${fmtTime(u.claude.fiveHourResetsAt)} · ` : ''}as of ${fmtAgo(u.claude.asOf)}`),
+        bar('Claude weekly', u.claude.sevenDayPercent, `${u.claude.sevenDayResetsAt ? `resets ${fmtTime(u.claude.sevenDayResetsAt)} · ` : ''}as of ${fmtAgo(u.claude.asOf)}`),
+      ] : [bar('Claude plan', undefined, 'not connected: needs the status line hook')]),
       bar('This island', (u.island.perMinute / u.island.cap) * 100, `${u.island.calls} calls · $${u.island.costUsd.toFixed(3)} · ${(u.island.inputTokens / 1000).toFixed(0)}k in / ${(u.island.outputTokens / 1000).toFixed(1)}k out · ${u.island.perMinute}/${u.island.cap} per min`),
     ].join('');
   } catch { /* server down */ }

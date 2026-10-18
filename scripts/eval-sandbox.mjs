@@ -51,7 +51,7 @@ const page = await browser.newPage({ viewport: { width: 1400, height: 820 } });
 const errors = []; page.on('pageerror', e => errors.push(String(e)));
 await page.goto(`http://localhost:${WEB}/sandbox.html?renderer=webgl2&debug=1`);
 await page.waitForFunction(() => window.__SANDBOX__ !== undefined, null, { timeout: 120000 }).catch(() => {});
-const info = () => page.evaluate(() => window.__SANDBOX__);
+const info = () => page.evaluate(() => { const d = window.__SANDBOX__; return d && { camera: d.camera, tags: d.tags, mode: d.mode }; });
 check('island page renders', !!(await info()), errors[0] ?? '');
 check('eight named boxes', (await page.locator('.card').count()) === 8);
 const fit = await page.evaluate(() => [...document.querySelectorAll('.card')].every(c => c.getBoundingClientRect().bottom <= innerHeight));
