@@ -30,12 +30,14 @@ app.innerHTML = `
       <button data-cam="island" class="on">Island</button><button data-cam="agents">Follow</button><button data-cam="free">Free</button></div>
     <button class="toggle-left" title="Show or hide the minds">Minds</button><button class="toggle-right" title="Show or hide usage, council and discoveries">Panels</button>
     <label class="history" title="Show every connection so far, not just live ones"><input type="checkbox"> History</label>
-    <span class="sep"></span>
-    <div class="progress" title="Things made and structures built"></div>
-    <span class="sky" title="Time of day and weather on the island"></span>
+    <span class="grow"></span>
     <span class="fps" title="Frame rate, frame time and the quality the island has settled on">… fps</span>
     <a class="web-link" href="/web.html" target="_blank">The web ↗</a>
   </header>
+  <section class="skycard" title="The island now: time of day, weather and the night boar">
+    <svg viewBox="0 0 44 44" width="44" height="44" aria-hidden="true"><circle class="track" cx="22" cy="22" r="17"/><path class="nightarc"/><circle class="mark" r="4.5"/></svg>
+    <div class="lines"><div class="now"></div><div class="when"></div><div class="storm"></div><div class="threat"></div><div class="progress" title="Things made and structures built"></div></div>
+  </section>
   <aside class="rail left"><div class="cards"></div><section class="inspector" hidden></section></aside>
   <aside class="rail right">
     <section class="panel meters"><h3>Usage</h3><div class="meter-list"></div></section>
@@ -285,6 +287,33 @@ function foodLine(ids: number[]) {
   return parts.join(' · ') || 'nothing tried yet';
 }
 
+// ---------- the sky panel: time of day, weather, the night boar ----------
+// Night is when daylight falls below 0.3: daylight = 0.5 + 0.5 cos(2 pi phase), so phase 0.316 to 0.684.
+const NIGHT_FROM = Math.acos(-0.4) / (2 * Math.PI), NIGHT_TO = 1 - NIGHT_FROM;
+const fmtIn = (ms: number) => ms < 60000 ? `${Math.max(1, Math.round(ms / 1000))} s` : `${Math.round(ms / 60000)} min`;
+function updateSky(s: LiveState) {
+  const w = s.world, card = $('.skycard');
+  const put = (q: string, text: string) => { const el = card.querySelector(q)!; if (el.textContent !== text) el.textContent = text; };
+  const dayMs = w.dayMs ?? 480000, t = w.simMs ?? 0, phase = (t % dayMs) / dayMs, day = Math.floor(t / dayMs) + 1;
+  const part = w.night ? 'Night' : w.daylight < 0.55 ? (phase < 0.5 ? 'Dusk' : 'Dawn') : 'Day';
+  const weak = s.agents.filter(a => a.energy < 0.3).length;
+  put('.now', `Day ${day} · ${part}${weak ? ` · ${weak} weak` : ''}`);
+  const toNight = ((NIGHT_FROM - phase + 1) % 1) * dayMs, toDawn = ((NIGHT_TO - phase + 1) % 1) * dayMs;
+  put('.when', w.night ? `Dawn in ${fmtIn(toDawn)}` : `Night in ${fmtIn(toNight)}`);
+  put('.storm', w.storm ? `Storm now, clears in ${fmtIn(w.stormLeft ?? 0)}` : `Storm in about ${fmtIn(w.stormIn ?? 0)}`);
+  put('.threat', w.boar ? 'The boar is out: shelter or a spear' : w.night ? 'Night: the boar may stir' : 'Boar asleep');
+  card.classList.toggle('night', w.night); card.classList.toggle('storming', w.storm); card.classList.toggle('danger', !!w.boar);
+  // Dial: the sun (or moon) goes round once a day; the dark arc is the night.
+  const at = (f: number) => { const a = f * 2 * Math.PI - Math.PI / 2; return [22 + 17 * Math.cos(a), 22 + 17 * Math.sin(a)]; };
+  const [mx, my] = at(phase), mark = card.querySelector<SVGCircleElement>('.mark')!;
+  mark.setAttribute('cx', mx.toFixed(1)); mark.setAttribute('cy', my.toFixed(1));
+  const arc = card.querySelector('.nightarc')!;
+  if (!arc.getAttribute('d')) { const [ax, ay] = at(NIGHT_FROM), [bx, by] = at(NIGHT_TO); arc.setAttribute('d', `M${ax.toFixed(1)} ${ay.toFixed(1)} A17 17 0 0 1 ${bx.toFixed(1)} ${by.toFixed(1)}`); }
+  // Centre the panel over the island, between the side panels.
+  const left = frameInsets.left + (innerWidth - frameInsets.left - frameInsets.right) / 2;
+  const x = `${Math.round(left)}px`; if (card.style.left !== x) card.style.left = x;
+}
+
 // ---------- right rail: usage, council, discoveries ----------
 const fmtAgo = (ms: number) => { const m = Math.round((Date.now() - ms) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : `${Math.round(m / 60)} h ago`; };
 const fmtTime = (ms: number) => { const d = new Date(ms); return d.toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' }); };
@@ -428,6 +457,7 @@ function curve(p: { x: number; y: number }, q: { x: number; y: number }, t: numb
   const cx = (p.x + q.x) / 2, cy = Math.min(p.y, q.y) - 50, u = 1 - t;
   return { x: u * u * p.x + 2 * u * t * cx + t * t * q.x, y: u * u * p.y + 2 * u * t * cy + t * t * q.y };
 }
+const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 function draw(positions: Map<number, { x: number; y: number; visible: boolean }>, now: number) {
   // The overlay is lines, dots and text: it never needs more than 1.25x resolution.
   const ratio = Math.min(devicePixelRatio, 1.25);
@@ -470,6 +500,19 @@ function draw(positions: Map<number, { x: number; y: number; visible: boolean }>
     ctx.font = '600 12px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(10,20,28,.55)';
     const w = ctx.measureText(r.name).width + 10; ctx.fillRect(p.x - w / 2, p.y - 13, w, 17);
     ctx.fillStyle = '#f2e7c9'; ctx.fillText(r.name, p.x, p.y);
+  }
+  // Rain while a storm is on: thin slanted streaks across the island, drawn on the overlay.
+  if (state?.world.storm) {
+    const l = frameInsets.left, r = innerWidth - frameInsets.right, W = r - l, H = innerHeight;
+    ctx.fillStyle = 'rgba(16,26,36,.22)'; ctx.fillRect(l, 0, W, H);
+    if (!reducedMotion) {
+      ctx.strokeStyle = 'rgba(190,210,230,.35)'; ctx.lineWidth = 1; ctx.beginPath();
+      for (let i = 0; i < 140; i++) {
+        const sx = (i * 97.3) % 1, sy = (i * 57.1) % 1, y = (sy * H + now * 0.9) % H, x = l + ((sx * W + now * 0.25) % W);
+        ctx.moveTo(x, y); ctx.lineTo(x - 4, y + 14);
+      }
+      ctx.stroke();
+    }
   }
   // The night boar, drawn where it is while it is out.
   const boarAt = state?.world.boar;
@@ -628,9 +671,7 @@ connect({
     if (selected !== undefined) renderInspector();
     run.textContent = s.running ? 'Pause' : 'Run';
     island?.setDaylight(s.world.daylight, s.world.storm);
-    const sky = $('.sky'), weak = s.agents.filter(a => a.energy < 0.3).length;
-    const skyText = `${s.world.storm ? 'Storm' : s.world.night ? 'Night' : s.world.daylight < 0.55 ? 'Dusk' : 'Day'}${weak ? ` · ${weak} weak` : ''}`;
-    if (sky.textContent !== skyText) { sky.textContent = skyText; sky.classList.toggle('storm', s.world.storm); sky.classList.toggle('night', s.world.night); }
+    updateSky(s);
     mixOptions = s.backends;
     if (!dragging && !mixDraft) drawMixer(countsOf(s.mix, mixOptions));
     const p = s.progress;

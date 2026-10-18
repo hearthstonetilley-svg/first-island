@@ -176,6 +176,11 @@ for (let i = 0; i < 30 && !seen.types.has('skill_done'); i++) await sleep(500);
 await api('/api/control', { cmd: 'act', agent: 6, decision: { action: 'eat', target: 'flint' } });
 check('strength drains and agents try to eat', seen.minEnergy < 0.9 && seen.eats > 0, `lowest strength ${seen.minEnergy.toFixed(2)}, ${seen.eats} meals tried`);
 check('day turns to night', seen.maxDay > 0.8 && seen.minDay < 0.3, `daylight ${seen.minDay.toFixed(2)} to ${seen.maxDay.toFixed(2)}`);
+// The sky panel: the day, what comes next and when, and the weather, readable at a glance.
+const skyc = await page.evaluate(() => ({ now: document.querySelector('.skycard .now')?.textContent ?? '', when: document.querySelector('.skycard .when')?.textContent ?? '', storm: document.querySelector('.skycard .storm')?.textContent ?? '', dial: !!document.querySelector('.skycard svg .mark') }));
+check('the sky panel shows the day, the time of day and a dial', /^Day \d+ · (Day|Dusk|Night|Dawn)/.test(skyc.now) && skyc.dial, skyc.now);
+check('the sky panel says when night or dawn comes and when the next storm is due', /(Night|Dawn) in \d+/.test(skyc.when) && /Storm (in|now)/.test(skyc.storm), `${skyc.when} | ${skyc.storm}`);
+check('the top bar keeps only controls', await page.evaluate(() => !document.querySelector('.top .progress') && !document.querySelector('.top .sky')));
 // Tools matter: wood from a living tree cannot be gathered by hand, and can with an edge.
 await api('/api/control', { cmd: 'goto', agent: 7, ground: 'grove' });
 await api('/api/control', { cmd: 'hold', agent: 7, items: [] });
@@ -196,6 +201,7 @@ await api('/api/control', { cmd: 'boar', agent: bitten });
 for (let i = 0; i < 20 && !(seen.charged ?? []).includes(bitten); i++) await sleep(300);
 check('the boar charges an agent caught in the open', (seen.charged ?? []).includes(bitten), `agent ${bitten}`);
 check('the boar is drawn on the island while it is out', !!seen.last?.world?.boar);
+check('the sky panel says the boar is out', await page.evaluate(() => /boar is out/i.test(document.querySelector('.skycard .threat')?.textContent ?? '')));
 await api('/api/control', { cmd: 'hold', agent: spearman, items: ['spear'] });
 await api('/api/control', { cmd: 'boar', agent: spearman });
 for (let i = 0; i < 20 && !(seen.drove ?? []).includes(spearman); i++) await sleep(300);
@@ -244,7 +250,7 @@ for (const width of [1400, 1200, 900, 640]) {
   const overflow = await page.evaluate(() => {
     const out = [];
     if (document.documentElement.scrollWidth > innerWidth + 1) out.push('page scrolls sideways');
-    for (const el of document.querySelectorAll('.top, .rail.left, .rail.right, .mode')) {
+    for (const el of document.querySelectorAll('.top, .rail.left, .rail.right, .mode, .skycard')) {
       const r = el.getBoundingClientRect(); if (getComputedStyle(el).display !== 'none' && r.width > 0 && (r.left < -1 || r.right > innerWidth + 1)) out.push(el.className);
     }
     return out;
