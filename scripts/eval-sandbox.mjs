@@ -169,6 +169,16 @@ for (let i = 0; i < 30 && !seen.types.has('skill_done'); i++) await sleep(500);
 await api('/api/control', { cmd: 'act', agent: 6, decision: { action: 'eat', target: 'flint' } });
 check('strength drains and agents try to eat', seen.minEnergy < 0.9 && seen.eats > 0, `lowest strength ${seen.minEnergy.toFixed(2)}, ${seen.eats} meals tried`);
 check('day turns to night', seen.maxDay > 0.8 && seen.minDay < 0.3, `daylight ${seen.minDay.toFixed(2)} to ${seen.maxDay.toFixed(2)}`);
+// Survival is readable: strength as a number on every box, and a survival section in the inspector.
+await page.waitForFunction(() => [...document.querySelectorAll('.card .str')].filter(e => /^\d+%$/.test(e.textContent ?? '')).length === 8, null, { timeout: 5000 }).catch(() => {});
+check('every box shows strength as a number', await page.evaluate(() => [...document.querySelectorAll('.card .str')].filter(e => /^\d+%$/.test(e.textContent ?? '')).length === 8));
+await page.click('.card >> nth=6');
+await page.waitForFunction(() => /flint/.test(document.querySelector('.inspector .fd')?.textContent ?? ''), null, { timeout: 8000 }).catch(() => {});
+const surv = await page.evaluate(() => ({ sv: document.querySelector('.inspector .sv')?.textContent ?? '', fd: document.querySelector('.inspector .fd')?.textContent ?? '', rules: document.querySelector('.inspector .rules')?.textContent ?? '' }));
+check('the inspector shows strength and shelter', /\d+%/.test(surv.sv) && /sheltered|exposed|collapsed/.test(surv.sv), surv.sv);
+check('the inspector shows what the agent has learned about food', /not food: .*flint/.test(surv.fd), surv.fd);
+check('the survival rules are written on the page', /strength/.test(surv.rules) && /shelter/.test(surv.rules) && /collapse/.test(surv.rules));
+await page.keyboard.press('Escape');
 check('agents write and run skills', seen.types.has('skill_written') && seen.types.has('skill_run'), [...seen.types].filter(t => t.startsWith('skill') || t === 'learn_skill').join(','));
 check('no page errors', errors.length === 0, errors.slice(0, 2).join(' | '));
 // Layout: at every width the camera and panel controls stay whole and on screen.

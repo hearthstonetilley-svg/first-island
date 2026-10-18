@@ -120,3 +120,6 @@ canvas.overlay, .tags { pointer-events: none; }
 .top .sky.night { color: #9fb4ff; }
 .top .sky.storm { color: #ffb347; border-color: #ffb347; }
 @media (prefers-reduced-motion: reduce) { .card .energy i { transition: none; } }
+.card .str { font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.card .str.low { color: #ff6b5c; }
+.inspector .rules { margin: 8px 0 0; font-size: 11px; color: var(--muted); line-height: 1.35; }
