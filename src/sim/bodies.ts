@@ -40,10 +40,10 @@ export class Bodies {
     for(let i=0;i<dials.startingPopulation;i++){
       const node=this.ground.habitable[Math.floor(this.random.next()*this.ground.habitable.length)];
       const traits:Traits={speed:0.8+this.random.next()*0.4,strength:0.8+this.random.next()*0.4,perception:5+this.random.next()*4,
-        curiosity:0.2+this.random.next()*0.7,sociability:0.3+this.random.next()*0.6,fertility:0.8+this.random.next()*0.4,lifespan:1.5+this.random.next()*0.4};
+        curiosity:0.2+this.random.next()*0.7,sociability:0.3+this.random.next()*0.6,fertility:0.8+this.random.next()*0.4,lifespan:2.5+this.random.next()*0.5};
       const body=this.birth(node,traits,[],i+1,1,0);
       // Founders are young adults, with staggered ages to avoid synchronized death.
-      body.biologicalAge=0.3+this.random.next()*0.25;
+      body.biologicalAge=0.65+this.random.next()*0.35;
       body.age=Math.round(body.biologicalAge*dials.generationSeconds);
     }
   }
@@ -58,7 +58,7 @@ export class Bodies {
   reproductionDiagnostics(){return reproductionDiagnostics(this.agents);}
   private inherit(a:Traits,b:Traits,rate:number):Traits{
     const out={...a};
-    const bounds:Record<keyof Traits,[number,number]>={speed:[0.5,2],strength:[0.5,2],perception:[2,15],curiosity:[0.05,1],sociability:[0.05,1],fertility:[0.3,2],lifespan:[0.9,2.5]};
+    const bounds:Record<keyof Traits,[number,number]>={speed:[0.5,2],strength:[0.5,2],perception:[2,15],curiosity:[0.05,1],sociability:[0.05,1],fertility:[0.3,2],lifespan:[2.5,3]};
     for(const key of Object.keys(out) as Array<keyof Traits>){
       const mean=(a[key]+b[key])/2;
       out[key]=clamp(mean+(this.random.next()*2-1)*rate*(key==='curiosity'||key==='sociability'?1:mean),...bounds[key]);
@@ -72,11 +72,11 @@ export class Bodies {
       a.path=[a.node,...this.ground.path(a.node,node)];a.goal=node;
     }
   }
-  private decide(a:Body,tick:number):void{
+  private decide(a:Body,tick:number,dials:Dials):void{
     const cold=a.warmth<35;
     if(cold&&this.cover.length){this.route(a,this.ground.nearest(a.x,a.z,this.cover),'seeking cover');return;}
-    if(a.rest<30||(a.activity==='resting'&&a.rest<90)||cold){a.activity='resting';a.path=[];return;}
-    if(a.energy<65||(a.activity==='eating'&&a.energy<94)){
+    if(a.rest<50||(a.activity==='resting'&&a.rest<90)||cold){a.activity='resting';a.path=[];return;}
+    if(a.energy<75||(a.activity==='eating'&&a.energy<94)){
       let best=-1,score=Infinity;
       for(let p=0;p<this.plants.length;p++){
         const plant=this.plants[p];if(plant.quantity<0.05||plant.nutrition<=0)continue;
@@ -84,6 +84,16 @@ export class Bodies {
         const value=d/(plant.nutrition*Math.min(plant.quantity,1));if(value<score){best=p;score=value;}
       }
       if(best>=0){a.food=best;this.route(a,this.plantNodes[best],'seeking food');return;}
+    }
+    if(this.stats.population<dials.populationCap&&this.eligible(a)){
+      // Approach a healthy adult that can actually reproduce, within perception.
+      // Ordinary grouping below still includes children and elders.
+      let mate:Body|undefined,near=a.traits.perception;
+      for(const other of this.agents){
+        if(other===a||!this.eligible(other))continue;
+        const d=distance(a,other);if(d<near){mate=other;near=d;}
+      }
+      if(mate){this.route(a,mate.node,'socialising');return;}
     }
     if(this.random.next()<a.traits.sociability){
       let partner:Body|undefined,near=Infinity;
@@ -118,7 +128,7 @@ export class Bodies {
         this.stats.deaths++;this.stats.deathsByCause[cause]++;this.stats.population--;
         this.emit('death',{id:a.id,cause,age:a.age,generation:a.generation});continue;
       }
-      if(tick>=a.decision){this.decide(a,tick);a.decision=tick+15;}
+      if(tick>=a.decision){this.decide(a,tick,dials);a.decision=tick+15;}
       if(a.activity==='seeking food'&&a.food>=0&&distance(a,this.plants[a.food])<0.28){
         const plant=this.plants[a.food],portion=Math.min(plant.quantity,0.25*rate);
         plant.quantity-=portion;a.energy=clamp(a.energy+portion*plant.nutrition*30);a.activity='eating';a.path=[];

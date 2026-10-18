@@ -1,0 +1,19 @@
+{
+  "seed": 42,
+  "tick": 756,
+  "eventLogsMatch": true,
+  "differences": [
+    {
+      "path": "state.bodies.environment.daylight",
+      "node": 0.061846659978068264,
+      "browser": 0.06184665997806832,
+      "delta": -5.551115123125783e-17
+    },
+    {
+      "path": "state.bodies.environment.temperature",
+      "node": 0.2902003289857444,
+      "browser": 0.29020032898574444,
+      "delta": -5.551115123125783e-17
+    }
+  ]
+}

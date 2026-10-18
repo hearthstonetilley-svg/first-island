@@ -17,7 +17,7 @@ try{
   const report={passed:determinism.passed&&viability.passed&&cost.passed,determinism,viability,cost};
   await mkdir('eval-results',{recursive:true});await writeFile(values.report,JSON.stringify(report,null,2)+'\n');
   console.log(`Determinism ${determinism.passed?'PASS':'FAIL'}: ${determinism.first.stateHash} (state; separate processes)`);
-  for(const r of viability.results)console.log(`Seed ${r.seed}: population curve ${r.samples.filter(sample=>sample.tick%1800===0).map(sample=>sample.population).join(' ')}, births ${r.births}, deaths ${JSON.stringify(r.deathsByCause)}, third-generation birth ${r.firstThirdGenerationBirth?.tick??'none'}, final ${r.population}, viable ${r.viable}`);
+  for(const r of viability.results)console.log(`Seed ${r.seed}: population curve (0..${viability.ticks}, step 1800) ${r.samples.filter(sample=>sample.tick%1800===0).map(sample=>sample.population).join(' ')}, births ${r.births}, deaths ${JSON.stringify(r.deathsByCause)}, third-generation birth ${r.firstThirdGenerationBirth?.tick??'none'}, final ${r.population}, peak ${r.maxPopulation}/${viability.dials.populationCap}, mean parent age ${r.meanParentAgeTicks?.toFixed(1)??'none'} ticks, viable ${r.viable}`);
   console.log(`Viability ${viability.passed?'PASS':'FAIL'}: ${viability.viableSeeds}/5 have a grandchild birth and living final population after ${viability.ticks} ticks; clock generation is ignored`);
   console.log(`Cost ${cost.passed?'PASS':'FAIL'}: 200 agents / 10,000 ticks, ${cost.totalMs.toFixed(1)} ms / ${cost.budgetMs} ms budget; final population ${cost.finalPopulation}`);
   if(!report.passed)process.exitCode=1;

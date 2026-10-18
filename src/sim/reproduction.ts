@@ -2,12 +2,16 @@ import { Agent } from './types';
 
 export const REPRODUCTION_BLOCKERS = { ageWindow: 1, cooldown: 2, health: 4, energy: 8, rest: 16, warmth: 32 } as const;
 export const MATING_DISTANCE = 1.05;
+// A bounded fertile period centres parent ages near one generation dial;
+// adulthood and lifespan are distinct from the HUD's elapsed clock cycles.
+export const MATURITY_AGE = 0.6;
+export const FERTILITY_END_AGE = 1.6;
 type ReproductiveBody = Agent & { cooldown: number };
 
 /** Shared by admission and diagnostics: independent, non-exclusive failures. */
 export function reproductionBlockers(a: ReproductiveBody): number {
   let failed = 0;
-  if (!(a.biologicalAge >= 0.3 && a.biologicalAge < a.traits.lifespan * 0.88)) failed |= REPRODUCTION_BLOCKERS.ageWindow;
+  if (!(a.biologicalAge >= MATURITY_AGE && a.biologicalAge < Math.min(FERTILITY_END_AGE, a.traits.lifespan * 0.88))) failed |= REPRODUCTION_BLOCKERS.ageWindow;
   if (!(a.cooldown <= 0)) failed |= REPRODUCTION_BLOCKERS.cooldown;
   if (!(a.health > 75)) failed |= REPRODUCTION_BLOCKERS.health;
   if (!(a.energy > 70)) failed |= REPRODUCTION_BLOCKERS.energy;

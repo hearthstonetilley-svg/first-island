@@ -1,0 +1,252 @@
+[
+ {
+  "mode": "auto",
+  "seed": 1,
+  "run": 1,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 11636,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 3,
+   "medianMs": 1400,
+   "worstMs": 1405.9,
+   "over50": 3
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.8883125,
+   "sky": 0.02775,
+   "land": 0.0676875,
+   "black": 0,
+   "flat": 0.072875,
+   "blue": 0.9160625
+  }
+ },
+ {
+  "mode": "auto",
+  "seed": 7,
+  "run": 1,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 16432,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 2,
+   "medianMs": 3499.9,
+   "worstMs": 3499.9,
+   "over50": 2
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.8965625,
+   "sky": 0.02225,
+   "land": 0.0680625,
+   "black": 0,
+   "flat": 0.084125,
+   "blue": 0.9188125
+  }
+ },
+ {
+  "mode": "auto",
+  "seed": 42,
+  "run": 1,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 11360,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 4,
+   "medianMs": 1433.3,
+   "worstMs": 2233.3,
+   "over50": 4
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.84075,
+   "sky": 0.029125,
+   "land": 0.113,
+   "black": 0,
+   "flat": 0.0624375,
+   "blue": 0.869875
+  }
+ },
+ {
+  "mode": "auto",
+  "seed": 99,
+  "run": 1,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 11693,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 3,
+   "medianMs": 1500,
+   "worstMs": 1585.2,
+   "over50": 3
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.888625,
+   "sky": 0.02525,
+   "land": 0.0754375,
+   "black": 0,
+   "flat": 0.07825,
+   "blue": 0.913875
+  }
+ },
+ {
+  "mode": "auto",
+  "seed": 2026,
+  "run": 1,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 12280,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 5,
+   "medianMs": 800,
+   "worstMs": 1916.6,
+   "over50": 5
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.812125,
+   "sky": 0.0354375,
+   "land": 0.1333125,
+   "black": 0,
+   "flat": 0.0619375,
+   "blue": 0.8475625
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 1,
+  "run": 1,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 10152,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 5,
+   "medianMs": 716.5,
+   "worstMs": 2149.9,
+   "over50": 5
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.8890625,
+   "sky": 0.0269375,
+   "land": 0.0671875,
+   "black": 0,
+   "flat": 0.0786875,
+   "blue": 0.916
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 7,
+  "run": 1,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 10706,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 4,
+   "medianMs": 1550,
+   "worstMs": 1633.2,
+   "over50": 4
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.897875,
+   "sky": 0.020875,
+   "land": 0.0685625,
+   "black": 0,
+   "flat": 0.0835,
+   "blue": 0.91875
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 42,
+  "run": 1,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 10755,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 3,
+   "medianMs": 1402.5,
+   "worstMs": 2200,
+   "over50": 3
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.839375,
+   "sky": 0.0290625,
+   "land": 0.1136875,
+   "black": 0,
+   "flat": 0.065,
+   "blue": 0.8684375
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 99,
+  "run": 1,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 10791,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 4,
+   "medianMs": 1483.4,
+   "worstMs": 1533.3,
+   "over50": 3
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.8889375,
+   "sky": 0.026375,
+   "land": 0.073875,
+   "black": 0,
+   "flat": 0.080625,
+   "blue": 0.9153125
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 2026,
+  "run": 1,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 10607,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 4,
+   "medianMs": 1499.9,
+   "worstMs": 1599.9,
+   "over50": 3
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.8126875,
+   "sky": 0.0354375,
+   "land": 0.1326875,
+   "black": 0,
+   "flat": 0.0658125,
+   "blue": 0.848125
+  }
+ }
+]

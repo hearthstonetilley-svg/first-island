@@ -1,6 +1,6 @@
 # First agents
 
-Current checkpoint: iteration 035 measures the rejected body baseline before tuning. The stop-after-3a note is superseded: 029 was already reviewed and published, and the fixes apply on top of 030–032. All five baseline seeds have real grandchild births but eventually go extinct. The acceptance eval now fails that outcome. No reproduction threshold or dial is changed in this measurement iteration. No AI calls, chemistry or construction are present.
+Current version: iteration 036 fixes the reproductive collapse diagnosed and committed in 035. Five public seeds meet the owner's ancestry-plus-final-survivor viability definition at tick 21,600. The fixes apply on top of 030–032; 029 was already reviewed/published. A new cross-engine full-state check exposed native-cosine rounding differences; exact browser/Node portability is pending the next correction. No AI calls, chemistry or construction are present.
 
 ## Run and observe
 
@@ -36,7 +36,11 @@ Food plants have quantity, regrowth and nutrition properties. Some sit at existi
 
 Day/night and seeded rain affect warmth. Resting within tree cover reduces cooling. Weather is currently a simulation field; the v0.3 sky/water art stays unchanged. Full rain/wind obstruction physics and constructed cover belong to the later building/exposure stage.
 
-Simple scripted priorities seek food, rest, tree cover, companions or a wandering destination. Curiosity increases roaming radius; sociability increases grouping; healthy nearby adults reproduce probabilistically with cooldowns. Children inherit parental means with bounded seeded mutations. Population is capped at birth admission. This is an initial ecology, not a claim about long-term demographic equilibrium.
+Simple scripted priorities seek food, rest, tree cover, companions or a wandering destination. Rest starts below 50 (reproductive gate >45); food seeking starts below energy 75 (gate >70), avoiding long preventable gaps in adult readiness. Needs gates and the base birth probability remain unchanged. Healthy eligible adults approach the nearest eligible partner within perception; ordinary grouping still includes children and elders. These choices respect the birth cap. Curiosity still increases roaming and sociability ordinary grouping.
+
+Biological age is expressed in generation-dial units. The fertile window is 0.6–1.6, with the existing late-life safety bound; founder ages are staggered from 0.65–1.0. Lifespan traits start and mutate within 2.5–3.0. The fertile window keeps measured mean parent age near one dial while allowing a longer total life. In the five default runs, mean parent age at birth is 1,906–1,941 ticks (31.8–32.4 minutes at 1×), independent of the HUD generation counter. Children inherit parental means with bounded seeded mutations.
+
+The final public populations are 67/176/200/149/196 from 20 founders at tick 21,600. Two seeds reach the cap of 200 during the run. These are measured finite-horizon results; population curves and deaths by cause are recorded for every seed.
 
 ## Evals
 

@@ -32,7 +32,7 @@ try {
    return JSON.parse(await readFile(await(await download).path(),'utf8'));
   };
   await page.locator('[data-speed="100"]').click();
-  await page.waitForTimeout(6200);
+  await page.waitForTimeout(values.close?14500:6200);
   await page.locator('[data-speed="0"]').click();
   const before=await exportRun();await page.waitForTimeout(1200);const paused=await exportRun();
   assert.equal(paused.ticks,before.ticks,'Pause must stop simulation ticks');
@@ -59,17 +59,23 @@ try {
   assert.equal(replay.stateHash,hash(changed.finalState));
   assert.equal(replay.eventHash,hash(changed.events));
   assert(Number(await page.locator('.simulation-hud').getAttribute('data-rendered-agents'))>0);
+  let followedAgent;
   if(values.close){
    const bodies=changed.finalState.bodies;
    const food=bodies.plants.filter(plant=>plant.tree).sort((a,b)=>a.quantity/a.capacity-b.quantity/b.capacity)[0];
-   const agent=[...bodies.agents].sort((a,b)=>Math.hypot(a.x-food.x,a.z-food.z)-Math.hypot(b.x-food.x,b.z-food.z))[0];
+   const births=new Map(changed.events.filter(event=>event.type==='birth').map(event=>[event.data.id,event.data]));
+   const grandchildren=bodies.agents.filter(agent=>agent.parents.some(parent=>births.get(parent).parents.some(grandparent=>births.get(grandparent).parents.length===0)));
+   assert(grandchildren.length>0,'Close capture must show a real child of a child of a founder');
+   const agent=[...grandchildren].sort((a,b)=>Math.hypot(a.x-food.x,a.z-food.z)-Math.hypot(b.x-food.x,b.z-food.z))[0];
+   followedAgent={id:agent.id,parents:agent.parents,biologicalAge:agent.biologicalAge};
    await page.locator('.agent-chooser').selectOption(String(agent.id));
    await page.locator('.agent-follow').click();
    await page.waitForTimeout(2000);
+   assert.deepEqual(await exportRun(),changed,'Following a grandchild must preserve the world');
   }
   await page.screenshot({path:`${prefix}-${item.mode}-seed-${item.seed}.png`});
   assert.equal(errors.length,0,errors.join('\n'));
-  results.push({...item,version:changed.version,initialDials:changed.initialDials,ticks:paused.ticks,pausedEventCount:paused.events.length,eventCount:changed.events.length,events:changed.events,eatenTreeFoods,renderedAgents:Number(await page.locator('.simulation-hud').getAttribute('data-rendered-agents')),stateHash:hash(changed.finalState),replay,errors,stage:values.stage});
+  results.push({...item,version:changed.version,initialDials:changed.initialDials,ticks:paused.ticks,pausedEventCount:paused.events.length,eventCount:changed.events.length,events:changed.events,eatenTreeFoods,renderedAgents:Number(await page.locator('.simulation-hud').getAttribute('data-rendered-agents')),stateHash:hash(changed.finalState),replay,followedAgent,errors,stage:values.stage});
   console.log(`PASS ${item.mode} seed ${item.seed}: paused at tick ${paused.ticks}`);
   await page.close();
  }
