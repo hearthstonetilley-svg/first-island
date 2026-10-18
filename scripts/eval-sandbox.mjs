@@ -244,9 +244,9 @@ await api('/api/control', { cmd: 'act', agent: 7, decision: { action: 'rest' } }
 await sleep(1000);
 try { process.kill(-server.pid, 'SIGTERM'); } catch { server.kill('SIGTERM'); }
 await sleep(3000);
-const saved = JSON.parse(readFileSync(join(STATE_DIR, 'sandbox-seed-1.json'), 'utf8'));
+const saved = JSON.parse(readFileSync(join(STATE_DIR, `sandbox-seed-${process.env.SANDBOX_SEED ?? 1}.json`), 'utf8'));
 saved.agents[7].collapsedUntil = (saved.simMs ?? 0) + 5000; saved.agents[7].energy = 0;
-writeFileSync(join(STATE_DIR, 'sandbox-seed-1.json'), JSON.stringify(saved));
+writeFileSync(join(STATE_DIR, `sandbox-seed-${process.env.SANDBOX_SEED ?? 1}.json`), JSON.stringify(saved));
 const again = spawn('npx', ['vite-node', 'server/sandbox.ts'], { stdio: ['ignore', 'pipe', 'pipe'], detached: true,
   env: { ...process.env, SANDBOX_PORT: String(PORT), MIND_MODE: 'scripted', SANDBOX_STATE_DIR: STATE_DIR, MAX_CALLS_PER_MIN: '0', COUNCIL_CALLS_PER_MIN: '0', SANDBOX_TEST: '1' } });
 let againLog = ''; again.stdout.on('data', c => { againLog += c; }); again.stderr.on('data', c => { againLog += c; });
