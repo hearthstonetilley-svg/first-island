@@ -4,7 +4,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #0d1a24; col
 canvas.web { pointer-events: none; }
 .bubbles { position: fixed; inset: 0; pointer-events: none; }
 .bubble { position: absolute; left: 0; top: 0; max-width: 220px; padding: 5px 9px; border-radius: 10px; pointer-events: auto; cursor: pointer;
-  background: rgba(16, 26, 34, .82); border: 2px solid var(--c); font-size: 12px; margin-top: -8px; }
+  background: rgba(16, 26, 34, .82); border: 2px solid var(--c); font-size: 12px; }
 .bubble::after { content: ''; position: absolute; left: 50%; bottom: -8px; margin-left: -6px; border: 6px solid transparent; border-top-color: var(--c); border-bottom: 0; }
 .bubble .name { display: block; font-weight: 700; color: var(--c); }
 .bubble .line { font-style: italic; opacity: .9; }
@@ -30,3 +30,14 @@ canvas.web { pointer-events: none; }
 .feed .to { opacity: .6; font-size: 11px; }
 .status { position: fixed; left: 50%; top: 45%; transform: translateX(-50%); background: rgba(10, 20, 28, .9); padding: 12px 18px; border-radius: 10px; }
 @media (max-width: 760px) { .feed { top: auto; height: 35%; width: auto; left: 10px; } .bar { right: 10px; } }
+.bubble.in-council { border-style: dashed; }
+.feed .legend { font-size: 11px; opacity: .8; margin-bottom: 6px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.feed .k { display: inline-block; width: 14px; height: 3px; border-radius: 2px; }
+.feed .k.chat { background: #e8eef2; } .feed .k.learn { background: #5cffc1; } .feed .k.gold { background: #ffd34d; height: 8px; width: 8px; border-radius: 50%; }
+.feed .tag { color: #ffd34d; font-weight: 700; font-size: 11px; }
+.feed li.ev-learn .text { color: #5cffc1; }
+.feed li.ev-council_merge, .feed li.ev-council_open { color: #ffe9a8; }
+.feed li.ev-intervention { color: #9fd8ff; font-style: italic; }
+.bar button:disabled { opacity: .45; cursor: default; }
+.bubble.compact { max-width: 170px; padding: 3px 7px; font-size: 11px; }
+.bubble.lifted::after { display: none; }
