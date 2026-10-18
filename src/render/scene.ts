@@ -195,6 +195,10 @@ export interface IslandScene {
   turn(radians: number): void;
   zoom(factor: number): void;
   cameraInfo(): { y: number; ground: number; tx: number; tz: number };
+  /** Ease the camera to frame these agents (all agents when omitted). */
+  frameAgents(ids?: number[]): void;
+  /** Keep the scene's centre clear of a panel this many pixels wide on the left (and right). */
+  setInsets(left: number, right: number): void;
   waitForGPU(): Promise<void>;
   onLost(listener: () => void): () => void;
   dispose(): void;
@@ -499,12 +503,24 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
   const resize = () => {
     watch.assert();
     camera.aspect = innerWidth / innerHeight;
+    applyInsets();
     camera.updateProjectionMatrix();
     renderer.setSize(innerWidth, innerHeight);
+  };
+  let glide: { target: Vector3; distance: number; pitch: number } | undefined;
+  let insets = { left: 0, right: 0 };
+  const applyInsets = () => {
+    if (!insets.left && !insets.right) { camera.clearViewOffset(); return; }
+    camera.setViewOffset(innerWidth, innerHeight, (insets.right - insets.left) / 2, 0, innerWidth, innerHeight);
   };
   const render = (time: number) => {
     watch.assert();
     const agents = figures.update(performance.now(), time * 0.001);
+    if (glide) {
+      target.lerp(glide.target, 0.08); distance += (glide.distance - distance) * 0.08; orbitPitch += (glide.pitch - orbitPitch) * 0.08;
+      if (target.distanceTo(glide.target) < 0.05 && Math.abs(distance - glide.distance) < 0.05) glide = undefined;
+      updateCamera();
+    }
     if (followed !== undefined) {
       const agent = agents.find(a => a.id === followed);
       if (agent) { target.lerp(new Vector3(agent.x, agent.y + 0.45, agent.z), 0.3); updateCamera(); }
@@ -520,24 +536,34 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
   const limit = world.size / 2;
   return { renderer, label, render, resize, setQuality, dispose,
     addStructure: (structure) => structures.add(structure),
-    move: (forward, right) => {
+    frameAgents: (ids) => {
+      const list = figures.update(performance.now(), 0).filter(a => !ids || ids.includes(a.id));
+      if (!list.length) return;
       followed = undefined;
-      const step = Math.max(0.12, distance * 0.012);
+      const cx = list.reduce((n, a) => n + a.x, 0) / list.length, cz = list.reduce((n, a) => n + a.z, 0) / list.length;
+      const cy = list.reduce((n, a) => n + a.y, 0) / list.length;
+      const radius = Math.max(...list.map(a => Math.hypot(a.x - cx, a.z - cz)));
+      glide = { target: new Vector3(cx, cy + 0.6, cz), distance: Math.max(9, radius * 2.4 + 8), pitch: 0.5 };
+    },
+    setInsets: (left, right) => { insets = { left, right }; applyInsets(); },
+    move: (forward, right) => {
+      followed = undefined; glide = undefined;
+      const step = Math.max(0.04, distance * 0.0045);
       target.x = Math.max(-limit, Math.min(limit, target.x - Math.sin(orbitYaw) * forward * step + Math.cos(orbitYaw) * right * step));
       target.z = Math.max(-limit, Math.min(limit, target.z - Math.cos(orbitYaw) * forward * step - Math.sin(orbitYaw) * right * step));
       // Glide over the land: the point the camera looks at rides on the terrain.
       target.y = Math.max(0, sampleHeight(world, target.x, target.z)) + 0.45;
       updateCamera();
     },
-    turn: (radians) => { orbitYaw += radians; updateCamera(); },
-    zoom: (factor) => { distance *= factor; updateCamera(); },
+    turn: (radians) => { glide = undefined; orbitYaw += radians; updateCamera(); },
+    zoom: (factor) => { glide = undefined; distance *= factor; updateCamera(); },
     cameraInfo: () => ({ y: camera.position.y, ground: Math.max(0, sampleHeight(world, camera.position.x, camera.position.z)), tx: target.x, tz: target.z }),
     project: (x, y, z) => { const p = new Vector3(x, y, z).project(camera);
       return { x: (p.x + 1) * innerWidth / 2, y: (1 - p.y) * innerHeight / 2, visible: p.z >= -1 && p.z <= 1 && Math.abs(p.x) <= 1 && Math.abs(p.y) <= 1 }; },
     updateSnapshot: (snapshot, timestamp) => { trees.receive(snapshot); figures.receive(snapshot, timestamp); },
     selectAgent: (id) => { figures.selected = id; },
-    followAgent: (id) => { followed = id; if (id !== undefined) { distance = 15; orbitPitch = 0.45; } },
-    islandView: () => { followed = undefined; target.copy(islandTarget); distance = islandDistance; orbitYaw = 0.58; orbitPitch = 0.13; updateCamera(); },
+    followAgent: (id) => { followed = id; glide = undefined; if (id !== undefined) { distance = 12; orbitPitch = 0.45; } },
+    islandView: () => { followed = undefined; glide = undefined; target.copy(islandTarget); distance = islandDistance; orbitYaw = 0.58; orbitPitch = 0.13; updateCamera(); },
     agentPositions: () => figures.projected(camera),
     waitForGPU: () => watch.run(() => renderer.waitForGPU()), onLost: (listener) => watch.subscribe(listener) };
 }

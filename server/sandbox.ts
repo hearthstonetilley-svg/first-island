@@ -3,7 +3,7 @@
 // passes between agents as facts; councils split, branch and merge a problem
 // as parallel model calls (the torrent). Every event streams to the browser.
 import { createServer, IncomingMessage, ServerResponse } from 'node:http';
-import { readFileSync, writeFileSync, mkdirSync, renameSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, renameSync, readdirSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { generateWorld } from '../src/world/generate';
@@ -11,7 +11,7 @@ import { Ground } from '../src/sim/navigation';
 import { makeScrubber } from '../src/sandbox/scrub';
 import { generateChemistry, react, strike, substance, Ground as Soil } from '../src/sandbox/chemistry';
 type Item = string;
-import { Backend, callModel, describe, perMinute, stats } from './router';
+import { Backend, BACKENDS, available, callModel, CODEX_HOME, describe, perMinute, stats } from './router';
 
 const PORT = Number(process.env.SANDBOX_PORT ?? 8787);
 const SEED = Number(process.env.SANDBOX_SEED ?? 1);
@@ -76,7 +76,7 @@ type Activity = 'wandering' | 'seeking food' | 'eating' | 'resting' | 'seeking c
 interface SandboxAgent {
   id: number; name: string; node: number; x: number; y: number; z: number; path: number[]; activity: Activity;
   thought: string; said: string; saidAt: number; inventory: Item[]; made: string[]; known: number[]; heard: string[];
-  lastResult: string; busyUntil: number; thinking: boolean; nextThink: number; council: number | null;
+  lastResult: string; busyUntil: number; thinking: boolean; nextThink: number; council: number | null; doing?: string; outcome?: string;
 }
 const NAMES = ['Avo', 'Brill', 'Cassa', 'Dun', 'Esk', 'Fenn', 'Ilo', 'Maru'];
 const start = PLACES['south shore'];
@@ -98,6 +98,8 @@ let seq = 0;
 const clients = new Set<ServerResponse>();
 function emit(type: string, text: string, agent?: number, to?: number[], data?: Record<string, unknown>) {
   const e: FeedEvent = { seq: ++seq, t: Date.now(), type, agent, text: scrub(text), to, data };
+  // Each agent's latest outcome is the plain record of what last happened to it.
+  if (agent !== undefined && ['action', 'result', 'discovery', 'built', 'council_part'].includes(type)) agents[agent].outcome = e.text;
   events.push(e); if (events.length > 800) events.shift();
   send('event', e);
 }
@@ -155,6 +157,8 @@ function act(a: SandboxAgent, d: Decision) {
   const shared = (Array.isArray(d.share) ? d.share : []).map(Number).filter(f => a.known.includes(f)).slice(0, 4);
   for (const f of shared) teach(a, f, listeners, 'told');
   const action = String(d.action ?? 'wait').toLowerCase(), target = String(d.target ?? '').toLowerCase();
+  a.doing = ({ walk: `walking to ${target || 'somewhere'}`, gather: `gathering ${target || 'what is here'}`, combine: `combining ${target} + ${String(d.with ?? '').toLowerCase()}`,
+    strike: `striking ${target}`, build: `building ${target}`, rest: 'resting', council: 'calling a council' } as Record<string, string>)[action] ?? (d.say ? 'talking' : 'waiting');
   const here = nodes[a.node];
   if (action === 'walk') {
     const friend = byName(target);
@@ -207,7 +211,11 @@ function act(a: SandboxAgent, d: Decision) {
 }
 
 // ---------- minds ----------
-let mindMode: 'scripted' | Backend = (process.env.MIND_MODE as Backend) ?? 'scripted';
+type Mind = 'scripted' | Backend;
+let mindMode: Mind = (process.env.MIND_MODE as Backend) ?? 'scripted';
+// The minds mixer: which model thinks for each agent. Set from the top bar.
+let mix: Mind[] = NAMES.map(() => mindMode);
+const mindOf = (a: SandboxAgent): Mind => mix[a.id] ?? 'scripted';
 let running = false;
 let inFlight = 0;
 const mindCalls: number[] = [], councilCalls: number[] = [];
@@ -251,29 +259,31 @@ async function think(a: SandboxAgent) {
   a.thinking = true;
   try {
     let d: Decision;
-    if (mindMode !== 'scripted' && within(mindCalls, MIND_CAP)) {
+    const m = mindOf(a);
+    if (m !== 'scripted' && within(mindCalls, MIND_CAP)) {
       mindCalls.push(Date.now()); inFlight++;
-      try { d = await callModel(mindMode, SYSTEM, prompt(a), 'mind') as Decision; } catch { d = scriptedMind(a); } finally { inFlight--; }
+      try { d = await callModel(m, SYSTEM, prompt(a), 'mind') as Decision; } catch { d = scriptedMind(a); } finally { inFlight--; }
     } else d = scriptedMind(a);
     if (running && a.council === null) act(a, d);
-  } finally { a.thinking = false; a.nextThink = Date.now() + (mindMode === 'scripted' ? 3000 + Math.random() * 3000 : 1500); }
+  } finally { a.thinking = false; a.nextThink = Date.now() + (mindOf(a) === 'scripted' ? 3000 + Math.random() * 3000 : 1500); }
 }
 function scheduleMinds() {
   if (!running || clients.size === 0) return;
   const now = Date.now();
   const ready = agents.filter(a => !a.thinking && a.council === null && !a.path.length && now >= a.busyUntil && now >= a.nextThink)
     .sort((x, y) => x.nextThink - y.nextThink);
-  for (const a of ready) { if (mindMode !== 'scripted' && inFlight >= CONCURRENCY) break; void think(a); }
+  for (const a of ready) { if (mindOf(a) !== 'scripted' && inFlight >= CONCURRENCY) continue; void think(a); }
 }
 
 // ---------- councils: the torrent ----------
 interface CouncilRecord { id: number; chair: number; members: number[]; problem: string; mode: string; parts: Array<{ agent: number; task: string; finding?: string; result?: string; made?: string }>;
   winner: number | null; summary: string; calls: number; openedAt: number; closedAt?: number; observer: boolean }
 let councils: CouncilRecord[] = [];
-async function councilCall(system: string, user: string, rec: CouncilRecord, fallback: () => Record<string, unknown>): Promise<Record<string, unknown>> {
-  if (mindMode === 'scripted' || !within(councilCalls, COUNCIL_CAP)) return fallback();
+async function councilCall(system: string, user: string, rec: CouncilRecord, fallback: () => Record<string, unknown>, who?: SandboxAgent): Promise<Record<string, unknown>> {
+  const m = who ? mindOf(who) : mindOf(agents[rec.chair]);
+  if (m === 'scripted' || !within(councilCalls, COUNCIL_CAP)) return fallback();
   councilCalls.push(Date.now()); rec.calls++;
-  try { return await callModel(mindMode, system, user, 'council'); } catch { return fallback(); }
+  try { return await callModel(m, system, user, 'council'); } catch { return fallback(); }
 }
 const COUNCIL_SYSTEM = `You are inhabitants of a small island holding a council. Island laws: ${LAWS.join(' ')}
 The materials have their own names; use them exactly. Reply with ONE JSON object and nothing else.`;
@@ -316,7 +326,7 @@ async function council(chair: SandboxAgent, problem: string, observer = false) {
         `Your part (${rec.mode}): ${p.task}`, `Items dealt to you for this part: ${mine.join(', ') || 'none'}.`, `Facts the council knows: ${factList(pooled)}.`,
         mine.length >= 2 ? 'Pick one pair from your items to combine for your part, avoiding pairs already known to make nothing.' : 'You have too few items to combine; report what the council should do next.',
         'Reply: {"finding": "<one short line>", "try": {"a": "<item>", "b": "<item>"}}'].join('\n'), rec,
-        () => ({ finding: 'trying a pair', try: { a: mine[0] ?? '', b: mine[1] ?? '' } }));
+        () => ({ finding: 'trying a pair', try: { a: mine[0] ?? '', b: mine[1] ?? '' } }), p.agent);
       const t = (answer.try ?? {}) as Record<string, string>;
       const x = String(t.a ?? '').toLowerCase(), y = String(t.b ?? '').toLowerCase();
       let r: { text: string; made?: string; fact?: number } = { text: mine.length >= 2 ? `has no ${x} and ${y} in hand` : 'too few items to try' };
@@ -353,7 +363,7 @@ async function council(chair: SandboxAgent, problem: string, observer = false) {
 function save() {
   try {
     mkdirSync(STATE_DIR, { recursive: true });
-    const data = { version: 2, seed: SEED, facts, seq, structures, events: events.slice(-400), councils: councils.slice(-100),
+    const data = { version: 2, seed: SEED, facts, seq, structures, mix, events: events.slice(-400), councils: councils.slice(-100),
       agents: agents.map(a => ({ ...a, path: [], thinking: false, council: null })) };
     writeFileSync(STATE_FILE + '.tmp', JSON.stringify(data)); renameSync(STATE_FILE + '.tmp', STATE_FILE);
   } catch (err) { console.error('save failed', (err as Error).message); }
@@ -362,7 +372,7 @@ function load() {
   try {
     const data = JSON.parse(readFileSync(STATE_FILE, 'utf8'));
     if (data.version !== 2 || data.seed !== SEED) return;
-    structures = data.structures ?? [];
+    structures = data.structures ?? []; if (Array.isArray(data.mix)) mix = data.mix;
     facts.push(...data.facts); seq = data.seq; events = data.events; councils = data.councils ?? [];
     agents = data.agents.map((a: SandboxAgent) => ({ ...a, nextThink: Date.now() + 1000 + a.id * 500, busyUntil: 0 }));
     console.log(`resumed ${agents.length} agents, ${facts.length} facts, ${councils.length} councils`);
@@ -388,14 +398,56 @@ setInterval(() => {
 }, 100);
 setInterval(() => {
   tick++;
-  send('state', { tick, running, mindMode, calls: stats.total, failed: stats.failed, mindError: stats.lastError, perMin: perMinute(), cap: MIND_CAP + COUNCIL_CAP,
+  send('state', { tick, running, mindMode, mix, backends: ['scripted', ...available()], calls: stats.total, failed: stats.failed, mindError: stats.lastError, perMin: perMinute(), cap: MIND_CAP + COUNCIL_CAP,
     councilCalls: stats.byPurpose.council ?? 0, facts: facts.length,
     progress: { elements: 6, makeable: chem.substances.filter(x => x.tier > 0).length, found: new Set(agents.flatMap(a => a.made)).size,
       structures: chem.substances.filter(x => x.structure).length, built: structures.length, councils: councils.length },
     councils: councils.filter(c => !c.closedAt || Date.now() - c.closedAt < 6000).map(c => ({ id: c.id, chair: c.chair, members: c.members, problem: c.problem, mode: c.mode, open: !c.closedAt, winner: c.winner })),
     agents: agents.map(a => ({ id: a.id, name: a.name, x: a.x, y: a.y, z: a.z, activity: a.activity, thought: a.thought,
-      said: Date.now() - a.saidAt < 8000 ? a.said : '', thinking: a.thinking, inventory: a.inventory, known: a.made, facts: a.known.length, council: a.council })) });
+      said: Date.now() - a.saidAt < 8000 ? a.said : '', saidAt: a.saidAt, thinking: a.thinking, inventory: a.inventory, known: a.made, facts: a.known.length, knownIds: a.known,
+      council: a.council, doing: a.council !== null ? 'in council' : a.path.length ? a.doing ?? 'walking' : a.doing ?? 'waiting', outcome: a.outcome ?? '' })) });
 }, 250);
+
+// ---------- real usage meters ----------
+// Codex: the weekly meter Codex itself records in its newest session file.
+// Claude: the plan meter, if a status line hook has written it; else this island's own spend.
+let codexCache: { at: number; value: unknown } = { at: 0, value: null };
+function codexMeter(): unknown {
+  if (Date.now() - codexCache.at < 30000) return codexCache.value;
+  let value: unknown = null;
+  try {
+    const roots = [join(CODEX_HOME, 'sessions'), join(homedir(), '.codex', 'sessions')];
+    // Newest session files first; the first one that recorded a meter wins.
+    const files: string[] = [];
+    const walk = (dir: string) => {
+      for (const e of readdirSync(dir, { withFileTypes: true }).sort((x, y) => y.name.localeCompare(x.name))) {
+        if (files.length >= 8) return;
+        const p = join(dir, e.name);
+        if (e.isDirectory()) walk(p); else if (e.name.endsWith('.jsonl')) files.push(p);
+      }
+    };
+    for (const root of roots) { try { walk(root); } catch { /* none */ } }
+    files.sort((x, y) => statSync(y).mtimeMs - statSync(x).mtimeMs);
+    for (const file of files) {
+      const text = readFileSync(file, 'utf8');
+      const at = text.lastIndexOf('"rate_limits":');
+      if (at < 0) continue;
+      const m = text.slice(at).match(/"primary":\{"used_percent":([\d.]+),"window_minutes":(\d+),"resets_at":(\d+)/);
+      const plan = text.slice(at).match(/"plan_type":"([^"]+)"/);
+      if (m) { value = { usedPercent: Number(m[1]), windowMinutes: Number(m[2]), resetsAt: Number(m[3]) * 1000, plan: plan?.[1] ?? '' }; break; }
+    }
+  } catch { /* no codex sessions */ }
+  codexCache = { at: Date.now(), value };
+  return value;
+}
+function claudeMeter(): unknown {
+  try { return JSON.parse(readFileSync(join(homedir(), '.claude', 'island-meter.json'), 'utf8')); } catch { return null; }
+}
+function usage() {
+  return { codex: codexMeter(), claude: claudeMeter(),
+    island: { byBackend: stats.byBackend, calls: stats.total, failed: stats.failed, costUsd: stats.costUsd, inputTokens: stats.inputTokens, outputTokens: stats.outputTokens,
+      perMinute: perMinute(), cap: MIND_CAP + COUNCIL_CAP, byPurpose: stats.byPurpose } };
+}
 
 // ---------- http ----------
 function body(req: IncomingMessage): Promise<Record<string, unknown>> {
@@ -408,6 +460,8 @@ createServer(async (req, res) => {
     clients.add(res); req.on('close', () => clients.delete(res));
     return;
   }
+  if (req.url === '/api/facts') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(facts)); return; }
+  if (req.url === '/api/usage') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(usage())); return; }
   if (req.url === '/api/councils') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(councils)); return; }
   if (req.url === '/api/control' && req.method === 'POST') {
     const b = await body(req);
@@ -417,7 +471,11 @@ createServer(async (req, res) => {
       const a = agents[Number(b.agent)];
       if (a && a.council === null) { emit('intervention', `observer asks ${a.name} to call a council`, a.id); void council(a, String(b.problem || 'What can we make that none of us has made?'), true); }
     }
-    if (b.minds === 'haiku' || b.minds === 'luna' || b.minds === 'scripted') { mindMode = b.minds; emit('system', `Minds: ${mindMode}`); }
+    const minds = ['scripted', ...available()];
+    if (typeof b.minds === 'string' && minds.includes(b.minds)) { mindMode = b.minds as Mind; mix = NAMES.map(() => mindMode); emit('system', `Minds: ${mindMode}`); }
+    if (Array.isArray(b.mix) && b.mix.length === NAMES.length && b.mix.every(m => minds.includes(String(m)))) {
+      mix = b.mix.map(String) as Mind[]; emit('system', `Minds mix: ${NAMES.map((n, i) => `${n} ${mix[i]}`).join(', ')}`);
+    }
     res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ running, mindMode }));
     return;
   }

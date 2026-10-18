@@ -1,10 +1,11 @@
 // Shared client side of the sandbox stream.
 export interface LiveAgent {
   id: number; name: string; x: number; y: number; z: number; activity: string;
-  thought: string; said: string; thinking: boolean; inventory: string[]; known: string[]; facts: number; council: number | null;
+  thought: string; said: string; saidAt: number; thinking: boolean; inventory: string[]; known: string[]; facts: number; knownIds: number[];
+  council: number | null; doing: string; outcome: string;
 }
 export interface LiveState {
-  tick: number; running: boolean; mindMode: string; calls: number; failed: number; perMin: number; cap: number;
+  tick: number; running: boolean; mindMode: string; mix: string[]; backends: string[]; calls: number; failed: number; perMin: number; cap: number;
   progress: { elements: number; makeable: number; found: number; structures: number; built: number; councils: number };
   agents: LiveAgent[]; councilCalls: number; facts: number; mindError: string;
   councils: Array<{ id: number; chair: number; members: number[]; problem: string; mode: string; open: boolean; winner: number | null }>;
@@ -22,6 +23,16 @@ export function connect(handlers: { hello(h: Hello): void; state(s: LiveState): 
   source.onerror = () => handlers.down();
   return source;
 }
-export const control = (body: Record<string, string>) =>
+export const control = (body: Record<string, string | string[]>) =>
   fetch('/api/control', { method: 'POST', body: JSON.stringify(body) }).then(r => r.json());
 export const COLOURS = ['#ff8a5c', '#ffd35c', '#8be07a', '#5cd6ff', '#9d8bff', '#ff7ac8', '#f2f2f2', '#5cffc1'];
+export interface Usage {
+  codex: { usedPercent: number; windowMinutes: number; resetsAt: number; plan: string } | null;
+  claude: { fiveHourPercent?: number; sevenDayPercent?: number; resetsAt?: number } | null;
+  island: { byBackend: Record<string, number>; calls: number; failed: number; costUsd: number; inputTokens: number; outputTokens: number; perMinute: number; cap: number };
+}
+export const usage = (): Promise<Usage> => fetch('/api/usage').then(r => r.json());
+export const factTexts = (): Promise<string[]> => fetch('/api/facts').then(r => r.json());
+export const MIND_LABELS: Record<string, string> = { scripted: 'Scripted', haiku: 'Haiku', sonnet: 'Sonnet', luna: 'Luna', sol: 'Sol' };
+export const MIND_COLOURS: Record<string, string> = { scripted: '#55636d', haiku: '#d9a066', sonnet: '#e0785a', luna: '#7cc4e8', sol: '#f2c14e' };
+export const MIND_PLAN: Record<string, string> = { scripted: 'no model', haiku: 'Claude', sonnet: 'Claude', luna: 'Codex', sol: 'Codex' };
