@@ -15,3 +15,9 @@ The owner sees a huge FPS drop on the first load in their real browser. Find the
    automatically (pixel ratio, then AO off), and show the current quality level next to the fps counter.
 
 Commit each iteration with notes in docs/iterations per AGENTS.md. Never push.
+
+## Owner addition: staged loading screen
+
+Show a proper loading screen and progress bar during world generation and shader precompilation, with steps such as
+terrain generation, tree placement, water compilation, post-processing compilation and warm-up. Fade into the island
+only once it runs smoothly. This is part of the same job; continue the documented screenshot iterations and never push.

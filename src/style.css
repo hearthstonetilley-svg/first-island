@@ -5,3 +5,40 @@ canvas { display: block; width: 100%; height: 100%; }
 .label, .fps { position: fixed; top: 18px; padding: 8px 12px; border: 1px solid rgb(255 255 255 / 28%); border-radius: 999px; background: rgb(15 42 52 / 64%); box-shadow: 0 5px 24px rgb(0 0 0 / 14%); font-size: 12px; letter-spacing: .04em; pointer-events: none; }
 .label { left: 20px; }
 .fps { right: 20px; color: #eff8e8; }
+
+#app.is-loading > canvas { opacity: 0; }
+#app > canvas { transition: opacity 850ms ease; }
+#app.is-loading > .label, #app.is-loading > .fps { opacity: 0; }
+.label, .fps { transition: opacity 600ms ease; }
+.loading-screen { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; color: #ecf5ef; background: radial-gradient(ellipse at 50% 32%, #244d58 0%, #123640 42%, #09252e 100%); opacity: 1; transition: opacity 850ms ease; }
+.loading-screen::before { content: ''; position: absolute; inset: 0; pointer-events: none; background: repeating-radial-gradient(ellipse at 50% 160%, transparent 0 78px, rgb(166 218 210 / 4%) 79px 80px, transparent 81px 140px); }
+.loading-screen.is-leaving { opacity: 0; pointer-events: none; }
+.loading-brand, .loading-footer { position: absolute; left: 40px; right: 40px; display: flex; justify-content: space-between; font-size: 10px; letter-spacing: .2em; color: #a7c4c4; }
+.loading-brand { top: 32px; color: #e4eee8; font-size: 11px; }
+.loading-brand span { color: #91b3b4; }
+.loading-footer { bottom: 28px; font-size: 9px; color: #779c9f; }
+.loading-content { position: relative; text-align: center; width: min(460px, calc(100vw - 48px)); padding: 50px 0; }
+.loading-mark { width: 104px; height: 94px; color: #9bd7c5; margin-bottom: 20px; }
+.loading-eyebrow { color: #a1c8c2; font-size: 9px; letter-spacing: .24em; margin: 0 0 16px; }
+.loading-content h1 { margin: 0; font-size: clamp(24px, 4vw, 32px); font-weight: 450; letter-spacing: -.04em; line-height: 1.25; }
+.loading-description { color: #9fbab9; font-size: 13px; line-height: 1.6; margin: 12px 0 38px; }
+.loading-meter { display: flex; justify-content: space-between; align-items: center; gap: 16px; text-align: left; font-size: 12px; margin-bottom: 12px; color: #d2e5dd; }
+.loading-percent { font-variant-numeric: tabular-nums; color: #8ac6b7; font-size: 11px; }
+.loading-progress { display: block; appearance: none; border: none; width: 100%; height: 5px; background: #31515a; border-radius: 8px; overflow: hidden; accent-color: #99d6bb; }
+.loading-progress::-webkit-progress-bar { background: #31515a; border-radius: 8px; }
+.loading-progress::-webkit-progress-value { background: linear-gradient(90deg, #579e9e, #a8dfbd); border-radius: 8px; transition: width 180ms ease; }
+.loading-progress::-moz-progress-bar { background: linear-gradient(90deg, #579e9e, #a8dfbd); border-radius: 8px; }
+.loading-steps { list-style: none; display: flex; justify-content: space-between; padding: 0; margin: 16px 0 0; font-size: 10px; color: #779b9d; }
+.loading-steps li::before { content: ''; display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: #527579; margin-right: 6px; vertical-align: 2px; }
+.loading-steps li[data-state="active"] { color: #daede1; }
+.loading-steps li[data-state="active"]::before { background: #b4e6c7; box-shadow: 0 0 8px #94cbb299; }
+.loading-steps li[data-state="done"] { color: #a2cabd; }
+.loading-steps li[data-state="done"]::before { background: #7abca8; }
+.loading-detail { font-size: 11px; line-height: 1.7; color: #94b4b3; margin: 28px auto 0; max-width: 360px; min-height: 38px; }
+.loading-action { margin-top: 14px; border: 1px solid #7fb5aa; border-radius: 6px; padding: 11px 20px; color: #e4f7e9; background: #2c5a5c; font: inherit; font-size: 12px; cursor: pointer; }
+.loading-action:hover { background: #386c69; }
+.loading-action:focus-visible { outline: 2px solid #c1e9cf; outline-offset: 4px; }
+.loading-screen[data-state="error"] .loading-status { color: #f4ccb6; }
+[hidden] { display: none !important; }
+@media (max-width: 520px) { .loading-brand, .loading-footer { left: 24px; right: 24px; } .loading-footer span { display: none; } }
+@media (prefers-reduced-motion: reduce) { #app > canvas, .label, .fps, .loading-screen { transition: none; } .loading-progress::-webkit-progress-value { transition: none; } }

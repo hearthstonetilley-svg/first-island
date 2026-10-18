@@ -17,6 +17,7 @@ import { createBroadleafParts, TreePart } from './broadleaf';
 import { FrameDiagnostics } from './diagnostics';
 import { QualityChange } from './quality';
 import { warmRenderer } from './warmup';
+import { LoadingProgress, paintLoading } from '../ui/loading';
 
 const SUN_DIRECTION = new Vector3(-0.82, 0.22, -0.53).normalize();
 
@@ -166,7 +167,7 @@ function addTreeParts(scene: Scene, selected: TreeData[], parts: TreePart[], mat
   }
 }
 
-function addOcean(scene: Scene, world: WorldData): { time: ReturnType<typeof uniform> } {
+function addOcean(scene: Scene, world: WorldData): { time: ReturnType<typeof uniform>; mesh: Mesh } {
   const geometry = new PlaneGeometry(2, 2, 224, 224);
   geometry.rotateX(-Math.PI / 2);
   const pos = geometry.attributes.position;
@@ -221,8 +222,9 @@ function addOcean(scene: Scene, world: WorldData): { time: ReturnType<typeof uni
   material.colorNode = mix(reflected.add(glints), color('#f3fff1'), foam);
   // Beer-Lambert absorption: sand remains visible only in the shallow water.
   material.opacityNode = max(float(1).sub(exp(depth.mul(-2.5))), float(0.55)).add(foam).clamp(0, 1);
-  scene.add(new Mesh(geometry, material));
-  return { time };
+  const mesh = new Mesh(geometry, material);
+  scene.add(mesh);
+  return { time, mesh };
 }
 
 function addSky(scene: Scene): void {
@@ -240,7 +242,7 @@ function addSky(scene: Scene): void {
 interface SceneOptions {
   postEnabled?: boolean;
   diagnostics?: FrameDiagnostics;
-  onProgress?: (message: string) => void;
+  onProgress?: (progress: LoadingProgress) => Promise<void>;
   shadowMapSize?: number;
   pixelRatio?: number;
 }
@@ -254,6 +256,7 @@ export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldD
 }> {
   // Keep pending WebGPU initialization off the displayed/fallback canvas. Its
   // adapter request cannot be cancelled and may finish after the timeout.
+  await options.onProgress?.({ stage: 'renderer', message: 'Starting the renderer', percent: 40 });
   const rendererStarted = performance.now();
   const placeholder = canvas;
   const renderer = await initializeRenderer((forceWebGL) => new WebGPURenderer({
@@ -333,10 +336,13 @@ export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldD
     updateCamera();
   }, { passive: false });
 
+  await options.onProgress?.({ stage: 'terrain', message: 'Building terrain and coastlines', percent: 46 });
   addSky(scene);
   addTerrain(scene, world);
+  await options.onProgress?.({ stage: 'trees', message: 'Building forest canopies', percent: 51 });
   const treeTime = uniform(0);
   for (const kind of ['pine', 'broadleaf', 'palm'] as const) addTreeKind(scene, world.trees, kind, treeTime);
+  await options.onProgress?.({ stage: 'water', message: 'Preparing the ocean', percent: 56 });
   const ocean = addOcean(scene, world);
   scene.add(new HemisphereLight('#c5defc', '#73654b', 3));
   const sun = new DirectionalLight('#ffe1a6', 3.2);
@@ -366,6 +372,8 @@ export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldD
   let draw: () => void = () => { renderer.render(scene, camera); };
   let drawWithoutAO = draw;
   let compileScene = () => renderer.compileAsync(scene, camera);
+  let compileWater = () => renderer.compileAsync(ocean.mesh, camera, scene);
+
   if (options.postEnabled !== false) {
     const post = new PostProcessing(renderer);
     const scenePass = pass(scene, camera);
@@ -387,6 +395,14 @@ export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldD
     drawWithoutAO = () => withoutAO.render();
     // PassNode compiles the scene against its MRT target via renderer.compileAsync.
     compileScene = () => scenePass.compileAsync(renderer);
+    compileWater = async () => {
+      const target = renderer.getRenderTarget();
+      const activeMRT = renderer.getMRT();
+      renderer.setRenderTarget(scenePass.renderTarget);
+      renderer.setMRT(scenePass.getMRT());
+      try { await renderer.compileAsync(ocean.mesh, camera, scene); }
+      finally { renderer.setRenderTarget(target); renderer.setMRT(activeMRT); }
+    };
   }
   if (options.diagnostics) {
     let meshes = 0;
@@ -409,27 +425,36 @@ export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldD
   let warmupStarted = 0;
   await warmRenderer({
     compile: async (isExpired) => {
-      options.onProgress?.('compiling scene…');
-      // Paint the loading status before compilation can occupy the main thread.
-      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      await options.onProgress?.({ stage: 'water', message: 'Compiling water', percent: 63 });
+      if (isExpired()) return;
+      const waterCompileStarted = performance.now();
+      await compileWater();
+      if (isExpired()) return;
+      options.diagnostics?.phase('waterCompile', performance.now() - waterCompileStarted);
+      await options.onProgress?.({ stage: 'post', message: 'Compiling terrain and lighting', percent: 70 });
       if (isExpired()) return;
       const compileStarted = performance.now();
       await compileScene();
       if (isExpired()) return;
       options.diagnostics?.phase('sceneCompile', performance.now() - compileStarted);
-      options.onProgress?.('warming lighting and post-processing…');
-      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      await options.onProgress?.({ stage: 'post', message: options.postEnabled !== false
+        ? 'Compiling post-processing' : 'Preparing the final image', percent: 78 });
+      if (isExpired()) return;
       warmupStarted = performance.now();
     },
     // PostProcessing has no public compileAsync. Hidden renders compile its full
     // graph, including shadows, AO, bloom and the output transform. Warm both
     // quality graphs, then fence the GPU before revealing the final high frame.
     draws: options.postEnabled !== false ? [drawWithoutAO, draw, draw] : [draw, draw],
-    waitForGPU: () => renderer.waitForGPU(),
+    waitForGPU: async () => {
+      await renderer.waitForGPU();
+      await options.onProgress?.({ stage: 'warmup', message: 'Warming up the island', percent: 86 });
+    },
     dispose: () => renderer.dispose(),
   });
   options.diagnostics?.phase('renderWarmup', performance.now() - warmupStarted);
   canvas.style.visibility = 'visible';
+  await paintLoading();
 
   const setQuality = (change: QualityChange) => {
     renderer.setPixelRatio(change.pixelRatio);

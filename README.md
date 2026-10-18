@@ -47,7 +47,9 @@ npm test
 `?seed=N` picks the island. `?renderer=webgl2` forces the WebGL2 path.
 `?debug=1` records startup phases and the first 600 frame times in the console and `window.__ISLAND_DEBUG__`.
 `?post=0` disables AO and bloom for comparison. Quality adapts after slow two-second windows and is shown beside FPS.
-See [iteration 025](docs/iterations/025.md) for profiling controls, measurements and reproduction.
+A staged loading screen covers generation, shader compilation and warm-up, then checks completed frame cadence before
+fading into the island. Devices below the smoothness target get a performance notice and an explicit entry button.
+See [iteration 025](docs/iterations/025.md) for profiling controls and [iteration 026](docs/iterations/026.md) for loading-screen checks.
 
 ## Licence
 

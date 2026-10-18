@@ -23,6 +23,8 @@ export class AdaptiveQuality {
     this.reducedPixelRatio = Math.min(basePixelRatio, 1, Math.max(0.5, basePixelRatio * 0.75));
   }
 
+  get atMinimum(): boolean { return this.stage >= (this.postEnabled ? 2 : 1); }
+
   reset(): void {
     this.windowStart = undefined;
     this.previousTime = undefined;

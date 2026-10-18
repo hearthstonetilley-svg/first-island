@@ -1,0 +1,271 @@
+{
+  "context": {
+    "seed": 1,
+    "forceWebGL2": false,
+    "postEnabled": true,
+    "qualityLocked": false
+  },
+  "phasesMs": {
+    "worldGeneration": 640.9000000059605,
+    "rendererInit": 24.200000017881393,
+    "sceneBuild": 157.69999998807907,
+    "waterCompile": 44.400000005960464,
+    "sceneCompile": 541,
+    "renderWarmup": 6120.200000017881,
+    "readinessCheck": 4066.2999999821186
+  },
+  "scene": {
+    "backend": "WebGL2",
+    "viewport": [
+      1280,
+      800
+    ],
+    "pixelRatio": 1,
+    "initialPixelRatio": 1,
+    "shadowMap": [
+      2048,
+      2048
+    ],
+    "meshes": 21,
+    "triangles": 410240,
+    "treeDrawMeshes": 18,
+    "trees": 299,
+    "terrainVertices": 66564,
+    "oceanVertices": 50625,
+    "postEnabled": true,
+    "ao": true,
+    "bloom": true
+  },
+  "timeToFirstFrameMs": 11954,
+  "frames": [
+    {
+      "frame": 1,
+      "elapsedMs": 0,
+      "intervalMs": null,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "high"
+    },
+    {
+      "frame": 2,
+      "elapsedMs": 16.80000000000109,
+      "intervalMs": 16.80000000000109,
+      "renderCpuMs": 2,
+      "quality": "high"
+    }
+  ],
+  "summary": null,
+  "complete": false,
+  "qualityChanges": [],
+  "loading": {
+    "stages": [
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 1,
+        "atMs": 194.2999999821186
+      },
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 2,
+        "atMs": 295.09999999403954
+      },
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 2,
+        "atMs": 367.5
+      },
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 4.762499999999999,
+        "atMs": 394.5
+      },
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 7.5249999999999995,
+        "atMs": 406.69999998807907
+      },
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 10.2875,
+        "atMs": 521.6999999880791
+      },
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 13.049999999999999,
+        "atMs": 628.2999999821186
+      },
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 15.8125,
+        "atMs": 635
+      },
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 18.575,
+        "atMs": 697.7999999821186
+      },
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 21.337500000000002,
+        "atMs": 749.7999999821186
+      },
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 24.099999999999998,
+        "atMs": 787.1999999880791
+      },
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 28,
+        "atMs": 811
+      },
+      {
+        "stage": "trees",
+        "message": "Placing trees",
+        "percent": 28,
+        "atMs": 812.0999999940395
+      },
+      {
+        "stage": "trees",
+        "message": "Placing trees",
+        "percent": 29.428571428571427,
+        "atMs": 820.4000000059605
+      },
+      {
+        "stage": "trees",
+        "message": "Placing trees",
+        "percent": 30.857142857142858,
+        "atMs": 838.9000000059605
+      },
+      {
+        "stage": "trees",
+        "message": "Placing trees",
+        "percent": 32.285714285714285,
+        "atMs": 852.7999999821186
+      },
+      {
+        "stage": "trees",
+        "message": "Placing trees",
+        "percent": 33.714285714285715,
+        "atMs": 871.5999999940395
+      },
+      {
+        "stage": "trees",
+        "message": "Placing trees",
+        "percent": 35.142857142857146,
+        "atMs": 885.7999999821186
+      },
+      {
+        "stage": "trees",
+        "message": "Placing trees",
+        "percent": 36.57142857142857,
+        "atMs": 904.1999999880791
+      },
+      {
+        "stage": "trees",
+        "message": "Placing trees",
+        "percent": 38,
+        "atMs": 919.2999999821186
+      },
+      {
+        "stage": "renderer",
+        "message": "Starting the renderer",
+        "percent": 40,
+        "atMs": 936
+      },
+      {
+        "stage": "terrain",
+        "message": "Building terrain and coastlines",
+        "percent": 46,
+        "atMs": 980.9000000059605
+      },
+      {
+        "stage": "trees",
+        "message": "Building forest canopies",
+        "percent": 51,
+        "atMs": 1083.699999988079
+      },
+      {
+        "stage": "water",
+        "message": "Preparing the ocean",
+        "percent": 56,
+        "atMs": 1101.699999988079
+      },
+      {
+        "stage": "water",
+        "message": "Compiling water",
+        "percent": 63,
+        "atMs": 1139.5999999940395
+      },
+      {
+        "stage": "post",
+        "message": "Compiling terrain and lighting",
+        "percent": 70,
+        "atMs": 1187
+      },
+      {
+        "stage": "post",
+        "message": "Compiling post-processing",
+        "percent": 78,
+        "atMs": 1729.5
+      },
+      {
+        "stage": "warmup",
+        "message": "Warming up the island",
+        "percent": 86,
+        "atMs": 5834.5999999940395
+      },
+      {
+        "stage": "warmup",
+        "message": "Warming up the island",
+        "percent": 86,
+        "atMs": 6877.4000000059605
+      },
+      {
+        "stage": "warmup",
+        "message": "Warming up the island",
+        "percent": 86,
+        "atMs": 7847.199999988079
+      },
+      {
+        "stage": "settling",
+        "message": "Checking frame rate",
+        "percent": 92,
+        "atMs": 7868.0999999940395
+      }
+    ],
+    "windows": [
+      {
+        "atMs": 9917.799999982119,
+        "quality": "high",
+        "medianMs": 16.69999999999891,
+        "p95Ms": 66.60000000000036,
+        "elapsedMs": 2016.6000000000004,
+        "samples": 59,
+        "ready": false
+      },
+      {
+        "atMs": 11951.09999999404,
+        "quality": "high",
+        "medianMs": 16.69999999999891,
+        "p95Ms": 16.799999999999272,
+        "elapsedMs": 2016.5,
+        "samples": 121,
+        "ready": true
+      }
+    ],
+    "enteredAtMs": 11951.199999988079,
+    "entry": "automatic"
+  }
+}

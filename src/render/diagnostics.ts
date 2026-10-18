@@ -54,6 +54,12 @@ export interface DiagnosticReport {
   summary: FrameSummary | null;
   complete: boolean;
   qualityChanges: Array<Record<string, unknown>>;
+  loading: {
+    stages: Array<{ stage: string; message: string; percent: number; atMs: number }>;
+    windows: Array<Record<string, unknown>>;
+    enteredAtMs: number | null;
+    entry: 'automatic' | 'manual' | null;
+  };
 }
 
 declare global { interface Window { __ISLAND_DEBUG__?: DiagnosticReport } }
@@ -64,7 +70,7 @@ export class FrameDiagnostics {
   private firstTimestamp: number | undefined;
 
   constructor(context: Record<string, unknown>, private readonly emit = true) {
-    this.report = { context, phasesMs: {}, scene: {}, timeToFirstFrameMs: null, frames: [], summary: null, complete: false, qualityChanges: [] };
+    this.report = { context, phasesMs: {}, scene: {}, timeToFirstFrameMs: null, frames: [], summary: null, complete: false, qualityChanges: [], loading: { stages: [], windows: [], enteredAtMs: null, entry: null } };
     if (typeof window !== 'undefined') window.__ISLAND_DEBUG__ = this.report;
   }
 
