@@ -11,7 +11,7 @@ import {
 } from 'three/tsl';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
-import { sampleSlope, WorldData } from '../world/generate';
+import { sampleHeight, sampleSlope, WorldData } from '../world/generate';
 import { initializeRenderer } from './startup';
 import { DeviceWatch } from './device';
 import { TreeFigures } from './trees';
@@ -20,6 +20,7 @@ import { QualityChange } from './quality';
 import { warmRenderer } from './warmup';
 import { Snapshot } from '../sim/types';
 import { AgentFigures } from './agents';
+import { StructureData, Structures } from './structures';
 import { LoadingProgress, paintLoading } from '../ui/loading';
 
 const SUN_DIRECTION = new Vector3(-0.82, 0.22, -0.53).normalize();
@@ -165,6 +166,8 @@ function addSky(scene: Scene): void {
 
 interface SceneOptions {
   snapshot?: Snapshot;
+  figureScale?: number;
+  agentColours?: string[];
   onSelect?: (id: number) => void;
   postEnabled?: boolean;
   diagnostics?: FrameDiagnostics;
@@ -185,6 +188,13 @@ export interface IslandScene {
   followAgent(id: number | undefined): void;
   islandView(): void;
   agentPositions(): ReturnType<AgentFigures['projected']>;
+  addStructure(structure: StructureData): void;
+  project(x: number, y: number, z: number): { x: number; y: number; visible: boolean };
+  /** Free camera: move along the ground relative to the view, turn, and zoom. */
+  move(forward: number, right: number): void;
+  turn(radians: number): void;
+  zoom(factor: number): void;
+  cameraInfo(): { y: number; ground: number; tx: number; tz: number };
   waitForGPU(): Promise<void>;
   onLost(listener: () => void): () => void;
   dispose(): void;
@@ -310,9 +320,12 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
   let lastY = 0;
   const updateCamera = () => {
     orbitPitch = Math.max(0.035, Math.min(1.25, orbitPitch));
-    distance = Math.max(15, Math.min(world.size * 2, distance));
+    distance = Math.max(options.figureScale ? 5 : 15, Math.min(world.size * 2, distance));
     camera.position.set(target.x + Math.sin(orbitYaw) * Math.cos(orbitPitch) * distance,
       target.y + Math.sin(orbitPitch) * distance, target.z + Math.cos(orbitYaw) * Math.cos(orbitPitch) * distance);
+    // The free camera never sinks into the land: lift the view above the ground under it.
+    const under = Math.max(0, sampleHeight(world, camera.position.x, camera.position.z));
+    if (camera.position.y < under + 1.2) camera.position.y = under + 1.2;
     camera.lookAt(target);
   };
   updateCamera();
@@ -501,7 +514,26 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
     ocean.time.value = time * 0.001;
     draw();
   };
+  const structures = new Structures(scene);
+  if (options.figureScale) figures.scale = options.figureScale;
+  if (options.agentColours) figures.colours = options.agentColours;
+  const limit = world.size / 2;
   return { renderer, label, render, resize, setQuality, dispose,
+    addStructure: (structure) => structures.add(structure),
+    move: (forward, right) => {
+      followed = undefined;
+      const step = Math.max(0.12, distance * 0.012);
+      target.x = Math.max(-limit, Math.min(limit, target.x - Math.sin(orbitYaw) * forward * step + Math.cos(orbitYaw) * right * step));
+      target.z = Math.max(-limit, Math.min(limit, target.z - Math.cos(orbitYaw) * forward * step - Math.sin(orbitYaw) * right * step));
+      // Glide over the land: the point the camera looks at rides on the terrain.
+      target.y = Math.max(0, sampleHeight(world, target.x, target.z)) + 0.45;
+      updateCamera();
+    },
+    turn: (radians) => { orbitYaw += radians; updateCamera(); },
+    zoom: (factor) => { distance *= factor; updateCamera(); },
+    cameraInfo: () => ({ y: camera.position.y, ground: Math.max(0, sampleHeight(world, camera.position.x, camera.position.z)), tx: target.x, tz: target.z }),
+    project: (x, y, z) => { const p = new Vector3(x, y, z).project(camera);
+      return { x: (p.x + 1) * innerWidth / 2, y: (1 - p.y) * innerHeight / 2, visible: p.z >= -1 && p.z <= 1 && Math.abs(p.x) <= 1 && Math.abs(p.y) <= 1 }; },
     updateSnapshot: (snapshot, timestamp) => { trees.receive(snapshot); figures.receive(snapshot, timestamp); },
     selectAgent: (id) => { figures.selected = id; },
     followAgent: (id) => { followed = id; if (id !== undefined) { distance = 15; orbitPitch = 0.45; } },

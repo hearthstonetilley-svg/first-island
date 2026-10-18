@@ -9,7 +9,8 @@ import { join } from 'node:path';
 import { generateWorld } from '../src/world/generate';
 import { Ground } from '../src/sim/navigation';
 import { makeScrubber } from '../src/sandbox/scrub';
-import { LAWS, ITEMS, combine, Item } from './laws';
+import { generateChemistry, react, strike, substance, Ground as Soil } from '../src/sandbox/chemistry';
+type Item = string;
 import { Backend, callModel, describe, perMinute, stats } from './router';
 
 const PORT = Number(process.env.SANDBOX_PORT ?? 8787);
@@ -36,17 +37,36 @@ const byKey = (score: (n: GNode) => number) => habitable.reduce((best, id) => (s
 const treeCount = (n: GNode) => world.trees.filter(t => Math.hypot(t.x - n.x, t.z - n.z) < 4).length;
 const PLACES: Record<string, number> = {
   'the peak': byKey(n => n.y), 'north shore': byKey(n => -n.z - n.y * 3), 'south shore': byKey(n => n.z - n.y * 3),
-  'east shore': byKey(n => n.x - n.y * 3), 'west shore': byKey(n => -n.x - n.y * 3), 'the forest': byKey(treeCount),
+  'east shore': byKey(n => n.x - n.y * 3), 'west shore': byKey(n => -n.x - n.y * 3), 'the grove': byKey(treeCount),
 };
 const nearestPlace = (x: number, z: number) => Object.entries(PLACES)
   .sort((a, b) => Math.hypot(nodes[a[1]].x - x, nodes[a[1]].z - z) - Math.hypot(nodes[b[1]].x - x, nodes[b[1]].z - z))[0][0];
-function gatherable(n: GNode): Item[] {
-  const out: Item[] = [];
-  if (n.y < 1.2) out.push('stone', 'shell');
-  if (world.trees.some(t => Math.hypot(t.x - n.x, t.z - n.z) < 2.5)) out.push('wood', 'fibre', 'fruit');
-  if (n.y > 4) out.push('flint');
-  return out;
+// The island's own chemistry: six invented elements, each found in one kind of ground.
+const chem = generateChemistry(SEED);
+function soilOf(n: GNode): Soil {
+  if (n.y < 1.2) return 'shore';
+  if (n.y > 4) return 'high rock';
+  return world.trees.some(t => Math.hypot(t.x - n.x, t.z - n.z) < 2.5) ? 'grove' : 'meadow';
 }
+const gatherable = (n: GNode): Item[] => chem.substances.filter(s => s.tier === 0 && s.ground === soilOf(n)).map(s => s.name);
+const describeItem = (name: string) => { const s = substance(chem, name); return s ? `${name} (${s.description})` : name; };
+const LAWS = [
+  'Each kind of ground (shore, grove, meadow, high rock) yields its own material, and only there.',
+  'You can carry six things.',
+  'Two things you carry may be combined. Some pairs make something new; most do nothing. Some things change when struck alone.',
+  'Some things you make can be set down and built where you stand; what is built stays.',
+  'Words carry only a short distance; others hear you only if they are near.',
+];
+function combine(inventory: Item[], a: Item, b: Item): Item | 'nothing' | undefined {
+  const i = inventory.indexOf(a); if (i < 0) return undefined;
+  const rest = [...inventory]; rest.splice(i, 1);
+  const j = rest.indexOf(b); if (j < 0) return undefined;
+  const r = react(chem, a, b); if (!r) return 'nothing';
+  rest.splice(j, 1); rest.push(r.product); inventory.splice(0, inventory.length, ...rest);
+  return r.product;
+}
+interface Built { id: number; kind: string; name: string; x: number; y: number; z: number; colour: string; by: number; at: number }
+let structures: Built[] = [];
 
 // ---------- knowledge: facts are the unit that passes between minds ----------
 const facts: string[] = [];
@@ -150,17 +170,35 @@ function act(a: SandboxAgent, d: Decision) {
     if (!want) { a.lastResult = 'There is nothing to gather here.'; emit('result', 'finds nothing to gather here', a.id); }
     else if (a.inventory.length >= 6) { a.lastResult = 'Your hands are full.'; emit('result', 'has full hands', a.id); }
     else {
-      a.inventory.push(want); a.activity = want === 'fruit' ? 'seeking food' : 'seeking cover'; a.lastResult = `You gathered ${want}.`;
+      a.inventory.push(want); a.activity = 'seeking food'; a.lastResult = `You gathered ${describeItem(want)}.`;
       learn(a, factId(`${want} is found at ${nearestPlace(a.x, a.z)}`)); emit('action', `gathers ${want}`, a.id);
     }
   } else if (action === 'combine') {
     const r = tryCombine(a, target, String(d.with ?? '').toLowerCase());
-    a.lastResult = r.made ? `You made ${r.made}!` : `Combining: ${r.text}.`;
+    a.lastResult = r.made ? `You made ${describeItem(r.made)}!` : `Combining: ${r.text}.`;
     if (!r.made) emit('result', `combines: ${r.text}`, a.id);
-  } else if (action === 'eat') {
-    const i = a.inventory.indexOf('fruit');
-    if (i < 0) a.lastResult = 'You have no fruit.';
-    else { a.inventory.splice(i, 1); a.activity = 'eating'; a.busyUntil = Date.now() + 3000; a.lastResult = 'You ate fruit.'; emit('action', 'eats fruit', a.id); }
+  } else if (action === 'strike') {
+    const i = a.inventory.indexOf(target);
+    const r = i < 0 ? undefined : strike(chem, target);
+    if (i < 0) a.lastResult = `You have no ${target}.`;
+    else if (!r) { learn(a, factId(`striking ${target} does nothing`)); a.lastResult = `Striking ${target} does nothing.`; emit('result', `strikes ${target}: nothing`, a.id); }
+    else {
+      a.inventory[i] = r.product; learn(a, factId(`striking ${target} makes ${r.product}`));
+      const first = !agents.some(o => o.made.includes(r.product)); if (!a.made.includes(r.product)) a.made.push(r.product);
+      a.lastResult = `Striking ${target} made ${describeItem(r.product)}!`;
+      emit(first ? 'discovery' : 'action', first ? `DISCOVERS ${r.product} (striking ${target})` : `strikes ${target} into ${r.product}`, a.id);
+    }
+  } else if (action === 'build') {
+    const i = a.inventory.indexOf(target), sub = substance(chem, target);
+    if (i < 0) a.lastResult = `You have no ${target}.`;
+    else if (!sub?.structure) { a.lastResult = `${target} cannot be built.`; emit('result', `tries to build with ${target}, which cannot be built`, a.id); }
+    else {
+      a.inventory.splice(i, 1); a.activity = 'seeking cover'; a.busyUntil = Date.now() + 4000;
+      const b: Built = { id: structures.length + 1, kind: sub.structure, name: target, x: a.x, y: a.y, z: a.z, colour: sub.colour, by: a.id, at: Date.now() };
+      structures.push(b); learn(a, factId(`${target} can be built`));
+      a.lastResult = `You built ${target} at ${nearestPlace(a.x, a.z)}. It stays there.`;
+      emit('built', `BUILDS ${target} at ${nearestPlace(a.x, a.z)}`, a.id, undefined, { structure: b });
+    }
   } else if (action === 'rest') {
     a.activity = 'resting'; a.busyUntil = Date.now() + 5000; a.lastResult = 'You rested.'; emit('action', 'rests', a.id);
   } else if (action === 'council') {
@@ -184,7 +222,9 @@ function scriptedMind(a: SandboxAgent): Decision {
   if (r < 0.08 && near(a).length >= 2) { d.action = 'council'; d.problem = 'What can we make that none of us has made?'; }
   else if (r < 0.38) { d.action = 'walk'; d.target = pick([...Object.keys(PLACES), ...agents.filter(o => o !== a).map(o => o.name)]); }
   else if (r < 0.65) d.action = 'gather';
-  else if (r < 0.8 && a.inventory.length >= 2) { d.action = 'combine'; d.target = a.inventory[0]; d.with = a.inventory[1]; }
+  else if (a.inventory.some(i => substance(chem, i)?.structure)) { d.action = 'build'; d.target = a.inventory.find(i => substance(chem, i)?.structure); }
+  else if (r < 0.72 && a.inventory.length >= 2) { d.action = 'combine'; d.target = pick(a.inventory); d.with = pick(a.inventory); }
+  else if (r < 0.8 && a.inventory.length) { d.action = 'strike'; d.target = pick(a.inventory); }
   else if (r < 0.92) { d.action = 'wait'; d.say = pick(['Over here!', 'I found something.', 'Listen to this.']); }
   else d.action = 'rest';
   return d;
@@ -194,14 +234,15 @@ const SYSTEM = `You are one inhabitant of a small island. You and seven others w
 Island laws: ${LAWS.join(' ')} Facts pass between minds only when spoken: share the numbers of facts you want nearby listeners to learn.
 A council: when a problem is too big for one mind, you may call the people near you into a council. The council may split the problem into parts, try competing plans side by side, and merge what worked.
 You control only yourself. Each turn reply with ONE JSON object and nothing else:
-{"thought": "<one short private thought>", "say": "<words spoken aloud, or empty>", "share": [<fact numbers to teach listeners>], "action": "walk|gather|combine|eat|rest|wait|council", "target": "<place, person or item>", "with": "<second item for combine>", "problem": "<for council: the problem>"}
-Places: ${Object.keys(PLACES).join(', ')}. Items: ${ITEMS.join(', ')}.
+{"thought": "<one short private thought>", "say": "<words spoken aloud, or empty>", "share": [<fact numbers to teach listeners>], "action": "walk|gather|combine|strike|build|rest|wait|council", "target": "<place, person or thing>", "with": "<second thing for combine>", "problem": "<for council: the problem>"}
+Places: ${Object.keys(PLACES).join(', ')}. Nothing here is like anything you remember: the materials have their own names and ways, and you must learn them by trying.
 Be curious, share what you learn, and call a council when working together would help. Keep words short.`;
 
 const factList = (ids: number[]) => ids.slice(-24).map(f => `[${f}] ${facts[f]}`).join('; ') || 'none';
 function prompt(a: SandboxAgent): string {
   return [`You are ${a.name}. You are near ${nearestPlace(a.x, a.z)}.`, `Last result: ${a.lastResult}`,
-    `Here you could gather: ${gatherable(nodes[a.node]).join(', ') || 'nothing'}.`, `You carry: ${a.inventory.join(', ') || 'nothing'}.`,
+    `The ground here is ${soilOf(nodes[a.node])}. Here you could gather: ${gatherable(nodes[a.node]).map(describeItem).join(', ') || 'nothing'}.`,
+    `You carry: ${a.inventory.map(describeItem).join(', ') || 'nothing'}.`,
     `Facts you know: ${factList(a.known)}.`, `Nearby: ${near(a).map(o => o.name).join(', ') || 'nobody'}.`,
     `Recently heard: ${a.heard.join(' | ') || 'nothing'}.`, `Your last thought: ${a.thought || 'none'}.`, 'Reply with the JSON object only.'].join('\n');
 }
@@ -235,7 +276,7 @@ async function councilCall(system: string, user: string, rec: CouncilRecord, fal
   try { return await callModel(mindMode, system, user, 'council'); } catch { return fallback(); }
 }
 const COUNCIL_SYSTEM = `You are inhabitants of a small island holding a council. Island laws: ${LAWS.join(' ')}
-Items: ${ITEMS.join(', ')}. Reply with ONE JSON object and nothing else.`;
+The materials have their own names; use them exactly. Reply with ONE JSON object and nothing else.`;
 
 async function council(chair: SandboxAgent, problem: string, observer = false) {
   const members = [chair, ...near(chair).filter(o => o.council === null)].slice(0, 6);
@@ -246,7 +287,7 @@ async function council(chair: SandboxAgent, problem: string, observer = false) {
   for (const m of members) { m.council = rec.id; m.path = []; m.activity = 'socialising'; }
   emit('council_open', `${observer ? '[observer asked] ' : ''}calls a council: "${rec.problem}"`, chair.id, rec.members.filter(i => i !== chair.id), { council: rec.id, members: rec.members });
   try {
-    const pool = members.map(m => `${m.name} carries ${m.inventory.join(', ') || 'nothing'}`).join('; ');
+    const pool = members.map(m => `${m.name} carries ${m.inventory.map(describeItem).join(', ') || 'nothing'}`).join('; ');
     const pooled = [...new Set(members.flatMap(m => m.known))];
     // 1. The chair chooses the pattern: split, branch, or none.
     const plan = await councilCall(COUNCIL_SYSTEM, [`Chair: ${chair.name}. Problem: ${rec.problem}`, `Members: ${members.map(m => m.name).join(', ')}.`,
@@ -264,11 +305,13 @@ async function council(chair: SandboxAgent, problem: string, observer = false) {
       { council: rec.id, mode: rec.mode, parts: rec.parts });
     // 2. Fan out. The council pools what it carries and deals it out, so each part
     // works with its own items; every part runs as its own parallel model call.
-    const pot = members.flatMap(m => m.inventory.splice(0));
-    const hands: Item[][] = parts.map(() => []);
-    pot.forEach((item, i) => hands[i % parts.length].push(item));
+    // Each dealt item remembers its owner, and goes back to them unless it was used.
+    const pot = members.flatMap(m => m.inventory.splice(0).map(item => ({ item, owner: m })));
+    const hands: Array<typeof pot> = parts.map(() => []);
+    pot.forEach((entry, i) => hands[i % parts.length].push(entry));
     const results = await Promise.all(parts.map(async (p, i) => {
-      const mine = hands[i];
+      const dealt = hands[i];
+      const mine = dealt.map(d => d.item);
       const answer = await councilCall(COUNCIL_SYSTEM, [`You are ${p.agent.name} in a council chaired by ${chair.name}. Problem: ${rec.problem}`,
         `Your part (${rec.mode}): ${p.task}`, `Items dealt to you for this part: ${mine.join(', ') || 'none'}.`, `Facts the council knows: ${factList(pooled)}.`,
         mine.length >= 2 ? 'Pick one pair from your items to combine for your part, avoiding pairs already known to make nothing.' : 'You have too few items to combine; report what the council should do next.',
@@ -278,7 +321,10 @@ async function council(chair: SandboxAgent, problem: string, observer = false) {
       const x = String(t.a ?? '').toLowerCase(), y = String(t.b ?? '').toLowerCase();
       let r: { text: string; made?: string; fact?: number } = { text: mine.length >= 2 ? `has no ${x} and ${y} in hand` : 'too few items to try' };
       if (mine.length >= 2) r = tryCombine(p.agent, x, y, { inventory: mine } as SandboxAgent);
-      p.agent.inventory.push(...mine.splice(0));
+      // Return what is left: unused items to their owners, anything new to the one who made it.
+      const left = [...mine];
+      for (const d of dealt) { const k = left.indexOf(d.item); if (k >= 0) { left.splice(k, 1); d.owner.inventory.push(d.item); } }
+      p.agent.inventory.push(...left);
       rec.parts[i] = { ...rec.parts[i], finding: scrub(String(answer.finding ?? '')).slice(0, 120), result: r.text, made: r.made };
       emit('council_part', `${p.agent.name}: ${rec.parts[i].finding} (${r.text})`, p.agent.id, [chair.id], { council: rec.id, part: i, made: r.made ?? null });
       return { agent: p.agent, ...r };
@@ -307,7 +353,7 @@ async function council(chair: SandboxAgent, problem: string, observer = false) {
 function save() {
   try {
     mkdirSync(STATE_DIR, { recursive: true });
-    const data = { version: 1, seed: SEED, facts, seq, events: events.slice(-400), councils: councils.slice(-100),
+    const data = { version: 2, seed: SEED, facts, seq, structures, events: events.slice(-400), councils: councils.slice(-100),
       agents: agents.map(a => ({ ...a, path: [], thinking: false, council: null })) };
     writeFileSync(STATE_FILE + '.tmp', JSON.stringify(data)); renameSync(STATE_FILE + '.tmp', STATE_FILE);
   } catch (err) { console.error('save failed', (err as Error).message); }
@@ -315,7 +361,8 @@ function save() {
 function load() {
   try {
     const data = JSON.parse(readFileSync(STATE_FILE, 'utf8'));
-    if (data.version !== 1 || data.seed !== SEED) return;
+    if (data.version !== 2 || data.seed !== SEED) return;
+    structures = data.structures ?? [];
     facts.push(...data.facts); seq = data.seq; events = data.events; councils = data.councils ?? [];
     agents = data.agents.map((a: SandboxAgent) => ({ ...a, nextThink: Date.now() + 1000 + a.id * 500, busyUntil: 0 }));
     console.log(`resumed ${agents.length} agents, ${facts.length} facts, ${councils.length} councils`);
@@ -328,11 +375,23 @@ process.on('SIGINT', () => { save(); process.exit(0); });
 
 // ---------- the loop ----------
 let tick = 0, last = Date.now();
-setInterval(() => { const now = Date.now(), dt = (now - last) / 1000; last = now; if (running) stepAgents(dt); scheduleMinds(); }, 100);
+const CARRY = 6;
+setInterval(() => {
+  const now = Date.now(), dt = (now - last) / 1000; last = now;
+  if (running) stepAgents(dt);
+  // The carry law holds between every step: anything over six is set down.
+  for (const a of agents) if (a.council === null && a.inventory.length > CARRY) {
+    const dropped = a.inventory.splice(CARRY);
+    emit('result', `sets down ${dropped.join(', ')}: hands full`, a.id);
+  }
+  scheduleMinds();
+}, 100);
 setInterval(() => {
   tick++;
   send('state', { tick, running, mindMode, calls: stats.total, failed: stats.failed, mindError: stats.lastError, perMin: perMinute(), cap: MIND_CAP + COUNCIL_CAP,
     councilCalls: stats.byPurpose.council ?? 0, facts: facts.length,
+    progress: { elements: 6, makeable: chem.substances.filter(x => x.tier > 0).length, found: new Set(agents.flatMap(a => a.made)).size,
+      structures: chem.substances.filter(x => x.structure).length, built: structures.length, councils: councils.length },
     councils: councils.filter(c => !c.closedAt || Date.now() - c.closedAt < 6000).map(c => ({ id: c.id, chair: c.chair, members: c.members, problem: c.problem, mode: c.mode, open: !c.closedAt, winner: c.winner })),
     agents: agents.map(a => ({ id: a.id, name: a.name, x: a.x, y: a.y, z: a.z, activity: a.activity, thought: a.thought,
       said: Date.now() - a.saidAt < 8000 ? a.said : '', thinking: a.thinking, inventory: a.inventory, known: a.made, facts: a.known.length, council: a.council })) });
@@ -345,7 +404,7 @@ function body(req: IncomingMessage): Promise<Record<string, unknown>> {
 createServer(async (req, res) => {
   if (req.url === '/api/events') {
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
-    res.write(`event: hello\ndata: ${JSON.stringify({ seed: SEED, names: NAMES, history: events.slice(-200), councils: councils.slice(-30) })}\n\n`);
+    res.write(`event: hello\ndata: ${JSON.stringify({ seed: SEED, names: NAMES, history: events.slice(-200), councils: councils.slice(-30), structures })}\n\n`);
     clients.add(res); req.on('close', () => clients.delete(res));
     return;
   }

@@ -5,6 +5,7 @@ export interface LiveAgent {
 }
 export interface LiveState {
   tick: number; running: boolean; mindMode: string; calls: number; failed: number; perMin: number; cap: number;
+  progress: { elements: number; makeable: number; found: number; structures: number; built: number; councils: number };
   agents: LiveAgent[]; councilCalls: number; facts: number; mindError: string;
   councils: Array<{ id: number; chair: number; members: number[]; problem: string; mode: string; open: boolean; winner: number | null }>;
 }
