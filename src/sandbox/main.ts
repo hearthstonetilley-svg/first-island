@@ -270,7 +270,7 @@ function renderInspector() {
 }
 
 // What the agent has learned about food, read from the facts it holds.
-const SURVIVAL_RULES = 'To survive: strength drains over time, faster at night and in storms unless sheltered near a hut or wall they built. Eating the right things restores it; some things sicken. At no strength they collapse, lose what they carry and wake later.';
+const SURVIVAL_RULES = 'To survive: strength drains over time, faster at night and in storms unless sheltered near a hut or wall they built. Eating the right things restores it; some things sicken. At no strength they collapse, lose what they carry and wake later. At night a wild boar hunts anyone in the open: shelter keeps it off, and a spear drives it away.';
 let factList: string[] = [], factsFetching = false;
 function foodLine(ids: number[]) {
   if (ids.some(i => i >= factList.length) && !factsFetching) { factsFetching = true; factTexts().then(f => { factList = f; }).finally(() => { factsFetching = false; }); }
