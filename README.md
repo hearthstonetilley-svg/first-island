@@ -23,6 +23,12 @@ Every version is published, including the ones that failed review. Each one is a
 judged it and the screenshots it was judged on. Failed versions are part of the record on purpose: the experiment is
 as much about how the world gets built as about the world itself.
 
+## The record
+
+- [Journal](docs/JOURNAL.md): how the idea came about and how it is being built
+- [Decisions](docs/DECISIONS.md): every decision and why
+- [Design](docs/design/world-and-agents.md): the world and its agents
+
 ## Version log
 
 | Version | What happened |
