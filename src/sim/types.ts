@@ -24,6 +24,10 @@ export interface Snapshot {
   speed: Speed;
   dials: Dials;
   eventCount: number;
+  agents: Agent[];
+  plants: Plant[];
+  environment: Environment;
+  stats: PopulationStats;
 }
 export interface RunRecord {
   version: 1;
@@ -48,3 +52,22 @@ export function resolveDials(patch: Partial<Dials> = {}): Dials {
     || dials.startingPopulation > dials.populationCap) throw new Error('Population dials must be whole numbers within the cap');
   return dials;
 }
+
+export type Activity = 'wandering' | 'seeking food' | 'eating' | 'resting' | 'seeking cover' | 'socialising';
+export type DeathCause = 'starvation' | 'exposure' | 'old age' | 'exhaustion';
+export interface Traits {
+  speed: number; strength: number; perception: number; curiosity: number;
+  sociability: number; fertility: number; lifespan: number;
+}
+export interface Agent {
+  id: number; family: number; parents: number[]; generation: number; bornTick: number;
+  age: number; biologicalAge: number; x: number; y: number; z: number;
+  energy: number; warmth: number; rest: number; health: number;
+  activity: Activity; traits: Traits;
+}
+export interface Plant {
+  id: number; x: number; y: number; z: number; nutrition: number;
+  quantity: number; capacity: number; regrowth: number; tree: boolean;
+}
+export interface Environment { daylight: number; rain: number; temperature: number }
+export interface PopulationStats { population: number; births: number; deaths: number; deathsByCause: Record<DeathCause, number> }

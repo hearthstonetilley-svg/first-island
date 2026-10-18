@@ -2,7 +2,8 @@
 // Serves dist/ with `vite preview`, loads several seeds several times in headless Chromium and checks each load:
 //   1. start-up finishes (label names a renderer) within the deadline, with no page errors
 //   2. the frame is a real island scene: enough water, sky and land pixels, almost no black
-//   3. warm-up frame times are measured and reported (gated only with EVAL_TIMING=strict, because headless
+//   3. live instanced agents are published by the drawing scene
+//   4. warm-up frame times are measured and reported (gated only with EVAL_TIMING=strict, because headless
 //      Chromium renders in software and its timings say nothing about real hardware)
 // Writes eval-results/report.json and eval-results/summary.md, and screenshots of every load.
 // Usage: npm run build && npm run eval    (EVAL_SEEDS=1,7  EVAL_RUNS=2  EVAL_TIMING=strict  EVAL_PORT=4182)
@@ -111,6 +112,8 @@ async function evaluateLoad(page, mode, seed, run, r) {
     r.frames = { count: frames.length, medianMs: +sorted[Math.floor(sorted.length / 2)].toFixed(1),
       worstMs: +sorted[sorted.length - 1].toFixed(1), over50: frames.filter((f) => f > 50).length };
     if (STRICT_TIMING && r.frames.medianMs > 25) r.failures.push(`median frame ${r.frames.medianMs} ms > 25 ms`);
+    r.agentCount = Number(await page.locator('.simulation-hud').getAttribute('data-rendered-agents'));
+    if (!Number.isInteger(r.agentCount) || r.agentCount < 1 || r.agentCount > 1000) r.failures.push(`invalid rendered agent count: ${r.agentCount}`);
     const png = await page.screenshot({ path: `${OUT}/${mode.name}-seed-${seed}-run-${run}.png`, timeout: 75_000 });
     r.pixels = await classifyPixels(page, png);
     for (const [k, v] of Object.entries(MIN)) if (r.pixels[k] < v) r.failures.push(`too little ${k}: ${(r.pixels[k] * 100).toFixed(1)}% < ${v * 100}%`);
@@ -147,9 +150,9 @@ const pct = (x) => (x * 100).toFixed(0) + '%';
 const lines = [
   `# Build eval: ${passed}/${results.length} loads passed`, '',
   `Modes ${MODES.map((m) => m.name).join(', ')}; seeds ${SEEDS.join(', ')}; ${RUNS} loads each. Timing ${STRICT_TIMING ? 'gated' : 'reported only (software rendering)'}.`, '',
-  '| mode | seed | run | result | renderer | start ms | median frame ms | blue | land | black | flat |',
-  '|---|---|---|---|---|---|---|---|---|---|---|',
-  ...results.map((r) => `| ${r.mode} | ${r.seed} | ${r.run} | ${r.ok ? 'pass' : 'FAIL: ' + r.failures.join('; ')} | ${r.renderer ?? '-'}${r.enteredManually ? ' (Enter)' : ''} | ${r.startMs ?? '-'} | ${r.frames?.medianMs ?? '-'} | ${r.pixels ? pct(r.pixels.blue) : '-'} | ${r.pixels ? pct(r.pixels.land) : '-'} | ${r.pixels ? pct(r.pixels.black) : '-'} | ${r.pixels ? pct(r.pixels.flat) : '-'} |`),
+  '| mode | seed | run | result | renderer | agents | start ms | median frame ms | blue | land | black | flat |',
+  '|---|---|---|---|---|---|---|---|---|---|---|---|',
+  ...results.map((r) => `| ${r.mode} | ${r.seed} | ${r.run} | ${r.ok ? 'pass' : 'FAIL: ' + r.failures.join('; ')} | ${r.renderer ?? '-'}${r.enteredManually ? ' (Enter)' : ''} | ${r.agentCount ?? '-'} | ${r.startMs ?? '-'} | ${r.frames?.medianMs ?? '-'} | ${r.pixels ? pct(r.pixels.blue) : '-'} | ${r.pixels ? pct(r.pixels.land) : '-'} | ${r.pixels ? pct(r.pixels.black) : '-'} | ${r.pixels ? pct(r.pixels.flat) : '-'} |`),
 ];
 writeFileSync(`${OUT}/report.json`, JSON.stringify(results, null, 1));
 writeFileSync(`${OUT}/summary.md`, lines.join('\n') + '\n');

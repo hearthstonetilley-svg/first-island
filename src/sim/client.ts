@@ -1,6 +1,6 @@
 import { WorldData, WorldProgress } from '../world/generate';
 import { Request, Response } from './protocol';
-import { Intervention, RunRecord, Snapshot } from './types';
+import { Dials, Intervention, RunRecord, Snapshot } from './types';
 
 export class SimulationClient {
   private readonly worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
@@ -10,7 +10,7 @@ export class SimulationClient {
   private recordRequest: ((record: RunRecord) => void) | undefined;
   private send(message: Request): void { this.worker.postMessage(message); }
 
-  initialize(seed: number, onProgress: (progress: WorldProgress) => void): Promise<WorldData> {
+  initialize(seed: number, onProgress: (progress: WorldProgress) => void, dials: Partial<Dials> = {}): Promise<WorldData> {
     return new Promise((resolve, reject) => {
       this.worker.onerror = (error) => { reject(new Error(error.message)); this.onError?.(error.message); };
       this.worker.onmessage = ({ data }: MessageEvent<Response>) => {
@@ -23,7 +23,7 @@ export class SimulationClient {
         if (data.type === 'record') { this.recordRequest?.(data.record); this.recordRequest = undefined; }
         if (data.type === 'error') { reject(new Error(data.message)); this.onError?.(data.message); }
       };
-      this.send({ type: 'init', seed });
+      this.send({ type: 'init', seed, dials });
     });
   }
   running(value: boolean): void { this.send({ type: 'running', value }); }

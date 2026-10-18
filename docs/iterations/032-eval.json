@@ -1,0 +1,752 @@
+[
+ {
+  "mode": "auto",
+  "seed": 1,
+  "run": 1,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 11163,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 4,
+   "medianMs": 683.3,
+   "worstMs": 1350,
+   "over50": 4
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.8878125,
+   "sky": 0.0280625,
+   "land": 0.0679375,
+   "black": 0,
+   "flat": 0.076,
+   "blue": 0.915875
+  }
+ },
+ {
+  "mode": "auto",
+  "seed": 1,
+  "run": 2,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 11512,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 3,
+   "medianMs": 1169.1,
+   "worstMs": 2033.2,
+   "over50": 3
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.8875625,
+   "sky": 0.0289375,
+   "land": 0.067125,
+   "black": 0,
+   "flat": 0.0753125,
+   "blue": 0.9165
+  }
+ },
+ {
+  "mode": "auto",
+  "seed": 1,
+  "run": 3,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 11447,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 4,
+   "medianMs": 683.3,
+   "worstMs": 1350,
+   "over50": 4
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.887875,
+   "sky": 0.0281875,
+   "land": 0.067375,
+   "black": 0,
+   "flat": 0.076125,
+   "blue": 0.9160625
+  }
+ },
+ {
+  "mode": "auto",
+  "seed": 7,
+  "run": 1,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 11774,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 5,
+   "medianMs": 750.1,
+   "worstMs": 1449.9,
+   "over50": 5
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.8956875,
+   "sky": 0.0226875,
+   "land": 0.0686875,
+   "black": 0,
+   "flat": 0.08025,
+   "blue": 0.918375
+  }
+ },
+ {
+  "mode": "auto",
+  "seed": 7,
+  "run": 2,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 10993,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 4,
+   "medianMs": 766.7,
+   "worstMs": 1699.9,
+   "over50": 4
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.8969375,
+   "sky": 0.022,
+   "land": 0.0685625,
+   "black": 0,
+   "flat": 0.0800625,
+   "blue": 0.9189375
+  }
+ },
+ {
+  "mode": "auto",
+  "seed": 7,
+  "run": 3,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 11304,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 4,
+   "medianMs": 766.7,
+   "worstMs": 1466.6,
+   "over50": 4
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.8970625,
+   "sky": 0.021125,
+   "land": 0.069375,
+   "black": 0,
+   "flat": 0.0821875,
+   "blue": 0.9181875
+  }
+ },
+ {
+  "mode": "auto",
+  "seed": 42,
+  "run": 1,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 10287,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 4,
+   "medianMs": 716.7,
+   "worstMs": 2166.6,
+   "over50": 4
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.8383125,
+   "sky": 0.032,
+   "land": 0.1115,
+   "black": 0,
+   "flat": 0.0654375,
+   "blue": 0.8703125
+  }
+ },
+ {
+  "mode": "auto",
+  "seed": 42,
+  "run": 2,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 11462,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 3,
+   "medianMs": 1380,
+   "worstMs": 1466.6,
+   "over50": 3
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.8383125,
+   "sky": 0.0323125,
+   "land": 0.111625,
+   "black": 0,
+   "flat": 0.0631875,
+   "blue": 0.870625
+  }
+ },
+ {
+  "mode": "auto",
+  "seed": 42,
+  "run": 3,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 11397,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 3,
+   "medianMs": 1348.6,
+   "worstMs": 1433.3,
+   "over50": 3
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.8384375,
+   "sky": 0.03125,
+   "land": 0.1119375,
+   "black": 0,
+   "flat": 0.065875,
+   "blue": 0.8696875
+  }
+ },
+ {
+  "mode": "auto",
+  "seed": 99,
+  "run": 1,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 10949,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 3,
+   "medianMs": 1354.4,
+   "worstMs": 1416.6,
+   "over50": 3
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.8876875,
+   "sky": 0.025625,
+   "land": 0.0755625,
+   "black": 0,
+   "flat": 0.0796875,
+   "blue": 0.9133125
+  }
+ },
+ {
+  "mode": "auto",
+  "seed": 99,
+  "run": 2,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 11970,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 3,
+   "medianMs": 1354.7,
+   "worstMs": 1399.9,
+   "over50": 3
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.88775,
+   "sky": 0.025625,
+   "land": 0.0756875,
+   "black": 0,
+   "flat": 0.079625,
+   "blue": 0.913375
+  }
+ },
+ {
+  "mode": "auto",
+  "seed": 99,
+  "run": 3,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 11437,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 4,
+   "medianMs": 700,
+   "worstMs": 1449.9,
+   "over50": 4
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.88725,
+   "sky": 0.0269375,
+   "land": 0.074625,
+   "black": 0,
+   "flat": 0.079625,
+   "blue": 0.9141875
+  }
+ },
+ {
+  "mode": "auto",
+  "seed": 2026,
+  "run": 1,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 11002,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 4,
+   "medianMs": 716.6,
+   "worstMs": 1483.3,
+   "over50": 4
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.8135,
+   "sky": 0.0366875,
+   "land": 0.1310625,
+   "black": 0,
+   "flat": 0.0608125,
+   "blue": 0.8501875
+  }
+ },
+ {
+  "mode": "auto",
+  "seed": 2026,
+  "run": 2,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 11024,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 4,
+   "medianMs": 716.7,
+   "worstMs": 2133.2,
+   "over50": 4
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.8130625,
+   "sky": 0.0363125,
+   "land": 0.1315625,
+   "black": 0,
+   "flat": 0.06275,
+   "blue": 0.849375
+  }
+ },
+ {
+  "mode": "auto",
+  "seed": 2026,
+  "run": 3,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 11253,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 4,
+   "medianMs": 1416.5,
+   "worstMs": 1416.6,
+   "over50": 4
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.8124375,
+   "sky": 0.035875,
+   "land": 0.132375,
+   "black": 0,
+   "flat": 0.06225,
+   "blue": 0.8483125
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 1,
+  "run": 1,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 9031,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 3,
+   "medianMs": 1211.4,
+   "worstMs": 1383.2,
+   "over50": 3
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.8891875,
+   "sky": 0.0270625,
+   "land": 0.0670625,
+   "black": 0,
+   "flat": 0.0781875,
+   "blue": 0.91625
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 1,
+  "run": 2,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 11582,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 3,
+   "medianMs": 1258.2,
+   "worstMs": 2050,
+   "over50": 3
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.8875625,
+   "sky": 0.028875,
+   "land": 0.0669375,
+   "black": 0,
+   "flat": 0.0800625,
+   "blue": 0.9164375
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 1,
+  "run": 3,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 11326,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 3,
+   "medianMs": 666.6,
+   "worstMs": 2083.2,
+   "over50": 3
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.8869375,
+   "sky": 0.0289375,
+   "land": 0.06725,
+   "black": 0,
+   "flat": 0.0784375,
+   "blue": 0.915875
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 7,
+  "run": 1,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 10426,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 4,
+   "medianMs": 1533.2,
+   "worstMs": 1549.9,
+   "over50": 3
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.897,
+   "sky": 0.0214375,
+   "land": 0.0686875,
+   "black": 0,
+   "flat": 0.0831875,
+   "blue": 0.9184375
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 7,
+  "run": 2,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 10871,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 6,
+   "medianMs": 749.9,
+   "worstMs": 2316.7,
+   "over50": 4
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.896125,
+   "sky": 0.0218125,
+   "land": 0.0688125,
+   "black": 0,
+   "flat": 0.083,
+   "blue": 0.9179375
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 7,
+  "run": 3,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 10582,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 3,
+   "medianMs": 1445.6,
+   "worstMs": 1499.9,
+   "over50": 3
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.8958125,
+   "sky": 0.0223125,
+   "land": 0.068625,
+   "black": 0,
+   "flat": 0.0828125,
+   "blue": 0.918125
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 42,
+  "run": 1,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 10844,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 3,
+   "medianMs": 1271.3,
+   "worstMs": 1450,
+   "over50": 3
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.838875,
+   "sky": 0.0314375,
+   "land": 0.1115,
+   "black": 0,
+   "flat": 0.0673125,
+   "blue": 0.8703125
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 42,
+  "run": 2,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 10549,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 4,
+   "medianMs": 700,
+   "worstMs": 1466.6,
+   "over50": 4
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.8415,
+   "sky": 0.02875,
+   "land": 0.1125,
+   "black": 0,
+   "flat": 0.0638125,
+   "blue": 0.87025
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 42,
+  "run": 3,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 10065,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 4,
+   "medianMs": 1416.6,
+   "worstMs": 1433.2,
+   "over50": 4
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.83875,
+   "sky": 0.0315,
+   "land": 0.1115,
+   "black": 0,
+   "flat": 0.06775,
+   "blue": 0.87025
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 99,
+  "run": 1,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 10359,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 3,
+   "medianMs": 1344,
+   "worstMs": 1399.9,
+   "over50": 3
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.887875,
+   "sky": 0.0264375,
+   "land": 0.0745625,
+   "black": 0,
+   "flat": 0.08325,
+   "blue": 0.9143125
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 99,
+  "run": 2,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 10589,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 4,
+   "medianMs": 1416.7,
+   "worstMs": 2133.3,
+   "over50": 4
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.8895,
+   "sky": 0.0245625,
+   "land": 0.0755,
+   "black": 0,
+   "flat": 0.081625,
+   "blue": 0.9140625
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 99,
+  "run": 3,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 11339,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 4,
+   "medianMs": 1466.6,
+   "worstMs": 2249.9,
+   "over50": 4
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.88925,
+   "sky": 0.0265,
+   "land": 0.0735625,
+   "black": 0,
+   "flat": 0.07975,
+   "blue": 0.91575
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 2026,
+  "run": 1,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 11165,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 3,
+   "medianMs": 716.6,
+   "worstMs": 2183.2,
+   "over50": 3
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.81475,
+   "sky": 0.0326875,
+   "land": 0.1333125,
+   "black": 0,
+   "flat": 0.0618125,
+   "blue": 0.8474375
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 2026,
+  "run": 2,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 10647,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 4,
+   "medianMs": 733.3,
+   "worstMs": 1449.9,
+   "over50": 4
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.812875,
+   "sky": 0.0343125,
+   "land": 0.133375,
+   "black": 0,
+   "flat": 0.064125,
+   "blue": 0.8471875
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 2026,
+  "run": 3,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 11916,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 4,
+   "medianMs": 1499.9,
+   "worstMs": 1550,
+   "over50": 3
+  },
+  "agentCount": 20,
+  "pixels": {
+   "water": 0.8131875,
+   "sky": 0.0345,
+   "land": 0.1331875,
+   "black": 0,
+   "flat": 0.06475,
+   "blue": 0.8476875
+  }
+ }
+]

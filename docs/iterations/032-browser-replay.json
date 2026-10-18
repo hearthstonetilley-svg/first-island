@@ -1,0 +1,78 @@
+{
+  "source": "docs/iterations/031-browser.json",
+  "passed": true,
+  "results": [
+    {
+      "mode": "auto",
+      "seed": 1,
+      "ticks": 401,
+      "exact": true,
+      "hash": "791a4a3e6a7f800dc103acb1fd334cde42b5a37cb8ac4604ff6cbc6dd65405a1",
+      "stats": {
+        "population": 24,
+        "births": 24,
+        "deaths": 0,
+        "deathsByCause": {
+          "starvation": 0,
+          "exposure": 0,
+          "old age": 0,
+          "exhaustion": 0
+        }
+      }
+    },
+    {
+      "mode": "auto",
+      "seed": 7,
+      "ticks": 470,
+      "exact": true,
+      "hash": "585deb5c75f5784f912d3e36cb6cf358806a5e8599b9b53a8474cac84e31eba5",
+      "stats": {
+        "population": 24,
+        "births": 24,
+        "deaths": 0,
+        "deathsByCause": {
+          "starvation": 0,
+          "exposure": 0,
+          "old age": 0,
+          "exhaustion": 0
+        }
+      }
+    },
+    {
+      "mode": "auto",
+      "seed": 42,
+      "ticks": 496,
+      "exact": true,
+      "hash": "4357aaec1bc32769e3edaceeb19ab3d664bb5df85c8fe33c74e55e34b2b4ca1b",
+      "stats": {
+        "population": 23,
+        "births": 23,
+        "deaths": 0,
+        "deathsByCause": {
+          "starvation": 0,
+          "exposure": 0,
+          "old age": 0,
+          "exhaustion": 0
+        }
+      }
+    },
+    {
+      "mode": "webgl2",
+      "seed": 42,
+      "ticks": 491,
+      "exact": true,
+      "hash": "3d8a7d30c7c720d93f094fc96245198b628b40a1190a2b0733ec8199626e8242",
+      "stats": {
+        "population": 23,
+        "births": 23,
+        "deaths": 0,
+        "deathsByCause": {
+          "starvation": 0,
+          "exposure": 0,
+          "old age": 0,
+          "exhaustion": 0
+        }
+      }
+    }
+  ]
+}

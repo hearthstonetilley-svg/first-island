@@ -5,7 +5,9 @@ import { SceneRecovery } from './render/recovery';
 import { FrameDiagnostics } from './render/diagnostics';
 import { AdaptiveQuality } from './render/quality';
 import { ReadinessGate } from './render/readiness';
+import { Dials } from './sim/types';
 import { SimulationClient } from './sim/client';
+import { AgentInspector } from './ui/agents';
 import { SimulationHUD } from './ui/simulation';
 import { LoadingProgress, LoadingScreen, paintLoading } from './ui/loading';
 
@@ -34,9 +36,15 @@ label.textContent = `seed ${seed} · starting renderer…`;
 fps.textContent = '… fps · … ms · warming up';
 app.append(canvas, label, fps);
 let loading = new LoadingScreen(app, seed);
+let currentIsland: IslandScene | undefined;
 const simulation = new SimulationClient();
 const simulationHUD = new SimulationHUD(app, simulation);
-simulation.onSnapshot = (snapshot) => simulationHUD.update(snapshot);
+const inspector = new AgentInspector(app, simulationHUD.element,
+  (id) => currentIsland?.selectAgent(id), (id) => currentIsland?.followAgent(id), () => currentIsland?.islandView());
+simulation.onSnapshot = (snapshot) => {
+  simulationHUD.update(snapshot); inspector.update(snapshot);
+  currentIsland?.updateSnapshot(snapshot, performance.now());
+};
 simulation.onError = (message) => { simulation.running(false); simulationHUD.fail(message); };
 window.addEventListener('pagehide', () => simulation.dispose());
 const notice = document.createElement('div');
@@ -50,7 +58,7 @@ let frameRequest = 0;
 let sceneEvents: AbortController | undefined;
 let controller: SceneRecovery<IslandScene>;
 const stopped = () => {
-  simulation.running(false);
+  currentIsland = undefined;
   generation += 1;
   cancelAnimationFrame(frameRequest);
   sceneEvents?.abort();
@@ -90,14 +98,19 @@ const progress = async (step: LoadingProgress) => {
 try {
   await progress({ stage: 'terrain', message: 'Generating terrain', percent: 1 });
   const worldStarted = performance.now();
+  const simDials: Partial<Dials> = {};
+  for (const key of ['generationSeconds', 'foodRegrowth', 'mutationRate', 'startingPopulation'] as const) {
+    if (params.has(key)) simDials[key] = Number(params.get(key));
+  }
   const world = await simulation.initialize(seed, ({ stage, fraction }) => {
     void progress({ stage, message: stage === 'terrain' ? 'Generating terrain' : 'Placing trees',
       percent: stage === 'terrain' ? 2 + fraction * 26 : 28 + fraction * 10 });
-  });
+  }, simDials);
   diagnostics?.phase('worldGeneration', performance.now() - worldStarted);
   controller = new SceneRecovery((forceWebGL) => createIslandScene(
     app.querySelector('canvas')!, world, forceWebGL, {
       postEnabled, diagnostics, pixelRatio, shadowMapSize, onProgress: progress, onFallback: switching,
+      snapshot: simulation.snapshot, onSelect: (id) => inspector.select(id),
     }), forceWebGL2, stopped, switching, (island) => {
       void runScene(island).catch((error) => { void controller.reportFailure(island, error); });
     }, failed);
@@ -105,6 +118,10 @@ try {
 } catch (error) { failed(error); }
 
 async function runScene(island: IslandScene): Promise<void> {
+  currentIsland = island;
+  if (simulation.snapshot) island.updateSnapshot(simulation.snapshot, performance.now());
+  island.selectAgent(inspector.selected);
+  if (inspector.following) island.followAgent(inspector.selected);
   const token = generation;
   const active = () => generation === token;
   sceneEvents = new AbortController();
@@ -134,7 +151,7 @@ async function runScene(island: IslandScene): Promise<void> {
       // Quality windows begin only after the overlay and its fade are gone.
       quality.reset();
       playing = true;
-      simulation.running(!document.hidden);
+      simulation.running(true);
     });
   };
   const resetSampling = () => {
@@ -149,7 +166,7 @@ async function runScene(island: IslandScene): Promise<void> {
     if (!active()) return;
     try { island.resize(); resetSampling(); } catch (error) { void controller.reportFailure(island, error); }
   }, { signal: sceneEvents.signal });
-  document.addEventListener('visibilitychange', () => { resetSampling(); simulation.running(playing && !document.hidden); }, { signal: sceneEvents.signal });
+  document.addEventListener('visibilitychange', resetSampling, { signal: sceneEvents.signal });
   await progress({ stage: 'settling', message: 'Checking frame rate', percent: 92 });
   const readinessStarted = performance.now();
   if (!active()) return;
@@ -187,6 +204,10 @@ async function runScene(island: IslandScene): Promise<void> {
     const renderStarted = performance.now();
     island.render(animationStart === undefined ? 0 : time - animationStart);
     const submittedAt = performance.now();
+    const positions = island.agentPositions();
+    const count = String(positions.length);
+    if (simulationHUD.element.dataset.renderedAgents !== count) simulationHUD.element.dataset.renderedAgents = count;
+    if (debug) window.__ISLAND_AGENTS__ = { positions };
     if (!active()) return;
     label.textContent = `seed ${seed} · ${island.label}`;
     if (!notice.hidden && entered && island.label === 'WebGL2' && notice.textContent?.includes('switching')) {
@@ -203,3 +224,5 @@ async function runScene(island: IslandScene): Promise<void> {
   };
   nextFrame();
 }
+
+declare global { interface Window { __ISLAND_AGENTS__?: { positions: ReturnType<IslandScene['agentPositions']> } } }
