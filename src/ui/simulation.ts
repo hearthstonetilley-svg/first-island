@@ -21,6 +21,12 @@ export class SimulationHUD {
       <p>Starting population applies to a new run.</p><button type="submit">Apply to this run</button><button class="sim-new-run" type="button">New run</button><p class="sim-dial-message" role="status"></p>
       </form></details>`;
     parent.append(this.element);
+    // Notices clear the actual HUD height, including responsive wrapped rows.
+    const resize = new ResizeObserver(() => {
+      parent.style.setProperty('--simulation-hud-height', `${this.element.getBoundingClientRect().height}px`);
+    });
+    resize.observe(this.element);
+    window.addEventListener('pagehide', () => resize.disconnect(), { once: true });
     this.clock = this.element.querySelector('time')!;
     this.generation = this.element.querySelector('.sim-generation')!;
     this.status = this.element.querySelector('.sim-status')!;

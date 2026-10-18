@@ -1,0 +1,94 @@
+[
+  {
+    "seed": 1,
+    "mode": "auto",
+    "width": 1280,
+    "height": 800,
+    "hud": {
+      "top": 724,
+      "bottom": 780,
+      "height": 56
+    },
+    "notice": {
+      "top": 676,
+      "bottom": 712,
+      "height": 36,
+      "hidden": false
+    },
+    "gap": 12,
+    "pointerEvents": "none",
+    "rendered": 20,
+    "label": "seed 1 · WebGL2",
+    "pauseClickable": true,
+    "errors": []
+  },
+  {
+    "seed": 7,
+    "mode": "auto",
+    "width": 1280,
+    "height": 800,
+    "hud": {
+      "top": 724,
+      "bottom": 780,
+      "height": 56
+    },
+    "notice": {
+      "top": 676,
+      "bottom": 712,
+      "height": 36,
+      "hidden": false
+    },
+    "gap": 12,
+    "pointerEvents": "none",
+    "rendered": 20,
+    "label": "seed 7 · WebGL2",
+    "pauseClickable": true,
+    "errors": []
+  },
+  {
+    "seed": 42,
+    "mode": "auto-mobile",
+    "width": 390,
+    "height": 844,
+    "hud": {
+      "top": 696,
+      "bottom": 832,
+      "height": 136
+    },
+    "notice": {
+      "top": 626,
+      "bottom": 676,
+      "height": 50,
+      "hidden": false
+    },
+    "gap": 20,
+    "pointerEvents": "none",
+    "rendered": 20,
+    "label": "seed 42 · WebGL2",
+    "pauseClickable": true,
+    "errors": []
+  },
+  {
+    "seed": 42,
+    "mode": "webgl2",
+    "width": 1280,
+    "height": 800,
+    "hud": {
+      "top": 724,
+      "bottom": 780,
+      "height": 56
+    },
+    "notice": {
+      "top": 0,
+      "bottom": 0,
+      "height": 0,
+      "hidden": true
+    },
+    "gap": 724,
+    "pointerEvents": "none",
+    "rendered": 20,
+    "label": "seed 42 · WebGL2",
+    "pauseClickable": true,
+    "errors": []
+  }
+]

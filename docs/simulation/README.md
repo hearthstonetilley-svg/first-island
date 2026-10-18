@@ -4,7 +4,7 @@ Implements Brief 3 on `stage-2`: a deterministic body simulation, with scripted 
 
 ## Run and observe
 
-`npm run dev` opens the existing island app. The default cohort is 20 founding young adults. Select Pause, 1×, 10× or 100× in the bottom HUD. One fixed tick is one simulated second; a default generation interval is 1,800 ticks, so it lasts 30 minutes at 1×. The worker starts advancing after initial entry. After that, rendering, camera movement, tab visibility and renderer recovery do not control simulation progression. The worker catches up delayed scheduling in bounded batches without dropping fixed ticks. Pause is explicit and logged.
+Run `npm run dev` and visit the Vite URL to view the existing island app. The default cohort is 20 founding young adults. Select Pause, 1×, 10× or 100× in the bottom HUD. One fixed tick is one simulated second; a default generation interval is 1,800 ticks, so it lasts 30 minutes at 1×. The worker starts advancing after initial entry. After that, rendering, camera movement, tab visibility and renderer recovery do not control simulation progression. The worker catches up delayed scheduling in bounded batches without dropping fixed ticks. Pause is explicit and logged.
 
 Click a figure or choose it from **Inspect an agent**. Its panel shows needs, traits, lineage, age, parents and activity. **Follow agent** and **Island view** affect only the camera. Families have consistent torso colours; small overhead dots indicate activity. Trees and terrain can occlude bodies. Follow or orbit/zoom to see individuals closely.
 
