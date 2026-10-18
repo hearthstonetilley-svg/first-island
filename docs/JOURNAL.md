@@ -115,6 +115,18 @@ The owner's reaction: "that's the design equivalent of the Matrix."
 - Still open: render cost on the owner's own GPU (the software renderer stays slow even at the minimal tier, so the next
   cuts need a real-hardware reading), and a device-loss test, which headless WebGL2 cannot exercise.
 
+## 19 Oct 2026, morning: the first play test
+
+- Overnight CI failed 3 of 48 sandbox checks (two frame-timing checks at 0.4 fps, and the mixer drag). Rerun on the
+  owner's machine with nothing else running, all 48 passed: the CI runner was overloaded, not the build.
+- The owner ran the first full play test with eight Haiku minds. The record was put straight: the repo stays where it
+  is (decision 50), Codex reviews and never builds (decision 51), and GitHub main follows what the owner watches
+  (decision 52). PR #23 merges and is tagged v0.7.0 on green CI.
+- The owner asked how to see each agent's survival needs, and why agents gather without tools. Neither was readable or
+  true to life. v0.7.1 makes survival readable (decision 53); tools that matter are next (decision 54).
+- The leak review on the live run (docs/reviews/leak-review-2026-10-19.md) found no recitation: wrong guesses are human
+  ones and the two real discoveries came from trials. The hypothesis score is inflated by "expected nothing" guesses.
+
 ## Next
 
 The first play test with the owner: a fresh island, start to finish. Then pressure (hunger, night, storms, shelter),

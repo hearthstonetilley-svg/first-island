@@ -8,7 +8,7 @@ import { ReadinessGate } from '../render/readiness';
 import { FrameDiagnostics } from '../render/diagnostics';
 import { LoadingProgress, LoadingScreen, paintLoading } from '../ui/loading';
 import { Agent, DEFAULT_DIALS, Snapshot, Activity } from '../sim/types';
-import { COLOURS, connect, control, FeedEvent, GOLD, LEARN, LiveState, MIND_COLOURS, MIND_LABELS, MIND_PLAN, SKILL, usage } from './stream';
+import { COLOURS, connect, control, FeedEvent, GOLD, LEARN, LiveState, MIND_COLOURS, MIND_LABELS, MIND_PLAN, Places, places, SKILL, usage, factTexts } from './stream';
 
 // The island page: an observation station. Left, the eight minds, each with its
 // current action, its last outcome and its latest thought, which flies in from
@@ -40,6 +40,7 @@ app.innerHTML = `
   <aside class="rail right">
     <section class="panel meters"><h3>Usage</h3><div class="meter-list"></div></section>
     <section class="panel council"><h3>Council</h3><div class="council-body"><p class="muted">No council yet. Agents call one when a problem needs several minds.</p></div></section>
+    <section class="panel map"><h3>The island, as they know it <span class="map-score"></span></h3><canvas class="map-canvas" width="276" height="160"></canvas></section>
     <section class="panel hyps"><h3>Hypotheses <span class="hyp-score"></span></h3><ol class="hyp-list"><li class="muted">Each try carries a prediction; the world marks it.</li></ol></section>
     <section class="panel finds"><h3>Discoveries</h3><ol class="find-list"></ol></section>
   </aside>
@@ -155,7 +156,7 @@ function ensureCards() {
     if (cardEls[i]) return;
     const c = document.createElement('div');
     c.className = 'card'; c.style.setProperty('--c', COLOURS[i]);
-    c.innerHTML = `<div class="head"><span class="dot"></span><b></b><span class="model"></span><span class="hit" title="Predictions that agreed with the island, out of those scored; +N? are tries made without a prediction"></span><span class="doing"></span></div><div class="energy"><i></i></div><div class="outcome"></div><div class="thought"></div><div class="said"></div>`;
+    c.innerHTML = `<div class="head"><span class="dot"></span><b></b><span class="str" title="Strength"></span><span class="model"></span><span class="hit" title="Predictions that agreed with the island, out of those scored; +N? are tries made without a prediction"></span><span class="doing"></span></div><div class="energy"><i></i></div><div class="outcome"></div><div class="thought"></div><div class="said"></div>`;
     c.querySelector('b')!.textContent = name;
     c.onclick = () => select(selected === i ? undefined : i);
     c.ondblclick = () => follow(i);
@@ -185,6 +186,8 @@ function updateCards(s: LiveState) {
     c.classList.toggle('collapsed', a.collapsed); c.classList.toggle('sheltered', a.sheltered);
     const bar = c.querySelector<HTMLElement>('.energy i')!, width = `${Math.round(a.energy * 100)}%`;
     if (bar.style.width !== width) { bar.style.width = width; bar.style.background = a.energy < 0.25 ? '#ff6b5c' : a.energy < 0.5 ? '#ffb347' : '#5cffc1'; c.querySelector<HTMLElement>('.energy')!.title = `strength ${width}${a.sheltered ? ', sheltered' : ''}`; }
+    const str = c.querySelector<HTMLElement>('.str')!;
+    if (str.textContent !== width) { str.textContent = width; str.classList.toggle('low', a.energy < 0.25); }
     const hit = c.querySelector<HTMLElement>('.hit')!, hitText = a.hyp.tried || a.hyp.missing ? `${a.hyp.right}/${a.hyp.tried}${a.hyp.missing ? ` +${a.hyp.missing}?` : ''}` : '';
     if (hit.textContent !== hitText) hit.textContent = hitText;
     const m = s.mix[a.id] ?? 'scripted', chip = c.querySelector<HTMLElement>('.model')!;
@@ -247,8 +250,9 @@ function renderInspector() {
     inspectorFor = selected;
     inspector.style.setProperty('--c', COLOURS[selected]);
     inspector.innerHTML = `<div class="ins-head"><b></b><button class="follow">Follow</button><button class="ask">Ask to call a council</button></div>
-      <dl><dt>Thinks</dt><dd class="t"></dd><dt>Said</dt><dd class="s"></dd><dt>Carries</dt><dd class="c"></dd><dt>Has made</dt><dd class="m"></dd><dt>Skills</dt><dd class="sk"></dd><dt>Knows</dt><dd class="k"></dd></dl>
-      <h4>Recently</h4><ol class="ev"></ol>`;
+      <dl><dt>Thinks</dt><dd class="t"></dd><dt>Said</dt><dd class="s"></dd><dt>Carries</dt><dd class="c"></dd><dt>Has made</dt><dd class="m"></dd><dt>Skills</dt><dd class="sk"></dd><dt>Knows</dt><dd class="k"></dd><dt>Survival</dt><dd class="sv"></dd><dt>Food</dt><dd class="fd"></dd></dl>
+      <h4>Recently</h4><ol class="ev"></ol>
+      <p class="rules">${SURVIVAL_RULES}</p>`;
     const id = selected;
     inspector.querySelector<HTMLButtonElement>('.follow')!.onclick = () => follow(id);
     inspector.querySelector<HTMLButtonElement>('.ask')!.onclick = () => control({ cmd: 'council', agent: String(id) });
@@ -258,9 +262,27 @@ function renderInspector() {
   const put = (q: string, text: string) => { const el = inspector.querySelector(q)!; if (el.textContent !== text) el.textContent = text; };
   put('b', a.name); put('.t', l?.thought || '…'); put('.s', l?.said ? `"${l.said}"` : '…');
   put('.c', grouped(a.inventory)); put('.m', a.known.join(', ') || 'nothing yet'); put('.sk', a.skills.length ? a.skills.join(', ') + (a.runningSkill ? ` · running ${a.runningSkill}` : '') : 'none yet'); put('.k', `${a.facts} facts`);
+  put('.sv', a.collapsed ? `collapsed, strength ${Math.round(a.energy * 100)}%` : `strength ${Math.round(a.energy * 100)}% · ${a.sheltered ? 'sheltered' : 'exposed'}`);
+  put('.fd', foodLine(a.knownIds));
   const lines = (recent.get(selected) ?? []).slice(-6).reverse().map(e => e.text);
   const ol = inspector.querySelector('.ev')!;
   if (ol.textContent !== lines.join('')) { ol.innerHTML = ''; for (const t of lines) { const li = document.createElement('li'); li.textContent = t; ol.append(li); } }
+}
+
+// What the agent has learned about food, read from the facts it holds.
+const SURVIVAL_RULES = 'To survive: strength drains over time, faster at night and in storms unless sheltered near a hut or wall they built. Eating the right things restores it; some things sicken. At no strength they collapse, lose what they carry and wake later.';
+let factList: string[] = [], factsFetching = false;
+function foodLine(ids: number[]) {
+  if (ids.some(i => i >= factList.length) && !factsFetching) { factsFetching = true; factTexts().then(f => { factList = f; }).finally(() => { factsFetching = false; }); }
+  const good: string[] = [], bad: string[] = [], none: string[] = [];
+  for (const i of ids) {
+    const f = factList[i]; if (!f) continue;
+    let m = /^eating (.+) restores strength$/.exec(f); if (m) { good.push(m[1]); continue; }
+    m = /^eating (.+) makes you ill$/.exec(f); if (m) { bad.push(m[1]); continue; }
+    m = /^(.+) is not food$/.exec(f); if (m) none.push(m[1]);
+  }
+  const parts = [good.length ? `safe: ${good.join(', ')}` : '', bad.length ? `sickens: ${bad.join(', ')}` : '', none.length ? `not food: ${none.join(', ')}` : ''].filter(Boolean);
+  return parts.join(' · ') || 'nothing tried yet';
 }
 
 // ---------- right rail: usage, council, discoveries ----------
@@ -271,6 +293,8 @@ const bar = (label: string, pct: number | undefined, note: string) => `<div clas
 async function refreshMeters() {
   try {
     const u = await usage();
+    const rc = state?.progress.recall ?? {};
+    const recallLine = Object.entries(rc).filter(([, v]) => v.first > 0).map(([m, v]) => `${MIND_LABELS[m] ?? m} ${v.right}/${v.first}`).join(' · ');
     $('.meter-list').innerHTML = [
       u.codex ? bar(`Codex weekly${u.codex.plan ? ` (${u.codex.plan})` : ''}`, u.codex.usedPercent, `resets ${fmtTime(u.codex.resetsAt)}`) : bar('Codex', undefined, 'no meter found'),
       ...(u.claude ? [
@@ -278,6 +302,7 @@ async function refreshMeters() {
         bar('Claude weekly', u.claude.sevenDayPercent, `${u.claude.sevenDayResetsAt ? `resets ${fmtTime(u.claude.sevenDayResetsAt)} · ` : ''}as of ${fmtAgo(u.claude.asOf)}`),
       ] : [bar('Claude plan', undefined, 'not connected: needs the status line hook')]),
       bar(u.island.cap ? 'This island' : 'This island (model calls off)', u.island.cap ? (u.island.perMinute / u.island.cap) * 100 : undefined, `${u.island.calls} calls · Claude $${u.island.costUsd.toFixed(3)}, ${(u.island.inputTokens / 1000).toFixed(0)}k in / ${(u.island.outputTokens / 1000).toFixed(1)}k out${(u.island.byBackend.luna ?? 0) + (u.island.byBackend.sol ?? 0) ? ` · Codex ${(u.island.byBackend.luna ?? 0) + (u.island.byBackend.sol ?? 0)} calls, cost not measured` : ''} · ${u.island.perMinute}/${u.island.cap} per min`),
+      recallLine ? `<div class="meter"><div class="m-row"><span>Right on the first try, per model</span></div><div class="m-note" title="Named guesses on a pair nobody on the island had tried before, and how many were right, credited to the mind that made the guess">${recallLine} right on a pair nobody here had tried</div></div>` : '',
     ].join('');
   } catch { /* server down */ }
 }
@@ -319,10 +344,31 @@ function addFind(e: FeedEvent) {
   if (findSeen.has(e.seq)) return; findSeen.add(e.seq);
   const li = document.createElement('li');
   li.innerHTML = `<b style="color:${COLOURS[e.agent ?? 0]}"></b> <span></span>`;
-  li.querySelector('b')!.textContent = names[e.agent ?? 0]; li.querySelector('span')!.textContent = e.text.replace(/^DISCOVERS /, 'found ').replace(/^BUILDS /, 'built ').replace(/^writes a skill: /, 'wrote skill ');
+  li.querySelector('b')!.textContent = names[e.agent ?? 0]; li.querySelector('span')!.textContent = e.text.replace(/^names this /, 'named a ').replace(/^DISCOVERS /, 'found ').replace(/^BUILDS /, 'built ').replace(/^writes a skill: /, 'wrote skill ');
   if (e.type === 'skill_written') li.classList.add('skill');
+  if (e.type === 'director') { li.classList.add('director'); li.querySelector('b')!.textContent = 'Director'; li.querySelector('span')!.textContent = e.text.replace(/^Director: /, ''); }
+  if (e.type === 'disagreement') li.classList.add('disagree');
   $('.find-list').prepend(li);
   while ($('.find-list').children.length > 10) $('.find-list').lastChild!.remove();
+}
+
+// ---------- the map the agents are making ----------
+let placeData: Places | undefined;
+async function refreshPlaces() { try { placeData = await places(); drawMap(); } catch { /* server down */ } }
+setInterval(refreshPlaces, 8000);
+function drawMap() {
+  const cv = $<HTMLCanvasElement>('.map-canvas'), g = cv.getContext('2d')!, d = placeData; if (!d) return;
+  g.clearRect(0, 0, cv.width, cv.height);
+  const cell = Math.min(cv.width, cv.height) / d.grid, ox = (cv.width - cell * d.grid) / 2;
+  const SOIL: Record<string, string> = { shore: '#c9b27a', grove: '#3f7a46', meadow: '#7aa060', 'high rock': '#7d858c' };
+  for (const r of d.regions) {
+    const cx = ox + (r.id % d.grid) * cell, cy = Math.floor(r.id / d.grid) * cell;
+    g.fillStyle = r.explored ? SOIL[r.soil] ?? '#555' : '#1d2a33'; g.globalAlpha = r.explored ? 0.85 : 1;
+    g.fillRect(cx + 1, cy + 1, cell - 2, cell - 2); g.globalAlpha = 1;
+    if (r.name) { g.fillStyle = '#fff'; g.font = '600 9px system-ui'; g.textAlign = 'center'; g.fillText(r.name.slice(0, 12), cx + cell / 2, cy + cell / 2 + 3, cell - 4); }
+  }
+  const sc = $('.map-score'), done = d.regions.filter(r => r.explored).length, named = d.regions.filter(r => r.name).length;
+  sc.textContent = `${done}/${d.regions.length} explored · ${named} named`;
 }
 
 // ---------- events into packets, strands, council and finds ----------
@@ -349,6 +395,8 @@ function onEvent(e: FeedEvent, live = true) {
   }
   if (e.type === 'discovery' || e.type === 'built' || e.type === 'skill_written') addFind(e);
   if (e.type === 'hypothesis' || e.type === 'idea') addHypothesis(e);
+  if (live && (e.type === 'named' || e.type === 'explored')) void refreshPlaces();
+  if (e.type === 'named' || e.type === 'director' || e.type === 'disagreement') addFind(e);
   if (e.type === 'built' && e.data?.structure) { const b = e.data.structure as { id: number }; builtMap.set(b.id, b as never); island?.addStructure(b as never); }
   if (!live) { if (e.type === 'thought' || e.type === 'say') land(agent, e.type, e.text, e.t, e.seq); return; }
   const now = performance.now();
@@ -415,6 +463,14 @@ function draw(positions: Map<number, { x: number; y: number; visible: boolean }>
     ctx.strokeStyle = s.kind === 'learn' ? 'rgba(92,255,193,.35)' : 'rgba(230,238,242,.18)'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.quadraticCurveTo((p.x + q.x) / 2, Math.min(p.y, q.y) - 50, q.x, q.y); ctx.stroke();
   }
+  // Place names the agents gave, drawn where they belong on the island.
+  for (const r of placeData?.regions ?? []) {
+    if (!r.name || !island) continue;
+    const p = island.project(r.x, r.y + 1.5, r.z); if (!p.visible || p.x < frameInsets.left || p.x > innerWidth - frameInsets.right) continue;
+    ctx.font = '600 12px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(10,20,28,.55)';
+    const w = ctx.measureText(r.name).width + 10; ctx.fillRect(p.x - w / 2, p.y - 13, w, 17);
+    ctx.fillStyle = '#f2e7c9'; ctx.fillText(r.name, p.x, p.y);
+  }
   for (const c of state?.councils ?? []) {
     for (const m of c.members) {
       const p = positions.get(m); if (!p?.visible) continue;
@@ -461,7 +517,7 @@ let savedPose: ReturnType<IslandScene['getPose']> | undefined;
 async function startIsland(seed: number, built: never[]) {
   islandSeed = seed;
   for (const b of built) builtMap.set((b as { id: number }).id, b);
-  status.hidden = true;
+  status.hidden = true; void refreshPlaces();
   app.classList.add('is-loading');
   loading = new LoadingScreen(app, seed);
   const progress = async (step: LoadingProgress) => { loading?.update(step); diagnostics?.report.loading.stages.push({ ...step, atMs: performance.now() }); await paintLoading(); };

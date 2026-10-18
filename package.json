@@ -12,12 +12,14 @@
     "eval:core": "node scripts/eval-sim.mjs",
     "eval:portability": "node scripts/eval-sim-browser.mjs",
     "sandbox": "vite-node server/sandbox.ts",
-    "eval:sandbox": "node scripts/eval-sandbox.mjs"
+    "eval:sandbox": "node scripts/eval-sandbox.mjs",
+    "typecheck:server": "tsc -p tsconfig.server.json"
   },
   "dependencies": {
     "three": "^0.180.0"
   },
   "devDependencies": {
+    "@types/node": "^22.20.5",
     "@types/three": "^0.180.0",
     "playwright": "1.61.0",
     "typescript": "^5.7.2",

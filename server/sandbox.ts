@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import { generateWorld } from '../src/world/generate';
 import { Ground } from '../src/sim/navigation';
 import { makeScrubber } from '../src/sandbox/scrub';
+import { readClaim as parseClaim } from '../src/sandbox/claim';
 import { generateChemistry, react, strike, substance, Ground as Soil } from '../src/sandbox/chemistry';
 import { realWorldChemistry } from '../src/sandbox/realworld';
 import { markPrediction, readPrediction } from '../src/sandbox/hypothesis';
@@ -40,8 +41,34 @@ const PLACES: Record<string, number> = {
   'the peak': byKey(n => n.y), 'north shore': byKey(n => -n.z - n.y * 3), 'south shore': byKey(n => n.z - n.y * 3),
   'east shore': byKey(n => n.x - n.y * 3), 'west shore': byKey(n => -n.x - n.y * 3), 'the grove': byKey(treeCount),
 };
-const nearestPlace = (x: number, z: number) => Object.entries(PLACES)
-  .sort((a, b) => Math.hypot(nodes[a[1]].x - x, nodes[a[1]].z - z) - Math.hypot(nodes[b[1]].x - x, nodes[b[1]].z - z))[0][0];
+// ---------- regions: the agents name the island themselves ----------
+// The land is cut into a grid of regions. Nobody tells the agents what anything is called:
+// they discover regions by walking into them and give each a name of their own. A name is
+// known to whoever gave it, whoever hears it given or said, and whoever visits the place.
+const GRID = 9;
+const cellOf = (x: number, z: number) => { const c = Math.min(GRID - 1, Math.max(0, Math.floor((x / world.size + 0.5) * GRID))), r = Math.min(GRID - 1, Math.max(0, Math.floor((z / world.size + 0.5) * GRID))); return r * GRID + c; };
+const regionNodes = new Map<number, number[]>();
+for (const id of habitable) { const g = cellOf(nodes[id].x, nodes[id].z); if (!regionNodes.has(g)) regionNodes.set(g, []); regionNodes.get(g)!.push(id); }
+const REGIONS = [...regionNodes.keys()].filter(g => regionNodes.get(g)!.length >= 3).sort((a, b) => a - b);
+const centres = new Map<number, number>();
+const regionCentre = (g: number) => {
+  if (centres.has(g)) return centres.get(g)!;
+  const ns = regionNodes.get(g)!; const cx = ns.reduce((n, i) => n + nodes[i].x, 0) / ns.length, cz = ns.reduce((n, i) => n + nodes[i].z, 0) / ns.length;
+  const best = ns.reduce((b, i) => (Math.hypot(nodes[i].x - cx, nodes[i].z - cz) < Math.hypot(nodes[b].x - cx, nodes[b].z - cz) ? i : b), ns[0]);
+  centres.set(g, best); return best;
+};
+const placeNames: Record<number, { name: string; by: number; at: number }> = {};
+const regionAt = (x: number, z: number) => { const g = cellOf(x, z); return REGIONS.includes(g) ? g : REGIONS.reduce((b, r) => (Math.hypot(nodes[regionCentre(r)].x - x, nodes[regionCentre(r)].z - z) < Math.hypot(nodes[regionCentre(b)].x - x, nodes[regionCentre(b)].z - z) ? r : b), REGIONS[0]); };
+const DIRS = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'];
+function direction(fx: number, fz: number, tx: number, tz: number) { const ang = Math.atan2(tx - fx, -(tz - fz)); return DIRS[(Math.round(ang / (Math.PI / 4)) + 8) % 8]; }
+const soilOfRegion = (g: number) => { const counts: Record<string, number> = {}; for (const i of regionNodes.get(g)!) { const k = soilOf(nodes[i]); counts[k] = (counts[k] ?? 0) + 1; } return Object.entries(counts).sort((x, y) => y[1] - x[1])[0][0]; };
+/** What an agent calls a place: its name if the agent knows one, else a plain description. */
+function placeLabel(a: SandboxAgent | undefined, g: number) {
+  const known = placeNames[g] && (!a || (a.places ?? []).includes(g));
+  return known ? placeNames[g].name : `an unnamed ${soilOfRegion(g)} place`;
+}
+function knowPlace(a: SandboxAgent, g: number) { a.places ??= []; if (!a.places.includes(g)) a.places.push(g); }
+
 // The island's own chemistry: six invented elements, each found in one kind of ground.
 // Real-world materials by default (decision 49), so every guess can be checked against reality.
 // SANDBOX_CHEMISTRY=invented keeps the seeded invented chemistry for comparison runs.
@@ -85,7 +112,17 @@ interface SandboxAgent {
   skills?: string[]; running?: { skill: string; step: number; startedAt: number; made: string[] } | null;
   hyp?: { tried: number; right: number; missing?: number; untested?: number };
   energy?: number; sheltered?: boolean; collapsedUntil?: number; mindEpoch?: number;
+  visited?: number[]; places?: number[];
+  /** Test fixtures only: until this time the agent can only join a council a reserved agent chairs. */
+  reservedUntil?: number;
+  /** Who made the decision being carried out: the model, or the scripted fallback. */
+  source?: Mind;
 }
+
+// ---------- disagreement: reading a recipe claim from speech or a fact ----------
+// "flint + pyrite makes sparks", "flint and pyrite make sparks", "... makes nothing".
+const lastDisagreement: Record<string, number> = {};
+const readClaim = (text: string) => parseClaim(text, knownNames);
 
 // ---------- item ledger (test mode): items are conserved ----------
 // Every gather adds one, every use, meal, build, set-down or collapse removes what it removes.
@@ -113,6 +150,28 @@ const daylight = () => 0.5 + 0.5 * Math.cos((simNow() % DAY_MS) / DAY_MS * Math.
 const isNight = () => daylight() < 0.3;
 let storm: { until: number } | null = null, nextStorm = 300000 + Math.random() * 300000;
 const SHELTERING = ['hut', 'tower'];
+// ---------- the director: pacing when the island stalls ----------
+// If nothing new is found for a while, the director steps in with something the world could do
+// on its own: the sea washes a material ashore near a stuck agent. Every intervention is logged
+// and shown, so the owner always knows what was the agents and what was the director.
+const DIRECTOR_AFTER_MS = Number(process.env.SANDBOX_DIRECTOR_MS ?? 360000);
+let lastProgressSim = 0, lastFound = 0;
+function direct() {
+  const found = new Set(agents.flatMap(a => a.made)).size + structures.length + Object.keys(placeNames).length;
+  if (lastFound === -1) lastFound = found; // an older save: adopt the count without resetting the clock
+  if (found !== lastFound) { lastFound = found; lastProgressSim = simNow(); return; }
+  if (simNow() - lastProgressSim < DIRECTOR_AFTER_MS) return;
+  lastProgressSim = simNow();
+  const candidates = agents.filter(a => !a.collapsedUntil && a.council === null && a.inventory.length < 6);
+  if (!candidates.length) return;
+  const a = pick(candidates);
+  const untried = chem.substances.filter(x => x.tier === 0 && !a.inventory.includes(x.name));
+  const gift = pick(untried.length ? untried : chem.substances.filter(x => x.tier === 0)).name;
+  a.inventory.push(gift); itemLedger += 1;
+  a.lastResult = `The sea washed ${describeItem(gift)} up at your feet.`;
+  emit('director', `Director: the sea washes ${gift} ashore by ${a.name} (nothing new found for a while)`, a.id, undefined, { gift });
+}
+
 function updatePressure(dt: number) {
   const now = simNow();
   if (!storm && now > nextStorm) { storm = { until: now + 60000 + Math.random() * 30000 }; emit('weather', 'A storm sweeps across the island.'); }
@@ -123,8 +182,10 @@ function updatePressure(dt: number) {
       if (now < a.collapsedUntil) continue;
       a.collapsedUntil = undefined; a.energy = 0.4;
       const home = PLACES['south shore']; a.node = home; a.x = nodes[home].x; a.y = nodes[home].y; a.z = nodes[home].z; a.path = [];
-      a.lastResult = 'You collapsed from weakness, lost what you carried, and woke on the south shore. Find food.';
-      emit('result', 'wakes on the south shore, weak and empty-handed', a.id); continue;
+      // Where they wake is described by what they know of it, never by a built-in name.
+      const where = placeLabel(a, regionAt(a.x, a.z));
+      a.lastResult = `You collapsed from weakness, lost what you carried, and woke in ${where}, where you first woke. Find food.`;
+      emit('result', `wakes in ${where}, weak and empty-handed`, a.id); continue;
     }
     a.sheltered = structures.some(b => SHELTERING.includes(b.kind) && Math.hypot(b.x - a.x, b.z - a.z) < 3);
     let rate = DRAIN_PER_S * (a.activity === 'resting' ? 0.5 : 1);
@@ -205,7 +266,12 @@ function stepAgents(dt: number) {
     const next = nodes[a.path[0]]; const dx = next.x - a.x, dz = next.z - a.z, d = Math.hypot(dx, dz), move = WALK_SPEED * dt;
     if (d <= move) { a.node = a.path.shift()!; a.x = next.x; a.y = next.y; a.z = next.z; }
     else { a.x += dx / d * move; a.z += dz / d * move; a.y += (next.y - a.y) * Math.min(1, move / d); }
-    if (!a.path.length) { a.activity = 'wandering'; a.lastResult = `You arrived at ${nearestPlace(a.x, a.z)}.`; }
+    // Walking into a region discovers it, and anyone visiting a named place learns its name.
+    const g = regionAt(a.x, a.z);
+    a.visited ??= [];
+    if (!a.visited.includes(g)) { a.visited.push(g); if (!agents.some(o => o !== a && (o.visited ?? []).includes(g))) emit('explored', `is the first to reach ${placeLabel(a, g)}`, a.id, undefined, { region: g }); }
+    if (placeNames[g]) knowPlace(a, g);
+    if (!a.path.length) { a.activity = 'wandering'; a.lastResult = `You arrived at ${placeLabel(a, g)}.`; }
   }
 }
 
@@ -225,13 +291,20 @@ function tryCombine(a: SandboxAgent, x: Item, y: Item, inventoryOwner: Pick<Sand
 // The mark is agreement with the island's rules (src/sandbox/hypothesis.ts). A try without a
 // usable prediction is counted as missing, never left out, so the score cannot be cherry-picked.
 const knownNames = chem.substances.map(x => x.name);
+const triedPairs = new Set<string>();
+const recall: Record<string, { first: number; right: number }> = {};
 const ideas: Array<{ agent: number; idea: string; from: string; at: number }> = [];
 let hypTotal = 0, hypRight = 0, hypMissing = 0, hypUntested = 0;
-function judge(a: SandboxAgent, expect: unknown, tried: string, made: string | undefined) {
+function judge(a: SandboxAgent, expect: unknown, tried: string, made: string | undefined, source?: Mind) {
   const prediction = readPrediction(typeof expect === 'string' ? scrub(expect) : expect, knownNames);
   const mark = markPrediction(prediction, made ?? null);
   a.hyp ??= { tried: 0, right: 0, missing: 0, untested: 0 };
   a.hyp.missing ??= 0; a.hyp.untested ??= 0;
+  // Recitation: a right guess on a pair nobody on the island had tried before can only come from
+  // what the mind already knew. Every executed try counts as tried, scored or not, so a later
+  // guess on the same pair is never a first try.
+  const pairKey = tried.split(' + ').map(x => x.trim()).sort().join(' + ');
+  const firstTry = !triedPairs.has(pairKey); triedPairs.add(pairKey);
   if (mark === 'missing') { a.hyp.missing++; hypMissing++; return; }
   if (mark === 'untested') {
     a.hyp.untested++; hypUntested++;
@@ -241,6 +314,8 @@ function judge(a: SandboxAgent, expect: unknown, tried: string, made: string | u
     return;
   }
   a.hyp.tried++; hypTotal++; if (mark === 'correct') { a.hyp.right++; hypRight++; }
+  // Only a guess that names a product counts: "nothing" is right most of the time by chance.
+  if (firstTry && prediction.kind === 'thing') { const m = source ?? a.source ?? 'scripted'; recall[m] ??= { first: 0, right: 0 }; recall[m].first++; if (mark === 'correct') recall[m].right++; }
   const said = prediction.kind === 'thing' ? prediction.name : prediction.kind === 'not' ? `not ${prediction.name}` : prediction.kind === 'something' ? 'something' : 'nothing';
   emit('hypothesis', `${mark === 'correct' ? 'RIGHT' : 'WRONG'}: expected ${said} from ${tried}, got ${made ?? 'nothing'}`, a.id, undefined, { right: mark === 'correct', expect: said, actual: made ?? null, tried });
 }
@@ -267,6 +342,24 @@ function act(a: SandboxAgent, d: Decision) {
     a.said = scrub(String(d.say)).slice(0, 180); a.saidAt = Date.now(); a.activity = 'socialising';
     for (const o of listeners) { o.heard.push(`${a.name}: ${a.said}`); if (o.heard.length > 6) o.heard.shift(); }
     emit('say', a.said, a.id, listeners.map(o => o.id));
+    // A spoken recipe claim that contradicts what a listener knows starts a council to test it.
+    const claim = readClaim(a.said);
+    if (claim) for (const o of listeners) {
+      const knownFact = o.known.map(f => facts[f]).find(t => readClaim(t)?.pair === claim.pair);
+      const theirs = knownFact ? readClaim(knownFact) : undefined;
+      // A reserved fixture agent only disagrees with another reserved agent, so outsiders cannot start its council.
+      const fenced = (x: SandboxAgent) => !!x.reservedUntil && x.reservedUntil > Date.now();
+      if (theirs && theirs.product !== claim.product && o.council === null && a.council === null && !o.collapsedUntil && fenced(o) === fenced(a) && Date.now() - (lastDisagreement[claim.pair] ?? 0) > 60000) {
+        lastDisagreement[claim.pair] = Date.now();
+        emit('disagreement', `disagrees with ${a.name}: ${a.name} says ${claim.pair} makes ${claim.product}, ${o.name} knows it makes ${theirs.product}`, o.id, [a.id], { pair: claim.pair });
+        void council(o, `${a.name} says ${claim.pair} makes ${claim.product}; I know it makes ${theirs.product}. Test it together and settle it.`);
+        break;
+      }
+    }
+    // Saying a place's name teaches it to everyone who hears.
+    for (const g of a.places ?? []) if (placeNames[g] && a.said.toLowerCase().includes(placeNames[g].name.toLowerCase())) for (const o of listeners) knowPlace(o, g);
+    // A speaker pulled into a council by what they said does nothing else this turn.
+    if (a.council !== null) { a.doing = 'in council'; return; }
   }
   const shared = (Array.isArray(d.share) ? d.share : []).filter(f => typeof f === 'number' || typeof f === 'string').map(Number).filter(f => a.known.includes(f)).slice(0, 4);
   for (const f of shared) teach(a, f, listeners, 'told');
@@ -280,11 +373,19 @@ function act(a: SandboxAgent, d: Decision) {
     strike: `striking ${target}`, build: `building ${target}`, drop: `setting down ${target}`, eat: `eating ${target}`, rest: 'resting', council: 'calling a council' } as Record<string, string>)[action] ?? (d.say ? 'talking' : 'waiting');
   const here = nodes[a.node];
   if (action === 'walk') {
+    // Walk to a person, a place the agent knows by name, or in a direction.
     const friend = byName(target);
-    let goal = friend ? friend.node : PLACES[Object.keys(PLACES).find(p => target.includes(p.replace('the ', ''))) ?? ''];
-    if (goal === undefined) goal = habitable[Math.floor(Math.random() * habitable.length)];
+    const named = (a.places ?? []).find(g => placeNames[g] && target.includes(placeNames[g].name.toLowerCase()));
+    const hereRegion = regionAt(a.x, a.z);
+    const dir = [...DIRS].sort((x, y) => y.length - x.length).find(d => target.includes(d)) ?? (/\b(uphill|up|peak|high)\b/.test(target) ? 'uphill' : /\b(downhill|down|shore|sea|coast)\b/.test(target) ? 'downhill' : undefined);
+    let goal: number | undefined = friend ? friend.node : named !== undefined ? regionCentre(named) : undefined;
+    if (goal === undefined && dir) {
+      const options = REGIONS.filter(g => g !== hereRegion).map(regionCentre).filter(n => dir === 'uphill' ? nodes[n].y > nodes[a.node].y + 0.5 : dir === 'downhill' ? nodes[n].y < nodes[a.node].y - 0.3 : direction(a.x, a.z, nodes[n].x, nodes[n].z) === dir);
+      goal = options.sort((x, y) => Math.hypot(nodes[x].x - a.x, nodes[x].z - a.z) - Math.hypot(nodes[y].x - a.x, nodes[y].z - a.z))[0];
+    }
+    if (goal === undefined) goal = regionCentre(pick(REGIONS));
     a.path = route(a.node, goal); a.activity = friend ? 'socialising' : 'wandering';
-    const where = friend ? friend.name : (Object.entries(PLACES).find(([, n]) => n === goal)?.[0] ?? 'somewhere new');
+    const where = friend ? friend.name : placeLabel(a, regionAt(nodes[goal].x, nodes[goal].z));
     a.lastResult = a.path.length ? `You are walking to ${where}.` : 'You cannot find a way there.';
     emit('action', `walks to ${where}`, a.id);
   } else if (action === 'gather') {
@@ -294,7 +395,7 @@ function act(a: SandboxAgent, d: Decision) {
     else if (a.inventory.length >= 6) { a.lastResult = 'Your hands are full.'; emit('result', 'has full hands', a.id); }
     else {
       a.inventory.push(want); itemLedger += 1; a.activity = 'seeking food'; a.lastResult = `You gathered ${describeItem(want)}.`;
-      learn(a, factId(`${want} is found at ${nearestPlace(a.x, a.z)}`)); emit('action', `gathers ${want}`, a.id);
+      learn(a, factId(`${want} is found on ${soilOf(here)} ground`)); emit('action', `gathers ${want}`, a.id);
     }
   } else if (action === 'combine') {
     const r = tryCombine(a, target, String(d.with ?? '').toLowerCase());
@@ -320,8 +421,20 @@ function act(a: SandboxAgent, d: Decision) {
       a.inventory.splice(i, 1); itemLedger -= 1; a.activity = 'seeking cover'; a.busyUntil = Date.now() + 4000;
       const b: Built = { id: structures.length + 1, kind: sub.structure, name: target, x: a.x, y: a.y, z: a.z, colour: sub.colour, by: a.id, at: Date.now() };
       structures.push(b); learn(a, factId(`${target} can be built`));
-      a.lastResult = `You built ${target} at ${nearestPlace(a.x, a.z)}. It stays there.`;
-      emit('built', `BUILDS ${target} at ${nearestPlace(a.x, a.z)}`, a.id, undefined, { structure: b });
+      a.lastResult = `You built ${target} at ${placeLabel(a, regionAt(a.x, a.z))}. It stays there.`;
+      emit('built', `BUILDS ${target} at ${placeLabel(undefined, regionAt(a.x, a.z))}`, a.id, undefined, { structure: b });
+    }
+  } else if (action === 'name_place') {
+    const g = regionAt(a.x, a.z);
+    const name = scrub(txt(d.target, 30)).replace(/[^A-Za-z' -]/g, '').trim();
+    if (!name) a.lastResult = 'A place needs a name.';
+    else if (placeNames[g]) { knowPlace(a, g); a.lastResult = `This place is already called ${placeNames[g].name}.`; }
+    else if (Object.values(placeNames).some(p => p.name.toLowerCase() === name.toLowerCase())) a.lastResult = `${name} is already the name of another place.`;
+    else {
+      placeNames[g] = { name, by: a.id, at: Date.now() }; knowPlace(a, g);
+      const hearers = near(a); for (const o of hearers) knowPlace(o, g);
+      a.lastResult = `You named this place ${name}. Those near you heard it.`;
+      emit('named', `names this ${soilOfRegion(g)} place ${name}`, a.id, hearers.map(o => o.id), { region: g, name });
     }
   } else if (action === 'eat') {
     const i = a.inventory.indexOf(target), sub = substance(chem, target);
@@ -395,12 +508,13 @@ function scriptedMind(a: SandboxAgent): Decision {
     if (m) { d.action = 'write_skill'; d.skill_name = `make ${m[3]}`; d.steps = [{ action: 'gather', target: m[1] }, { action: 'gather', target: m[2] }, { action: 'combine', target: m[1], with: m[2], expect: m[3] }]; }
   }
   else if (r < 0.08 && near(a).length >= 2) { d.action = 'council'; d.problem = 'What can we make that none of us has made?'; }
-  else if (r < 0.38) { d.action = 'walk'; d.target = pick([...Object.keys(PLACES), ...agents.filter(o => o !== a).map(o => o.name)]); }
+  else if (!placeNames[regionAt(a.x, a.z)] && r < 0.2) { d.action = 'name_place'; d.target = `${pick(['Ash', 'Brine', 'Cleft', 'Dunmere', 'Elm', 'Fallow', 'Gull', 'Hollow', 'Ironside', 'Juniper', 'Kelp', 'Lark', 'Marrow', 'Nettle', 'Oyster', 'Pike', 'Quarry', 'Reed', 'Shale', 'Thorn'])} ${pick(['Rise', 'Flat', 'Bay', 'Wood', 'Rock', 'Point', 'Field', 'Cove'])}`; }
+  else if (r < 0.38) { d.action = 'walk'; d.target = pick([...DIRS, 'uphill', 'downhill', ...agents.filter(o => o !== a).map(o => o.name)]); }
   else if (r < 0.65) d.action = 'gather';
   else if (a.inventory.some(i => substance(chem, i)?.structure)) { d.action = 'build'; d.target = a.inventory.find(i => substance(chem, i)?.structure); }
   else if (r < 0.72 && a.inventory.length >= 2) { d.action = 'combine'; d.target = pick(a.inventory); d.with = pick(a.inventory); d.expect = pick(['nothing', 'fire', 'rope', 'a tool']); }
   else if (r < 0.8 && a.inventory.length) { d.action = 'strike'; d.target = pick(a.inventory); d.expect = pick(['nothing', 'sparks', 'flint flake']); }
-  else if (r < 0.92) { d.action = 'wait'; d.say = pick(['Over here!', 'I found something.', 'Listen to this.']); }
+  else if (r < 0.92) { d.action = 'wait'; const kf = a.known.map(f => facts[f]).filter(t => / makes /.test(t)); d.say = kf.length && Math.random() < 0.5 ? (Math.random() < 0.3 ? kf[0].replace(/makes .*/, 'makes nothing') : pick(kf)) : pick(['Over here!', 'I found something.', 'Listen to this.']); }
   else d.action = 'rest';
   return d;
 }
@@ -409,14 +523,18 @@ const SYSTEM = `You are one inhabitant of a small island. You and seven others w
 Island laws: ${LAWS.join(' ')} Facts pass between minds only when spoken: share the numbers of facts you want nearby listeners to learn.
 A council: when a problem is too big for one mind, you may call the people near you into a council. The council may split the problem into parts, try competing plans side by side, and merge what worked.
 You control only yourself. Each turn reply with ONE JSON object and nothing else:
-{"thought": "<one short private thought>", "say": "<words spoken aloud, or empty>", "share": [<fact numbers to teach listeners>], "action": "walk|gather|combine|strike|build|drop|eat|rest|wait|council", "target": "<place, person or thing>", "with": "<second thing for combine>", "expect": "<for combine or strike: what you predict it makes, or nothing>", "problem": "<for council: the problem>"}
-Places: ${Object.keys(PLACES).join(', ')}. ${CHEMISTRY === 'real' ? 'The materials here are ordinary real-world things and behave as they do in the real world. Whenever you combine or strike, first predict the result in "expect": the world will show whether your hypothesis was right. If you think something real could be made that nobody has tried, say what and from what.' : 'Nothing here is like anything you remember: the materials have their own names and ways, and you must learn them by trying.'}
+{"thought": "<one short private thought>", "say": "<words spoken aloud, or empty>", "share": [<fact numbers to teach listeners>], "action": "walk|gather|combine|strike|build|drop|eat|rest|wait|council|name_place", "target": "<place, person or thing>", "with": "<second thing for combine>", "expect": "<for combine or strike: what you predict it makes, or nothing>", "problem": "<for council: the problem>"}
+Nobody has named any place on this island. You want to know all of it: walk to places nobody has reached, and name each place in your own words with name_place (target: the name). Walk by person, by a place name you know, or by direction (north, south-east, uphill, downhill...). ${CHEMISTRY === 'real' ? 'The materials here are ordinary real-world things and behave as they do in the real world. Whenever you combine or strike, first predict the result in "expect": the world will show whether your hypothesis was right. If you think something real could be made that nobody has tried, say what and from what.' : 'Nothing here is like anything you remember: the materials have their own names and ways, and you must learn them by trying.'}
 Skills: when you know a way of doing something in several steps, write it down as a skill and give it a name of your own: {"action": "write_skill", "skill_name": "<your name for it>", "steps": [{"action": "gather", "target": "<thing>"}, {"action": "combine", "target": "<thing>", "with": "<thing>", "expect": "<what it makes>"}, ...]}. Steps may be walk, gather, combine, strike, build, drop. Run a skill you know with {"action": "use_skill", "target": "<skill name>"}: it carries out every step for you. Teach a skill to people near you by adding "teach_skill": ["<skill name>"].
 Be curious, share what you learn, turn what works into skills, and call a council when working together would help. Keep words short.`;
 
 const factList = (ids: number[]) => ids.slice(-24).map(f => `[${f}] ${facts[f]}`).join('; ') || 'none';
 function prompt(a: SandboxAgent): string {
-  return [`You are ${a.name}. You are near ${nearestPlace(a.x, a.z)}.`, `Your strength: ${Math.round((a.energy ?? 1) * 100)}%. It is ${isNight() ? 'night' : daylight() < 0.55 ? 'dusk or dawn' : 'day'}${storm ? ', and a storm is raging' : ''}. You are ${a.sheltered ? 'sheltered' : 'exposed'}.`, `Last result: ${a.lastResult}`,
+  const here = regionAt(a.x, a.z);
+  const knownPlaces = (a.places ?? []).filter(g => g !== here && placeNames[g]).map(g => `${placeNames[g].name} (${direction(a.x, a.z, nodes[regionCentre(g)].x, nodes[regionCentre(g)].z)})`);
+  const unexplored = DIRS.filter(d => REGIONS.some(g => !(a.visited ?? []).includes(g) && direction(a.x, a.z, nodes[regionCentre(g)].x, nodes[regionCentre(g)].z) === d));
+  return [`You are ${a.name}. You are in ${placeLabel(a, here)}${placeNames[here] ? '' : ' (you may name it)'}. You have been to ${(a.visited ?? []).length} of ${REGIONS.length} places.`,
+    `Places you know by name: ${knownPlaces.join(', ') || 'none'}. Directions with places you have never been: ${unexplored.join(', ') || 'none, you have been everywhere'}.`, `Your strength: ${Math.round((a.energy ?? 1) * 100)}%. It is ${isNight() ? 'night' : daylight() < 0.55 ? 'dusk or dawn' : 'day'}${storm ? ', and a storm is raging' : ''}. You are ${a.sheltered ? 'sheltered' : 'exposed'}.`, `Last result: ${a.lastResult}`,
     `The ground here is ${soilOf(nodes[a.node])}. Here you could gather: ${gatherable(nodes[a.node]).map(describeItem).join(', ') || 'nothing'}.`,
     `You carry: ${a.inventory.map(describeItem).join(', ') || 'nothing'}.`,
     `Facts you know: ${factList(a.known)}.`,
@@ -429,13 +547,14 @@ async function think(a: SandboxAgent) {
   // A reply that arrives after the agent collapsed belongs to a mind that no longer exists.
   const epoch = a.mindEpoch ?? 0;
   try {
-    let d: Decision;
+    let d: Decision, src: Mind = 'scripted';
     const m = mindOf(a);
     if (m !== 'scripted' && within(mindCalls, MIND_CAP) && inFlight < MAX_IN_FLIGHT && canSpend()) {
       mindCalls.push(Date.now()); inFlight++;
-      try { d = cleanDecision(await callModel(m, SYSTEM, prompt(a), 'mind')); } catch { d = scriptedMind(a); } finally { inFlight--; }
+      try { d = cleanDecision(await callModel(m, SYSTEM, prompt(a), 'mind')); src = m; } catch { d = scriptedMind(a); } finally { inFlight--; }
     } else d = scriptedMind(a);
     if (running && a.council === null && !a.collapsedUntil && (a.mindEpoch ?? 0) === epoch) {
+      a.source = src;
       try { act(a, d); } catch (err) { a.lastResult = 'Something went wrong with that; try again.'; console.error('act failed', a.name, (err as Error).message); }
     }
   } finally { a.thinking = false; a.nextThink = Date.now() + (mindOf(a) === 'scripted' ? 3000 + Math.random() * 3000 : 1500); }
@@ -483,16 +602,19 @@ async function councilCall(system: string, user: string, rec: CouncilRecord, fal
   // so parallel parts cannot all pass the check and overspend.
   if (!canSpend() || pauseEpoch !== epoch || !within(councilCalls, COUNCIL_CAP)) { inFlight--; return fallback(); }
   councilCalls.push(Date.now()); rec.calls++;
-  try { const reply = await callModel(m, system, user, 'council'); return pauseEpoch === epoch ? reply : fallback(); } catch { return fallback(); } finally { inFlight--; }
+  try { const reply = await callModel(m, system, user, 'council'); if (pauseEpoch !== epoch) return fallback(); councilSource.set(reply, m); return reply; } catch { return fallback(); } finally { inFlight--; }
 }
+// Which model wrote a council reply; a fallback reply is not in here, so it counts as scripted.
+const councilSource = new WeakMap<object, Mind>();
 const COUNCIL_SYSTEM = `You are inhabitants of a small island holding a council. Island laws: ${LAWS.join(' ')}
 The materials have their own names; use them exactly. Reply with ONE JSON object and nothing else.`;
 
 async function council(chair: SandboxAgent, problem: string, observer = false) {
   const epoch = pauseEpoch;
   let dealtPot: Array<{ item: Item; owner: SandboxAgent; home: boolean }> = [];
-  if (chair.collapsedUntil) return;
-  const members = [chair, ...near(chair).filter(o => o.council === null && !o.collapsedUntil)].slice(0, 6);
+  if (chair.collapsedUntil || chair.council !== null) return;
+  const reserved = (o: SandboxAgent) => !!o.reservedUntil && o.reservedUntil > Date.now();
+  const members = [chair, ...near(chair).filter(o => o.council === null && !o.collapsedUntil && (!reserved(o) || reserved(chair)))].slice(0, 6);
   if (members.length < 2) { chair.lastResult = 'Nobody is near enough to hold a council.'; emit('result', 'calls a council but nobody is near', chair.id); return; }
   const rec: CouncilRecord = { id: councils.length + 1, chair: chair.id, members: members.map(m => m.id), problem: scrub(problem).slice(0, 160), mode: '',
     parts: [], winner: null, summary: '', calls: 0, openedAt: Date.now(), observer, epoch: pauseEpoch };
@@ -546,7 +668,7 @@ async function council(chair: SandboxAgent, problem: string, observer = false) {
       const x = word(t.a), y = word(t.b);
       let r: { text: string; made?: string; fact?: number } = { text: mine.length >= 2 ? `has no ${x} and ${y} in hand` : 'too few items to try' };
       // Paused while this part was thinking: nothing is tried, and the dealt items go home below.
-      if (mine.length >= 2 && live()) { r = tryCombine(p.agent, x, y, { inventory: mine } as SandboxAgent); if (!/^lacks /.test(r.text)) judge(p.agent, answer.expect, `${x} + ${y}`, r.made); }
+      if (mine.length >= 2 && live()) { r = tryCombine(p.agent, x, y, { inventory: mine } as SandboxAgent); if (!/^lacks /.test(r.text)) judge(p.agent, answer.expect, `${x} + ${y}`, r.made, councilSource.get(answer) ?? 'scripted'); }
       // Return what is left: unused items to their owners, anything new to the one who made it.
       const left = [...mine];
       for (const d of dealt) { const k = left.indexOf(d.item); if (k >= 0) { left.splice(k, 1); d.owner.inventory.push(d.item); } d.home = true; }
@@ -596,7 +718,7 @@ async function council(chair: SandboxAgent, problem: string, observer = false) {
 function save() {
   try {
     mkdirSync(STATE_DIR, { recursive: true });
-    const data = { version: 3, simMs, weather: { storm, nextStorm }, chemistry: CHEMISTRY, hypTotal, hypRight, hypMissing, hypUntested, ideas, seed: SEED, running, facts, seq, structures, mix, skills: [...skills.values()], events: events.slice(-400), councils: councils.slice(-100),
+    const data = { version: 3, simMs, director: { lastProgressSim, lastFound }, placeNames, recall, triedPairs: [...triedPairs], weather: { storm, nextStorm }, chemistry: CHEMISTRY, hypTotal, hypRight, hypMissing, hypUntested, ideas, seed: SEED, running, facts, seq, structures, mix, skills: [...skills.values()], events: events.slice(-400), councils: councils.slice(-100),
       agents: agents.map(a => ({ ...a, path: [], thinking: false, council: null, running: null })) };
     writeFileSync(STATE_FILE + '.tmp', JSON.stringify(data)); renameSync(STATE_FILE + '.tmp', STATE_FILE);
   } catch (err) { console.error('save failed', (err as Error).message); }
@@ -607,6 +729,11 @@ function load() {
     if (data.version !== 3 || data.seed !== SEED || data.chemistry !== CHEMISTRY) return;
     // The island clock is saved with the island, so every saved deadline keeps its meaning.
     // An older save without it gets a fresh clock, and any deadline far beyond it is reset.
+    if (data.placeNames && typeof data.placeNames === 'object') Object.assign(placeNames, data.placeNames);
+    // The director's stall clock survives a restart; an older save starts it from the saved island time.
+    if (data.director && typeof data.director.lastProgressSim === 'number') { lastProgressSim = data.director.lastProgressSim; lastFound = Number(data.director.lastFound) || 0; }
+    else { lastProgressSim = typeof data.simMs === 'number' ? data.simMs : 0; lastFound = -1; }
+    if (data.recall) Object.assign(recall, data.recall); for (const t of data.triedPairs ?? []) triedPairs.add(t);
     const hadClock = typeof data.simMs === 'number';
     simMs = hadClock ? data.simMs : 0;
     if (data.weather && typeof data.weather.nextStorm === 'number') { nextStorm = data.weather.nextStorm; storm = data.weather.storm ?? null; }
@@ -636,7 +763,7 @@ const CARRY = 6;
 setInterval(() => {
   const now = Date.now(), dt = (now - last) / 1000; last = now;
   // Bodies, hunger and minds share one condition: the island lives while it runs and is watched.
-  if (running && viewers.size > 0) { simMs += dt * 1000; stepAgents(dt); updatePressure(dt); }
+  if (running && viewers.size > 0) { simMs += dt * 1000; stepAgents(dt); updatePressure(dt); direct(); }
   // The carry law holds between every step: anything over six is set down.
   for (const a of agents) if (a.council === null && a.inventory.length > CARRY) {
     const dropped = a.inventory.splice(CARRY); itemLedger -= dropped.length;
@@ -649,11 +776,11 @@ setInterval(() => {
   send('state', { tick, running, mindMode, mix, world: { daylight: daylight(), night: isNight(), storm: !!storm }, backends: ['scripted', ...available()], calls: stats.total, failed: stats.failed, mindError: stats.lastError, perMin: perMinute(), cap: MIND_CAP + COUNCIL_CAP,
     councilCalls: stats.byPurpose.council ?? 0, facts: facts.length,
     progress: { elements: chem.substances.filter(x => x.tier === 0).length, makeable: chem.substances.filter(x => x.tier > 0).length, found: new Set(agents.flatMap(a => a.made)).size,
-      structures: chem.substances.filter(x => x.structure).length, built: new Set(structures.map(b => b.name)).size, councils: councils.length, skills: skills.size, hypotheses: hypTotal, hypothesesRight: hypRight, hypothesesMissing: hypMissing, ideas: ideas.length, chemistry: CHEMISTRY },
+      structures: chem.substances.filter(x => x.structure).length, built: new Set(structures.map(b => b.name)).size, councils: councils.length, skills: skills.size, regions: REGIONS.length, explored: new Set(agents.flatMap(a => a.visited ?? [])).size, named: Object.keys(placeNames).length, recall, hypotheses: hypTotal, hypothesesRight: hypRight, hypothesesMissing: hypMissing, ideas: ideas.length, chemistry: CHEMISTRY },
     councils: councils.filter(c => !c.closedAt || Date.now() - c.closedAt < 6000).map(c => ({ id: c.id, chair: c.chair, members: c.members, problem: c.problem, mode: c.mode, open: !c.closedAt, winner: c.winner })),
     agents: agents.map(a => ({ id: a.id, name: a.name, x: a.x, y: a.y, z: a.z, activity: a.activity, thought: a.thought,
       said: Date.now() - a.saidAt < 8000 ? a.said : '', saidAt: a.saidAt, thinking: a.thinking, inventory: a.inventory, known: a.made, facts: a.known.length, knownIds: a.known,
-      energy: a.energy ?? 1, sheltered: !!a.sheltered, collapsed: !!a.collapsedUntil, hyp: { tried: a.hyp?.tried ?? 0, right: a.hyp?.right ?? 0, missing: a.hyp?.missing ?? 0, untested: a.hyp?.untested ?? 0 }, skills: a.skills ?? [], runningSkill: a.running ? `${a.running.skill} (step ${a.running.step} of ${skills.get(a.running.skill)?.steps.length ?? 0})` : '',
+      visited: (a.visited ?? []).length, energy: a.energy ?? 1, sheltered: !!a.sheltered, collapsed: !!a.collapsedUntil, hyp: { tried: a.hyp?.tried ?? 0, right: a.hyp?.right ?? 0, missing: a.hyp?.missing ?? 0, untested: a.hyp?.untested ?? 0 }, skills: a.skills ?? [], runningSkill: a.running ? `${a.running.skill} (step ${a.running.step} of ${skills.get(a.running.skill)?.steps.length ?? 0})` : '',
       council: a.council, doing: a.collapsedUntil ? 'collapsed' : a.running ? `running skill ${a.running.skill}` : a.council !== null ? 'in council' : a.path.length ? a.doing ?? 'walking' : a.doing ?? 'waiting', outcome: a.outcome ?? '' })) });
 }, 250);
 
@@ -720,15 +847,32 @@ createServer(async (req, res) => {
     return;
   }
   if (req.url === '/api/skills') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify([...skills.values()])); return; }
+  if (req.url === '/api/places') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ grid: GRID, size: world.size, regions: REGIONS.map(g => ({ id: g, x: nodes[regionCentre(g)].x, y: nodes[regionCentre(g)].y, z: nodes[regionCentre(g)].z, soil: soilOfRegion(g), name: placeNames[g]?.name ?? null, by: placeNames[g]?.by ?? null, explored: agents.some(a => (a.visited ?? []).includes(g)) })) })); return; }
   if (req.url === '/api/ideas') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(ideas)); return; }
   if (req.url === '/api/facts') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(facts)); return; }
   if (req.url === '/api/usage') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(usage())); return; }
   if (req.url === '/api/councils') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(councils)); return; }
   if (req.url === '/api/control' && req.method === 'POST') {
-    const b = await body(req);
+    const b = await body(req), reply: Record<string, unknown> = {};
     if (b.cmd === 'start') { running = true; emit('system', 'The island wakes.'); }
     if (b.cmd === 'pause') { running = false; pauseEpoch++; emit('system', 'Paused.'); }
     // Test hook (eval only): feed an agent an arbitrary, possibly malformed, decision.
+    // Test hook: give an agent a fact, as if it had learned it.
+    if (process.env.SANDBOX_TEST === '1' && b.cmd === 'know') { const ag = agents[Number(b.agent)]; if (ag && typeof b.fact === 'string') learn(ag, factId(b.fact)); }
+    // Test hook: place an agent next to another.
+    if (process.env.SANDBOX_TEST === '1' && b.cmd === 'meet') { const ag = agents[Number(b.agent)], to = agents[Number(b.to)]; if (ag && to) { ag.node = to.node; ag.x = to.x; ag.y = to.y; ag.z = to.z; ag.path = []; } }
+    // Test hook: atomically reserve free agents for a fixture. They stop thinking, and only a
+    // council chaired by a reserved agent may recruit them, until the reservation ends.
+    if (process.env.SANDBOX_TEST === '1' && b.cmd === 'reserve') {
+      for (const k of Object.keys(lastDisagreement)) delete lastDisagreement[k];
+      const want = Math.max(0, Number(b.count) || 0), until = Date.now() + 15000;
+      const free = agents.filter(a => a.council === null && !a.collapsedUntil && !a.thinking && !(a.reservedUntil && a.reservedUntil > Date.now()));
+      // All or nothing: a partial reservation would strand agents the fixture cannot use.
+      const picked = free.length >= want ? free.slice(0, want) : [];
+      for (const a of picked) { a.reservedUntil = until; a.energy = 1; a.running = null; a.path = []; a.busyUntil = until; a.nextThink = until; }
+      reply.reserved = picked.map(a => a.id);
+    }
+    if (process.env.SANDBOX_TEST === '1' && b.cmd === 'hold') { const ag = agents[Number(b.agent)]; if (ag && Array.isArray(b.items)) { itemLedger += b.items.length - ag.inventory.length; ag.inventory = b.items.map(String).slice(0, 6); } }
     if (process.env.SANDBOX_TEST === '1' && b.cmd === 'act') { const ag = agents[Number(b.agent)]; if (ag) try { act(ag, cleanDecision(b.decision)); } catch (err) { console.error('act failed', (err as Error).message); } }
     if (b.cmd === 'council') {
       const a = agents[Number(b.agent)];
@@ -739,7 +883,7 @@ createServer(async (req, res) => {
     if (Array.isArray(b.mix) && b.mix.length === NAMES.length && b.mix.every(m => minds.includes(String(m)))) {
       mix = b.mix.map(String) as Mind[]; emit('system', `Minds mix: ${NAMES.map((n, i) => `${n} ${mix[i]}`).join(', ')}`);
     }
-    res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ running, mindMode }));
+    res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ running, mindMode, ...reply }));
     return;
   }
   res.writeHead(404); res.end();

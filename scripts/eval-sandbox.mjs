@@ -21,7 +21,7 @@ const STATE_DIR = mkdtempSync(join(tmpdir(), 'sandbox-eval-'));
 const server = spawn('npx', ['vite-node', 'server/sandbox.ts'], { stdio: ['ignore', 'pipe', 'pipe'], detached: true,
   env: { ...process.env, SANDBOX_PORT: String(PORT), SANDBOX_FRESH: '1', MIND_MODE: 'scripted', SANDBOX_STATE_DIR: STATE_DIR,
     // The eval must never spend: both call caps are zero, whatever the mixer is set to.
-    MAX_CALLS_PER_MIN: '0', COUNCIL_CALLS_PER_MIN: '0', SANDBOX_TEST: '1', SANDBOX_COUNCIL_DELAY_MS: '1500', SANDBOX_DAY_MS: '60000', SANDBOX_TEST_BAD_PART: '1', SANDBOX_DRAIN: String(1 / 150) } });
+    MAX_CALLS_PER_MIN: '0', COUNCIL_CALLS_PER_MIN: '0', SANDBOX_TEST: '1', SANDBOX_COUNCIL_DELAY_MS: '1500', SANDBOX_DAY_MS: '60000', SANDBOX_TEST_BAD_PART: '1', SANDBOX_DIRECTOR_MS: '20000', SANDBOX_DRAIN: String(1 / 150) } });
 let serverLog = ''; server.stdout.on('data', c => { serverLog += c; }); server.stderr.on('data', c => { serverLog += c; });
 process.env.SANDBOX_PORT = String(PORT);
 const vite = await createServer({ server: { port: WEB, strictPort: true }, logLevel: 'silent' });
@@ -47,7 +47,7 @@ let buffer = '';
       if (!data) continue;
       const d = JSON.parse(data);
       if (kind === 'state') { seen.last = d; seen.states++; seen.agents = d.agents.length; seen.maxDay = Math.max(seen.maxDay, d.world.daylight); seen.minDay = Math.min(seen.minDay, d.world.daylight); for (const a of d.agents) seen.minEnergy = Math.min(seen.minEnergy, a.energy); for (const a of d.agents) if (a.council === null) seen.maxCarry = Math.max(seen.maxCarry, a.inventory.length); }
-      if (kind === 'event') { seen.types.add(d.type); if (/^sets down /.test(d.text)) { seen.drops++; if (seen.watchDrop && d.agent === seen.watchDrop.agent && d.text === `sets down ${seen.watchDrop.item}`) seen.droppedBy = d.agent; } if (['action', 'result', 'thought', 'say'].includes(d.type)) seen.actions++; if (/^gathers (sand|shell|seaweed|driftwood|water|wood|plant fibre|resin|fruit|clay|dry grass|red berries|flint|stone|pyrite)$/.test(d.text)) seen.realItems++; if (d.type === 'hypothesis') seen.hyps++; if (/^(eats|tries to eat) /.test(d.text)) seen.eats++; if (d.type === 'council_merge' && /^ADJOURNED/.test(d.text)) seen.adjourned = true; if (d.type === 'ledger_mismatch') seen.ledger = d.text; if (d.type === 'council_open') seen.councilOpens++; if (d.type === 'ledger_check') seen.ledgerChecks++; }
+      if (kind === 'event') { seen.types.add(d.type); if (/^sets down /.test(d.text)) { seen.drops++; if (seen.watchDrop && d.agent === seen.watchDrop.agent && d.text === `sets down ${seen.watchDrop.item}`) seen.droppedBy = d.agent; } if (['action', 'result', 'thought', 'say'].includes(d.type)) seen.actions++; if (/^gathers (sand|shell|seaweed|driftwood|water|wood|plant fibre|resin|fruit|clay|dry grass|red berries|flint|stone|pyrite)$/.test(d.text)) seen.realItems++; if (d.type === 'hypothesis') seen.hyps++; if (d.type === 'disagreement') (seen.disagreements ??= []).push(d); if (d.type === 'council_open') (seen.opens ??= []).push(d); if (/^(eats|tries to eat) /.test(d.text)) seen.eats++; if (d.type === 'council_merge' && /^ADJOURNED/.test(d.text)) seen.adjourned = true; if (d.type === 'ledger_mismatch') seen.ledger = d.text; if (d.type === 'council_open') seen.councilOpens++; if (d.type === 'ledger_check') seen.ledgerChecks++; }
     }
   }
 })().catch(() => {});
@@ -60,8 +60,9 @@ await page.goto(`http://localhost:${WEB}/sandbox.html?renderer=webgl2&debug=1`);
 const loadState = await page.waitForFunction(() => ['complete', 'limited', 'error'].includes(document.querySelector('.loading-screen')?.dataset.state ?? '') || (window.__SANDBOX__?.entered ?? false),
   null, { timeout: 150000 }).then(() => page.evaluate(() => document.querySelector('.loading-screen')?.dataset.state ?? 'gone'), () => 'timeout');
 check('loading screen finishes', ['complete', 'limited', 'gone'].includes(loadState), loadState);
-if (loadState === 'limited') await page.click('.loading-action').catch(() => {});
-await page.waitForFunction(() => window.__SANDBOX__?.entered, null, { timeout: 30000 }).catch(() => {});
+// A CI machine can take seconds per frame, and Playwright's click waits for steady frames: press Enter through the DOM.
+if (loadState === 'limited') await page.evaluate(() => document.querySelector('.loading-action')?.click()).catch(() => {});
+await page.waitForFunction(() => window.__SANDBOX__?.entered, null, { timeout: 120000 }).catch(() => {});
 await sleep(2000);
 const info = () => page.evaluate(() => { const d = window.__SANDBOX__; return d && { camera: d.camera, tags: d.tags, mode: d.mode, entered: d.entered, qualitySamples: d.qualitySamples }; });
 check('island page renders', !!(await info()), errors[0] ?? '');
@@ -87,7 +88,9 @@ const hb = await handle.boundingBox().catch(() => null), bb = await page.locator
 const options = await page.evaluate(() => document.querySelectorAll('.mix-bar .seg').length);
 check('mixer offers the connected models', options >= 3, `${options} options`);
 if (hb && bb) { await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2); await page.mouse.down();
-await page.mouse.move(bb.x + bb.width * 0.5, hb.y + hb.height / 2, { steps: 6 }); await page.mouse.up(); await sleep(1500); }
+await page.mouse.move(bb.x + bb.width * 0.5, hb.y + hb.height / 2, { steps: 6 }); await page.mouse.up();
+// The new mix goes to the server and comes back on the stream: wait for it rather than a fixed pause.
+await page.waitForFunction(() => new Set([...document.querySelectorAll('.card .model')].map(m => m.textContent)).size >= 2, null, { timeout: 60000 }).catch(() => {}); }
 const mixNow = await page.evaluate(() => [...document.querySelectorAll('.card .model')].map(m => m.textContent));
 check('dragging the mixer reassigns minds', new Set(mixNow).size >= 2, mixNow.join(','));
 if (hb && bb) { await page.mouse.move(bb.x + 2, hb.y + hb.height / 2); await page.mouse.down(); await page.mouse.up(); }
@@ -99,6 +102,12 @@ check('thoughts land in the boxes', await page.evaluate(() => [...document.query
 await shot(page, `${OUT}/island.png`);
 
 // Keyboard camera: each key moves the view the right way and never into the land.
+// Select a mind's box, making sure it ends up selected (clicking a selected box deselects it).
+const domClick = sel => page.evaluate(q => { const el = document.querySelector(q); if (el) el.click(); return !!el; }, sel);
+const selectCard = async n => {
+  await page.evaluate(k => document.querySelectorAll('.card')[k]?.click(), n); await sleep(400);
+  if (await page.evaluate(() => document.querySelector('.inspector')?.hidden !== false)) { await page.evaluate(k => document.querySelectorAll('.card')[k]?.click(), n); await sleep(400); }
+};
 const hold = async (key, ms) => { await page.keyboard.down(key); await sleep(ms); await page.keyboard.up(key); await sleep(150); };
 let low = Infinity;
 const sample = async () => { const c = (await info()).camera; low = Math.min(low, c.y - c.ground); return c; };
@@ -125,29 +134,30 @@ await shot(page, `${OUT}/after-flying.png`);
 await page.keyboard.press('Escape'); await sleep(5000);
 check('Esc returns to the whole island', (await info()).mode === 'island');
 // Camera ownership: follow an agent, press Free, and the whole pose must stay put while agents move.
-await page.click('.card >> nth=1'); await page.click('.inspector .follow'); await sleep(3000);
-await page.click('[data-cam="free"]'); await sleep(800);
+await selectCard(1); await domClick('.inspector .follow'); await sleep(3000);
+await domClick('[data-cam="free"]'); await sleep(800);
 const pose0 = (await info()).camera; await sleep(6000); const pose1 = (await info()).camera;
 const poseMoved = Math.max(...['tx', 'tz', 'yaw', 'pitch', 'distance'].map(k => Math.abs(pose1[k] - pose0[k])));
 check('Free stops a follow: the camera pose holds while agents move', poseMoved < 1e-3, `largest change ${poseMoved.toExponential(1)}`);
 // Taking the camera by hand ends a follow too.
-await page.click('.inspector .follow'); await sleep(1500);
+await domClick('.inspector .follow'); await sleep(1500);
 const cv = (await page.locator('canvas').first().boundingBox().catch(() => null)) ?? { x: 0, y: 0, width: 1400, height: 820 };
-await page.mouse.move(cv.x + cv.width / 2, cv.y + cv.height / 2); await page.mouse.down();
-await page.mouse.move(cv.x + cv.width / 2 + 80, cv.y + cv.height / 2 + 10, { steps: 5 }); await page.mouse.up(); await sleep(800);
+// Drag low on the screen: a followed agent's name tag sits at the centre.
+await page.mouse.move(cv.x + cv.width / 2, cv.y + cv.height * 0.85); await page.mouse.down();
+await page.mouse.move(cv.x + cv.width / 2 + 80, cv.y + cv.height * 0.85 + 10, { steps: 5 }); await page.mouse.up(); await sleep(800);
 check('dragging the view ends a follow', (await info()).mode === 'free', (await info()).mode);
 // Also from a settled group follow: wait for its glide to finish, then drag.
-await page.click('[data-cam="agents"]'); await sleep(6000);
-await page.mouse.move(cv.x + cv.width / 2, cv.y + cv.height / 2); await page.mouse.down();
-await page.mouse.move(cv.x + cv.width / 2 - 60, cv.y + cv.height / 2, { steps: 4 }); await page.mouse.up(); await sleep(800);
+await domClick('[data-cam="agents"]'); await sleep(6000);
+await page.mouse.move(cv.x + cv.width / 2, cv.y + cv.height * 0.85); await page.mouse.down();
+await page.mouse.move(cv.x + cv.width / 2 - 60, cv.y + cv.height * 0.85, { steps: 4 }); await page.mouse.up(); await sleep(800);
 check('dragging during a settled group follow takes the camera', (await info()).mode === 'free', (await info()).mode);
 await page.keyboard.press('Escape');
 // Let the glide back to the whole island finish before judging stillness.
 for (let i = 0; i < 90; i++) { await sleep(1000); if (!(await info()).camera.gliding) break; }
 // The camera never moves by itself in island mode: a council must not pull it.
 const still0 = (await info()).camera;
-await page.click('.card >> nth=0');
-await page.click('.inspector .ask');
+await selectCard(0);
+await domClick('.inspector .ask');
 for (let i = 0; i < 30 && !seen.types.has('council_merge'); i++) await sleep(1000);
 const still1 = (await info()).camera;
 check('the camera stays put unless a follow mode is on', Math.hypot(still1.tx - still0.tx, still1.tz - still0.tz) < 0.05, `${Math.hypot(still1.tx - still0.tx, still1.tz - still0.tz).toFixed(3)} units`);
@@ -166,9 +176,42 @@ check('predictions are judged against the world', seen.types.has('hypothesis'), 
 await api('/api/control', { cmd: 'act', agent: 5, decision: { action: 'write_skill', skill_name: 'make sparks', steps: [{ action: 'gather', target: 'flint' }, { action: 'gather', target: 'pyrite' }, { action: 'combine', target: 'flint', with: 'pyrite', expect: 'sparks' }] } });
 await api('/api/control', { cmd: 'act', agent: 5, decision: { action: 'use_skill', target: 'make sparks' } });
 for (let i = 0; i < 30 && !seen.types.has('skill_done'); i++) await sleep(500);
+// Agent 6 must hold flint to learn that it is not food.
+await api('/api/control', { cmd: 'hold', agent: 6, items: ['flint'] });
 await api('/api/control', { cmd: 'act', agent: 6, decision: { action: 'eat', target: 'flint' } });
 check('strength drains and agents try to eat', seen.minEnergy < 0.9 && seen.eats > 0, `lowest strength ${seen.minEnergy.toFixed(2)}, ${seen.eats} meals tried`);
 check('day turns to night', seen.maxDay > 0.8 && seen.minDay < 0.3, `daylight ${seen.minDay.toFixed(2)} to ${seen.maxDay.toFixed(2)}`);
+const placeInfo = await (await api('/api/places')).json();
+check('agents explore and name places themselves', seen.types.has('explored') && seen.types.has('named') && placeInfo.regions.some(r => r.name), `${placeInfo.regions.filter(r => r.explored).length}/${placeInfo.regions.length} explored, ${placeInfo.regions.filter(r => r.name).length} named`);
+check('the map panel shows their map', await page.evaluate(() => /explored/.test(document.querySelector('.map-score')?.textContent ?? '')));
+// Deterministic disagreement: pick two agents who are awake and outside any council, clear the
+// pair cooldown, teach the listener one result, and have the speaker contradict it beside them.
+// Reserve two free agents atomically on the server: they stop thinking, and no other agent's
+// council can recruit them while the fixture runs.
+let free = [];
+for (let i = 0; i < 40 && free.length < 2; i++) { free = (await (await api('/api/control', { cmd: 'reserve', count: 2 })).json()).reserved ?? []; if (free.length < 2) await sleep(500); }
+const [listener, speaker] = free;
+check('two agents are free for the disagreement fixture', free.length >= 2, `${free.length} reserved`);
+await api('/api/control', { cmd: 'know', agent: listener, fact: 'flint + pyrite makes sparks' });
+await api('/api/control', { cmd: 'meet', agent: speaker, to: listener });
+const dBefore = (seen.disagreements ?? []).length, oBefore = (seen.opens ?? []).length;
+await api('/api/control', { cmd: 'act', agent: speaker, decision: { action: 'wait', say: 'flint + pyrite makes nothing' } });
+const fresh = () => (seen.disagreements ?? []).slice(dBefore).find(d => d.agent === listener && d.data?.pair === 'flint + pyrite');
+const opened = () => (seen.opens ?? []).slice(oBefore).find(o => o.agent === listener && (o.data?.members ?? []).includes(speaker) && /flint \+ pyrite/.test(o.text));
+for (let i = 0; i < 20 && !(fresh() && opened()); i++) await sleep(300);
+check('a spoken claim that contradicts what a listener knows starts a council', !!fresh() && !!opened(), `listener ${listener}, speaker ${speaker}: ${fresh() ? 'disagreement' : 'no disagreement'}, ${opened() ? 'matching council with the speaker' : 'no matching council'}`);
+check('the director steps in when nothing new is found, and says so', seen.types.has('director'));
+check('first-try hits are counted per model (recitation)', !!seen.last?.progress?.recall && Object.keys(seen.last.progress.recall).length > 0, JSON.stringify(seen.last?.progress?.recall ?? {}));
+// Survival is readable: strength as a number on every box, and a survival section in the inspector.
+await page.waitForFunction(() => [...document.querySelectorAll('.card .str')].filter(e => /^\d+%$/.test(e.textContent ?? '')).length === 8, null, { timeout: 5000 }).catch(() => {});
+check('every box shows strength as a number', await page.evaluate(() => [...document.querySelectorAll('.card .str')].filter(e => /^\d+%$/.test(e.textContent ?? '')).length === 8));
+await selectCard(6);
+await page.waitForFunction(() => /flint/.test(document.querySelector('.inspector .fd')?.textContent ?? ''), null, { timeout: 30000 }).catch(() => {});
+const surv = await page.evaluate(() => ({ sv: document.querySelector('.inspector .sv')?.textContent ?? '', fd: document.querySelector('.inspector .fd')?.textContent ?? '', rules: document.querySelector('.inspector .rules')?.textContent ?? '' }));
+check('the inspector shows strength and shelter', /\d+%/.test(surv.sv) && /sheltered|exposed|collapsed/.test(surv.sv), surv.sv);
+check('the inspector shows what the agent has learned about food', /not food: .*flint/.test(surv.fd), surv.fd);
+check('the survival rules are written on the page', /strength/.test(surv.rules) && /shelter/.test(surv.rules) && /collapse/.test(surv.rules));
+await page.keyboard.press('Escape');
 check('agents write and run skills', seen.types.has('skill_written') && seen.types.has('skill_run'), [...seen.types].filter(t => t.startsWith('skill') || t === 'learn_skill').join(','));
 check('no page errors', errors.length === 0, errors.slice(0, 2).join(' | '));
 // Layout: at every width the camera and panel controls stay whole and on screen.
@@ -263,7 +306,7 @@ while (!woke && Date.now() < until) {
     const block = wbuf.slice(0, cut); wbuf = wbuf.slice(cut + 2);
     if (!block.startsWith('event: event')) continue;
     const ev = JSON.parse(block.slice(block.indexOf('data: ') + 6));
-    if (ev.agent === 7 && /wakes on the south shore/.test(ev.text)) woke = true;
+    if (ev.agent === 7 && /^wakes in .*empty-handed/.test(ev.text)) woke = true;
   }
 }
 check('a collapsed agent wakes on time after a restart', woke, woke ? 'woke' : 'still collapsed after 40 s');
