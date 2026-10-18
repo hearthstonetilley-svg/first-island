@@ -1,6 +1,7 @@
 import './style.css';
 import { generateWorldAsync, parseSeed } from './world/generate';
-import { createIslandScene } from './render/scene';
+import { createIslandScene, IslandScene } from './render/scene';
+import { SceneRecovery } from './render/recovery';
 import { FrameDiagnostics } from './render/diagnostics';
 import { AdaptiveQuality } from './render/quality';
 import { ReadinessGate } from './render/readiness';
@@ -18,8 +19,9 @@ const pixelRatio = debug && requestedRatio >= 0.5 && requestedRatio <= 1.5
   ? requestedRatio : Math.min(devicePixelRatio, 1.5);
 const shadowMapSize = debug && params.get('shadow') === '1024' ? 1024 : 2048;
 const diagnostics = debug ? new FrameDiagnostics({ seed, forceWebGL2, postEnabled, qualityLocked }) : undefined;
-const app = document.querySelector<HTMLDivElement>('#app');
-if (!app) throw new Error('App root is missing');
+const root = document.querySelector<HTMLDivElement>('#app');
+if (!root) throw new Error('App root is missing');
+const app: HTMLDivElement = root;
 app.classList.add('is-loading');
 app.setAttribute('aria-busy', 'true');
 const canvas = document.createElement('canvas');
@@ -30,7 +32,46 @@ fps.className = 'fps';
 label.textContent = `seed ${seed} · starting renderer…`;
 fps.textContent = '… fps · … ms · warming up';
 app.append(canvas, label, fps);
-const loading = new LoadingScreen(app, seed);
+let loading = new LoadingScreen(app, seed);
+const notice = document.createElement('div');
+notice.className = 'graphics-notice';
+notice.setAttribute('role', 'status');
+notice.hidden = true;
+app.append(notice);
+let noticeTimer: ReturnType<typeof setTimeout> | undefined;
+let generation = 0;
+let frameRequest = 0;
+let sceneEvents: AbortController | undefined;
+let controller: SceneRecovery<IslandScene>;
+const stopped = () => {
+  generation += 1;
+  cancelAnimationFrame(frameRequest);
+  sceneEvents?.abort();
+  app.classList.add('is-loading');
+  app.setAttribute('aria-busy', 'true');
+  label.textContent = `seed ${seed} · preparing graphics…`;
+  fps.textContent = '… fps · … ms · restoring graphics';
+  diagnostics?.discontinuity();
+  if (!loading.element.isConnected || ['complete', 'error', 'limited'].includes(loading.element.dataset.state ?? '')) {
+    loading.element.remove();
+    loading = new LoadingScreen(app, seed);
+  }
+};
+const switching = () => {
+  clearTimeout(noticeTimer);
+  notice.textContent = 'Graphics interrupted · switching to WebGL2';
+  notice.hidden = false;
+};
+const failed = (error: unknown) => {
+  stopped();
+  const message = error instanceof Error ? error.message : 'Graphics unavailable. Reload to retry.';
+  label.textContent = `seed ${seed} · graphics unavailable`;
+  fps.textContent = 'renderer unavailable';
+  notice.hidden = true;
+  loading.fail(message);
+  app.setAttribute('aria-busy', 'false');
+  console.error('Island startup failed:', error);
+};
 const progress = async (step: LoadingProgress) => {
   loading.update(step);
   diagnostics?.report.loading.stages.push({ ...step, atMs: performance.now() });
@@ -45,10 +86,19 @@ try {
       percent: stage === 'terrain' ? 2 + fraction * 26 : 28 + fraction * 10 });
   });
   diagnostics?.phase('worldGeneration', performance.now() - worldStarted);
-  const island = await createIslandScene(canvas, world, forceWebGL2, {
-    postEnabled, diagnostics, pixelRatio, shadowMapSize, onProgress: progress,
-  });
-  label.textContent = `seed ${seed} · ${island.label}`;
+  controller = new SceneRecovery((forceWebGL) => createIslandScene(
+    app.querySelector('canvas')!, world, forceWebGL, {
+      postEnabled, diagnostics, pixelRatio, shadowMapSize, onProgress: progress, onFallback: switching,
+    }), forceWebGL2, stopped, switching, (island) => {
+      void runScene(island).catch((error) => { void controller.reportFailure(island, error); });
+    }, failed);
+  await controller.start();
+} catch (error) { failed(error); }
+
+async function runScene(island: IslandScene): Promise<void> {
+  const token = generation;
+  const active = () => generation === token;
+  sceneEvents = new AbortController();
   const quality = new AdaptiveQuality(pixelRatio, postEnabled);
   const readiness = new ReadinessGate();
   let entered = false;
@@ -58,7 +108,7 @@ try {
   let smoothedFrameTime: number | undefined;
   let lastHudUpdate = 0;
   const enter = (entry: 'automatic' | 'manual') => {
-    if (entered) return;
+    if (entered || !active()) return;
     entered = true;
     previousTime = undefined;
     smoothedFrameTime = undefined;
@@ -79,12 +129,20 @@ try {
     gateStarted = undefined;
     diagnostics?.discontinuity();
   };
-  window.addEventListener('resize', () => { island.resize(); resetSampling(); });
-  document.addEventListener('visibilitychange', resetSampling);
+  window.addEventListener('resize', () => {
+    if (!active()) return;
+    try { island.resize(); resetSampling(); } catch (error) { void controller.reportFailure(island, error); }
+  }, { signal: sceneEvents.signal });
+  document.addEventListener('visibilitychange', resetSampling, { signal: sceneEvents.signal });
   await progress({ stage: 'settling', message: 'Checking frame rate', percent: 92 });
   const readinessStarted = performance.now();
+  if (!active()) return;
+  const nextFrame = () => { if (active()) frameRequest = requestAnimationFrame((time) => {
+    void loop(time).catch((error) => { if (active()) void controller.reportFailure(island, error); });
+  }); };
   const loop = async (time: number) => {
-    if (document.hidden) { requestAnimationFrame(loop); return; }
+    if (!active()) return;
+    if (document.hidden) { nextFrame(); return; }
     gateStarted ??= time;
     const frameTime = previousTime === undefined ? undefined : Math.max(0.1, time - previousTime);
     previousTime = time;
@@ -113,17 +171,15 @@ try {
     island.render(animationStart === undefined ? 0 : time - animationStart);
     const submittedAt = performance.now();
     if (!visibleFrame) {
-      try {
-        // A covered canvas can report fast RAF callbacks with GPU work queued.
-        // Fence each probe frame so cadence includes completed rendering.
-        await warmRenderer({ compile: async () => {}, draws: [() => {}],
-          waitForGPU: () => island.renderer.waitForGPU(), dispose: () => island.renderer.dispose() }, 10000);
-      } catch (error) {
-        loading.fail(error instanceof Error ? error.message : 'Rendering stopped. Reload to retry.');
-        fps.textContent = 'renderer unavailable';
-        app.setAttribute('aria-busy', 'false');
-        return;
-      }
+      // Fence covered probe frames so cadence includes completed GPU work.
+      await warmRenderer({ compile: async () => {}, draws: [() => {}],
+        waitForGPU: () => island.waitForGPU(), dispose: () => {} }, 10000);
+    }
+    if (!active()) return;
+    label.textContent = `seed ${seed} · ${island.label}`;
+    if (!notice.hidden && entered && island.label === 'WebGL2' && notice.textContent?.includes('switching')) {
+      notice.textContent = 'Graphics restored · WebGL2';
+      noticeTimer = setTimeout(() => { notice.hidden = true; }, 6000);
     }
     if (visibleFrame) diagnostics?.record(time, submittedAt - renderStarted, quality.level, submittedAt);
     if (time - lastHudUpdate > 100) {
@@ -131,14 +187,7 @@ try {
         : `${(1000 / smoothedFrameTime).toFixed(0)} fps · ${smoothedFrameTime.toFixed(1)} ms · ${quality.level}`;
       lastHudUpdate = time;
     }
-    requestAnimationFrame(loop);
+    nextFrame();
   };
-  requestAnimationFrame(loop);
-} catch (error) {
-  const message = error instanceof Error ? error.message : 'Renderer initialization failed. Reload to retry.';
-  label.textContent = `seed ${seed} · ${message}`;
-  fps.textContent = 'renderer unavailable';
-  loading.fail(message);
-  app.setAttribute('aria-busy', 'false');
-  console.error('Island startup failed:', error);
+  nextFrame();
 }

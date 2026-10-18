@@ -43,6 +43,8 @@ as much about how the world gets built as about the world itself.
 npm install
 npm run dev          # http://localhost:5173/?seed=42
 npm test
+npm run build
+npm run eval         # five seeds, three loads each, auto and forced WebGL2
 ```
 
 `?seed=N` picks the island. `?renderer=webgl2` forces the WebGL2 path.
@@ -51,6 +53,9 @@ npm test
 A staged loading screen covers generation, shader compilation and warm-up, then checks completed frame cadence before
 fading into the island. Devices below the smoothness target get a performance notice and an explicit entry button.
 See [iteration 025](docs/iterations/025.md) for profiling controls and [iteration 026](docs/iterations/026.md) for loading-screen checks.
+
+WebGPU device loss rebuilds the scene on a fresh WebGL2 renderer using the existing world data, with a short recovery
+notice and no page reload. See [iteration 027](docs/iterations/027.md) for the device probe, recovery checks and eval results.
 
 ## Licence
 
