@@ -32,3 +32,4 @@ Every decision that shapes the project, newest last. "Owner" decisions are final
 | 26 | 18 Oct 2026 | Stage 2 reviews read event logs and population curves, not just screenshots | A screenshot of dots passes even when the simulation is wrong (advisor) | Claude |
 | 27 | 18 Oct 2026 | Stage 3a (the clock) is published alone before bodies | Prove the foundation in isolation so a later determinism failure points at the bodies (advisor) | Claude |
 | 28 | 18 Oct 2026 | Viability counts biological generations (a third-generation birth), never the clock | A clock-based count would pass with nobody having reproduced (advisor) | Claude |
+| 35 | 18 Oct 2026 | Observer views: thought and speech bubbles on agents, a rolling thought feed, and the web as its own live page, all from the event stream; intentions shown before minds exist | "Agents should have thoughts in speech bubbles and rolling text... build the web as another visualisation" (owner) | Owner |

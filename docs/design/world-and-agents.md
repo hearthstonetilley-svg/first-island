@@ -127,6 +127,26 @@ knowledge surviving across generations, structures built.
   their current action and thought.
 - **Camera modes:** free orbit, follow an agent, watch a settlement, and a timeline to scrub through any run.
 
+## 9a. Observer views (owner request, 18 Oct 2026)
+
+Thinking must be visible. All views read the same live event stream (mind answers are logged events, 5.5), so they
+stay in step and can also replay any recorded run.
+
+1. **Bubbles on the island.** A short bubble above an agent when it thinks or speaks, fading after a few seconds.
+   Thought and speech are styled differently.
+2. **A rolling feed at the side.** Every thought and message, live, with the agent's name and family colour.
+   Clicking a line flies the camera to that agent; filtering to one agent shows its stream of thought.
+3. **The web page.** A second page showing the society as a live graph: agents as nodes, threads as they talk and
+   teach, thoughts pulsing along threads, councils lighting up as they split, branch and merge. It follows the same
+   live run as the island page (for example through a shared worker or broadcast channel) and can load a recorded run.
+
+**Before minds,** scripted bodies show their intentions (seeking food, resting, courting) as icons in the bubbles
+and the feed, so the views work from the start.
+
+**Observer words and agent words stay separate.** The observer interface may label things in our language. An
+agent's own thoughts and speech may only use names its society coined (decision 19). The views must never blend the
+two: observer labels are visibly marked as the observer's.
+
 ## 10. The record
 
 - **Event log:** every birth, death, discovery, first use of a verb combination, first structure, first name.
