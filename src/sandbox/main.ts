@@ -5,6 +5,7 @@ import { createIslandScene, IslandScene } from '../render/scene';
 import { SceneRecovery } from '../render/recovery';
 import { AdaptiveQuality } from '../render/quality';
 import { ReadinessGate } from '../render/readiness';
+import { FrameDiagnostics } from '../render/diagnostics';
 import { LoadingProgress, LoadingScreen, paintLoading } from '../ui/loading';
 import { Agent, DEFAULT_DIALS, Snapshot, Activity } from '../sim/types';
 import { COLOURS, connect, control, FeedEvent, GOLD, LEARN, LiveState, MIND_COLOURS, MIND_LABELS, MIND_PLAN, SKILL, usage } from './stream';
@@ -412,6 +413,8 @@ const forceWebGL2 = params.get('renderer') === 'webgl2';
 const postEnabled = params.get('post') !== '0';
 const pixelRatio = Math.min(devicePixelRatio, 1.5);
 const fpsLine = $('.fps'), notice = $('.graphics-notice');
+// ?debug=1 records the same 600-frame report as the world page (window.__ISLAND_DEBUG__).
+const diagnostics = params.get('debug') === '1' ? new FrameDiagnostics({ page: 'sandbox', forceWebGL2, postEnabled }) : undefined;
 let controller: SceneRecovery<IslandScene> | undefined;
 let loading: LoadingScreen | undefined;
 let generation = 0, frameRequest = 0;
@@ -423,21 +426,24 @@ async function startIsland(seed: number, built: never[]) {
   status.hidden = true;
   app.classList.add('is-loading');
   loading = new LoadingScreen(app, seed);
-  const progress = async (step: LoadingProgress) => { loading?.update(step); await paintLoading(); };
+  const progress = async (step: LoadingProgress) => { loading?.update(step); diagnostics?.report.loading.stages.push({ ...step, atMs: performance.now() }); await paintLoading(); };
+  const worldStarted = performance.now();
   try {
     await progress({ stage: 'terrain', message: 'Generating terrain', percent: 1 });
     const world = await generateWorldAsync(seed, 256, 64, async ({ stage, fraction }) => {
       await progress({ stage, message: stage === 'terrain' ? 'Generating terrain' : 'Placing trees', percent: stage === 'terrain' ? 2 + fraction * 26 : 28 + fraction * 10 });
     });
+    diagnostics?.phase('worldGeneration', performance.now() - worldStarted);
     trees = world.trees.map((t, id) => ({ ...t, id, foodId: null }));
     controller = new SceneRecovery(force => createIslandScene(app.querySelector('canvas')!, world, force, {
-      postEnabled, pixelRatio, onProgress: progress, onFallback: () => { notice.textContent = 'Graphics interrupted · switching to WebGL2'; notice.hidden = false; },
+      postEnabled, pixelRatio, diagnostics, onProgress: progress, onFallback: () => { notice.textContent = 'Graphics interrupted · switching to WebGL2'; notice.hidden = false; },
       snapshot: state ? snapshot(state) : undefined, onSelect: id => select(id), figureScale: 2.2, agentColours: COLOURS,
       onManualCamera: () => setMode('free'),
     }), forceWebGL2, () => {
       // A scene is going away (startup or a lost device): remember the view, stop its loop,
       // and make sure there is a live loading screen for the replacement to report to.
       if (island) savedPose = island.getPose();
+      diagnostics?.discontinuity();
       island = undefined; generation++; cancelAnimationFrame(frameRequest);
       if (!loading?.element.isConnected || ['complete', 'error', 'limited'].includes(loading.element.dataset.state ?? '')) {
         loading?.element.remove(); loading = new LoadingScreen(app, islandSeed);
@@ -463,6 +469,7 @@ async function runIsland(scene: IslandScene) {
   const enter = () => {
     if (entered || !active()) return;
     entered = true; everEntered = true; app.classList.remove('is-loading');
+    if (diagnostics) { diagnostics.report.loading.enteredAtMs = performance.now(); diagnostics.report.loading.entry = loading?.element.dataset.state === 'limited' ? 'manual' : 'automatic'; }
     void loading?.finish().then(() => { if (active()) { quality.reset(); playing = true; } });
   };
   addEventListener('resize', () => { if (active()) { scene.resize(); quality.reset(); readiness.reset(); if (mode === 'island') wholeIsland(); } });
@@ -480,7 +487,7 @@ async function runIsland(scene: IslandScene) {
     if (frameTime !== undefined) smoothed = smoothed === undefined ? frameTime : smoothed * 0.9 + frameTime * 0.1;
     const change = quality.sample(time, playing);
     if (playing) qualitySamples++;
-    if (change) { scene.setQuality(change); readiness.reset(); }
+    if (change) { scene.setQuality(change); readiness.reset(); diagnostics?.qualityChange(time - (start ?? time), change); }
     if (!entered) {
       const r = readiness.sample(time);
       if (r) { if (r.ready) enter(); else loading?.limited(1000 / r.medianMs, enter); }
@@ -488,7 +495,9 @@ async function runIsland(scene: IslandScene) {
     start ??= time;
     applyKeys(performance.now());
     if (mode === 'agents' && performance.now() - lastGroupFrame > 2500) { scene.frameAgents(); lastGroupFrame = performance.now(); }
+    const renderStarted = performance.now();
     scene.render(time - start);
+    if (entered) diagnostics?.record(time, performance.now() - renderStarted, quality.level, performance.now());
     const positions = new Map(scene.agentPositions().map(p => [p.id, p]));
     const shown = draw(positions, performance.now());
     if (time - lastHud > 250 && smoothed !== undefined) {

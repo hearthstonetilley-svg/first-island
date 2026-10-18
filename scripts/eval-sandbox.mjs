@@ -127,7 +127,9 @@ const cv = await page.locator('canvas').first().boundingBox();
 await page.mouse.move(cv.x + cv.width / 2, cv.y + cv.height / 2); await page.mouse.down();
 await page.mouse.move(cv.x + cv.width / 2 + 80, cv.y + cv.height / 2 + 10, { steps: 5 }); await page.mouse.up(); await sleep(800);
 check('dragging the view ends a follow', (await info()).mode === 'free', (await info()).mode);
-await page.keyboard.press('Escape'); await sleep(3000);
+await page.keyboard.press('Escape');
+// Let the glide back to the whole island finish before judging stillness.
+for (let i = 0, prev = null; i < 20; i++) { await sleep(1000); const c = (await info()).camera; if (prev && Math.hypot(c.tx - prev.tx, c.tz - prev.tz) < 1e-4 && Math.abs(c.distance - prev.distance) < 1e-4) break; prev = c; }
 // The camera never moves by itself in island mode: a council must not pull it.
 const still0 = (await info()).camera;
 await page.click('.card >> nth=0');
@@ -152,9 +154,19 @@ check('Pause stops the agents', seen.actions === before, `${seen.actions - befor
 await api('/api/control', { cmd: 'start' });
 
 const web = await browser.newPage({ viewport: { width: 1200, height: 800 } });
-await web.goto(`http://localhost:${WEB}/web.html`); await sleep(6000);
+await web.goto(`http://localhost:${WEB}/web.html?debug=1`); await sleep(6000);
 const drawn = await web.evaluate(() => { const c = document.querySelector('canvas'); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 0) n++; return n; });
 check('web page draws the agents', drawn > 2000, `${drawn} pixels`);
+check('web shows its frame rate', await web.evaluate(() => /fps|idle/.test(document.querySelector('.top .fps')?.textContent ?? '')));
+// Idle means idle: with the island paused, the web should stop drawing entirely.
+await api('/api/control', { cmd: 'pause' }); await sleep(4000);
+const d0 = await web.evaluate(() => window.__WEB__?.draws ?? -1); await sleep(5000); const d1 = await web.evaluate(() => window.__WEB__?.draws ?? -1);
+check('web draws nothing when nothing changes', d0 >= 0 && d1 - d0 <= 3, `${d1 - d0} draws in 5 s while paused`);
+await api('/api/control', { cmd: 'start' });
+// Selecting a fact isolates it: exactly one link per mind that knows it.
+await web.evaluate(() => window.__WEB__.selectFact(0)); await sleep(800);
+const iso = await web.evaluate(() => ({ lit: window.__WEB__.litLinks, knowers: window.__WEB__.knowers }));
+check('selecting a fact shows only its links', iso.knowers > 0 && iso.lit === iso.knowers, `${iso.lit} links for ${iso.knowers} knowers`);
 await shot(web, `${OUT}/web.png`);
 
 await browser.close(); await vite.close();

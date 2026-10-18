@@ -13,13 +13,18 @@ app.innerHTML = `
     <strong class="title">First Island · the web</strong>
     <span class="sep"></span>
     <div class="legend"><span><i style="background:${LEARN}"></i>knowledge passed</span><span><i style="background:${GOLD}"></i>something made</span><span><i style="background:#7c8a94"></i>found to do nothing</span><span><i style="background:#5cd6ff"></i>where things are</span><span><i style="background:${SKILL}"></i>skill taught</span></div>
+    <span class="fps" title="Frame rate while something is moving; the web draws nothing when nothing changes">idle</span>
     <a class="web-link" href="/sandbox.html">The island ↗</a>
   </header>
   <aside class="rail right web-inspector"><section class="panel"><h3>The web</h3><div class="summary"></div></section>
     <section class="panel"><h3 class="sel-title">Recent teaching</h3><div class="sel-body"></div></section></aside>`;
 const canvas = app.querySelector<HTMLCanvasElement>('canvas.nucleus')!, ctx = canvas.getContext('2d')!;
-const links = document.createElement('canvas'), lctx = links.getContext('2d')!;
-let linkSignature = '', linkDrawnAt = 0;
+// Everything that only changes when the data changes is drawn once into this layer.
+// A frame then costs one image copy, plus whatever is actually moving.
+const layer = document.createElement('canvas'), lctx = layer.getContext('2d')!;
+let dirty = true, layerSignature = '';
+const DPR = Math.min(devicePixelRatio, 1.5);
+let draws = 0, litLinks = 0;
 const summary = app.querySelector('.summary')!, selTitle = app.querySelector('.sel-title')!, selBody = app.querySelector('.sel-body')!;
 let names: string[] = [];
 let state: LiveState | undefined;
@@ -43,18 +48,18 @@ async function refreshFacts() { if (fetching) return; fetching = true; try { fac
 
 // ---------- layout ----------
 const RIGHT = 312;
-const skip = new URLSearchParams(location.search).get('skip') ?? '';
 const centre = () => ({ x: (innerWidth - RIGHT) / 2, y: innerHeight / 2 + 26 });
 const coreRadius = () => Math.min(innerWidth - RIGHT, innerHeight - 60) * 0.2;
 const orbitRadius = () => Math.min(innerWidth - RIGHT, innerHeight - 60) * 0.4;
 function factPos(i: number) {
   // Golden-angle packing keeps the core even however many facts there are.
-  const c = centre(), n = Math.max(1, facts.length), r = coreRadius() * Math.sqrt((i + 0.5) / n);
+  // A fixed capacity keeps every fact where it is as new ones arrive.
+  const c = centre(), r = coreRadius() * Math.sqrt((i + 0.5) / Math.max(160, facts.length));
   const a = i * 2.39996323;
   return { x: c.x + Math.cos(a) * r, y: c.y + Math.sin(a) * r };
 }
 function agentPos(i: number, now: number) {
-  const c = centre(), drift = now / 60000;
+  void now; const c = centre(), drift = 0;
   const pull = openCouncil && openCouncil.members.includes(i) ? 0.72 : 1;
   const a = -Math.PI / 2 + i * 2 * Math.PI / Math.max(1, names.length) + drift;
   return { x: c.x + Math.cos(a) * orbitRadius() * pull, y: c.y + Math.sin(a) * orbitRadius() * pull };
@@ -109,6 +114,7 @@ function renderInspector() {
 }
 const escapeHtml = (s: string) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 canvas.addEventListener('click', e => {
+  dirty = true;
   const now = performance.now();
   for (let i = 0; i < names.length; i++) { const p = agentPos(i, now); if (Math.hypot(p.x - e.clientX, p.y - e.clientY) < 22) { selected = { agent: i }; renderInspector(); return; } }
   for (let i = 0; i < facts.length; i++) { const p = factPos(i); if (Math.hypot(p.x - e.clientX, p.y - e.clientY) < 8) { selected = { fact: i }; renderInspector(); return; } }
@@ -116,96 +122,111 @@ canvas.addEventListener('click', e => {
 });
 
 // ---------- drawing ----------
-function resize() { canvas.width = innerWidth * devicePixelRatio; canvas.height = innerHeight * devicePixelRatio; }
+function resize() { canvas.width = innerWidth * DPR; canvas.height = innerHeight * DPR; layer.width = canvas.width; layer.height = canvas.height; dirty = true; }
 addEventListener('resize', resize); resize();
 function curve(p: { x: number; y: number }, q: { x: number; y: number }, t: number) {
   const c = centre(), mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2;
   const cx = mx + (c.x - mx) * 0.45, cy = my + (c.y - my) * 0.45, u = 1 - t;
   return { x: u * u * p.x + 2 * u * t * cx + t * t * q.x, y: u * u * p.y + 2 * u * t * cy + t * t * q.y, cx, cy };
 }
-function draw(now: number) {
-  ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
-  const c = centre(), W = innerWidth, H = innerHeight;
-  ctx.clearRect(0, 0, W, H);
-  if (openCouncil && Date.now() > openCouncil.until) openCouncil = undefined;
+function drawLayer(now: number) {
+  const g = lctx, c = centre(), W = innerWidth, H = innerHeight;
+  g.setTransform(DPR, 0, 0, DPR, 0, 0); g.clearRect(0, 0, W, H); g.lineCap = 'round';
   const sel = selected;
   const focusAgent = sel && 'agent' in sel ? sel.agent : undefined, focusFact = sel && 'fact' in sel ? sel.fact : undefined;
-  // Orbit and progress arc.
-  ctx.strokeStyle = 'rgba(120,170,200,.10)'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.arc(c.x, c.y, orbitRadius(), 0, Math.PI * 2); ctx.stroke();
+  g.strokeStyle = 'rgba(120,170,200,.10)'; g.lineWidth = 1;
+  g.beginPath(); g.arc(c.x, c.y, orbitRadius(), 0, Math.PI * 2); g.stroke();
   const p = state?.progress;
   if (p) {
-    ctx.strokeStyle = 'rgba(255,211,77,.18)'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(c.x, c.y, coreRadius() + 18, -Math.PI / 2, Math.PI * 1.5); ctx.stroke();
-    ctx.strokeStyle = GOLD; ctx.beginPath(); ctx.arc(c.x, c.y, coreRadius() + 18, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (p.found / Math.max(1, p.makeable))); ctx.stroke();
-    ctx.fillStyle = 'rgba(255,211,77,.8)'; ctx.font = '600 11px system-ui'; ctx.textAlign = 'center';
-    ctx.fillText(`${p.found} of ${p.makeable} things made`, c.x, c.y + coreRadius() + 38);
+    g.strokeStyle = 'rgba(255,211,77,.18)'; g.lineWidth = 4; g.beginPath(); g.arc(c.x, c.y, coreRadius() + 18, -Math.PI / 2, Math.PI * 1.5); g.stroke();
+    g.strokeStyle = GOLD; g.beginPath(); g.arc(c.x, c.y, coreRadius() + 18, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (p.found / Math.max(1, p.makeable))); g.stroke();
+    g.fillStyle = 'rgba(255,211,77,.8)'; g.font = '600 11px system-ui'; g.textAlign = 'center';
+    g.fillText(`${p.found} of ${p.makeable} things made`, c.x, c.y + coreRadius() + 38);
   }
-  // Faint history of who has spoken to whom.
-  for (const [k, n] of skip.includes('speech') ? [] : speech) {
+  for (const [k, n] of speech) {
     const [a, b] = k.split('-').map(Number), pa = agentPos(a, now), pb = agentPos(b, now);
     const dim = focusAgent !== undefined && a !== focusAgent && b !== focusAgent;
-    ctx.strokeStyle = `rgba(200,220,235,${dim ? 0.015 : Math.min(0.08, 0.02 + n * 0.002)})`; ctx.lineWidth = 1;
-    const m = curve(pa, pb, 0); ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.quadraticCurveTo(m.cx, m.cy, pb.x, pb.y); ctx.stroke();
+    g.strokeStyle = `rgba(200,220,235,${dim ? 0.015 : Math.min(0.08, 0.02 + n * 0.002)})`; g.lineWidth = 1;
+    const m = curve(pa, pb, 0); g.beginPath(); g.moveTo(pa.x, pa.y); g.quadraticCurveTo(m.cx, m.cy, pb.x, pb.y); g.stroke();
   }
-  // Each mind's links to what it knows: hundreds of lines, so they live on their
-  // own layer, redrawn about once a second or when knowledge or focus changes.
-  const signature = `${facts.length}|${(state?.agents ?? []).map(a => a.knownIds.length).join(',')}|${focusAgent}|${focusFact}|${W}x${H}`;
-  if (!skip.includes('links') && (signature !== linkSignature || now - linkDrawnAt > 1000)) {
-    linkSignature = signature; linkDrawnAt = now;
-    if (links.width !== canvas.width || links.height !== canvas.height) { links.width = canvas.width; links.height = canvas.height; }
-    lctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0); lctx.clearRect(0, 0, W, H); lctx.lineWidth = 1;
-    for (const a of state?.agents ?? []) {
-      const pa = agentPos(a.id, now);
-      const dim = (focusAgent !== undefined && a.id !== focusAgent) || (focusFact !== undefined && !a.knownIds.includes(focusFact));
-      lctx.strokeStyle = COLOURS[a.id]; lctx.globalAlpha = dim ? 0.03 : focusAgent === a.id || focusFact !== undefined ? 0.4 : 0.1;
-      for (const f of a.knownIds) { if (f >= facts.length) continue; const q = factPos(f); lctx.beginPath(); lctx.moveTo(pa.x, pa.y); lctx.lineTo(q.x, q.y); lctx.stroke(); }
+  // Each mind's links to what it knows. Selecting a fact shows only that fact's links.
+  litLinks = 0;
+  for (const a of state?.agents ?? []) {
+    const pa = agentPos(a.id, now);
+    if (focusFact !== undefined) {
+      if (!a.knownIds.includes(focusFact) || focusFact >= facts.length) continue;
+      const q = factPos(focusFact); g.strokeStyle = COLOURS[a.id]; g.globalAlpha = 0.9; g.lineWidth = 2;
+      g.beginPath(); g.moveTo(pa.x, pa.y); g.lineTo(q.x, q.y); g.stroke(); litLinks++; continue;
     }
+    g.strokeStyle = COLOURS[a.id]; g.lineWidth = 1;
+    g.globalAlpha = focusAgent === undefined ? 0.1 : a.id === focusAgent ? 0.4 : 0.03;
+    for (const f of a.knownIds) { if (f >= facts.length) continue; const q = factPos(f); g.beginPath(); g.moveTo(pa.x, pa.y); g.lineTo(q.x, q.y); g.stroke(); }
   }
-  if (!skip.includes('links')) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(links, 0, 0); ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0); }
-  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
-  // The core: facts, sized and lit by how many minds hold them.
+  g.globalAlpha = 1;
   const counts = new Map<number, number>();
   for (const a of state?.agents ?? []) for (const f of a.knownIds) counts.set(f, (counts.get(f) ?? 0) + 1);
-  (skip.includes('facts') ? [] : facts).forEach((text, i) => {
-    const q = factPos(i), n = counts.get(i) ?? 0, col = KIND_COLOUR[kindOf(text)];
-    const dim = focusAgent !== undefined && !state?.agents[focusAgent]?.knownIds.includes(i);
-    const kind = kindOf(text);
-    ctx.globalAlpha = dim ? 0.12 : kind === 'inert' ? 0.45 : 0.4 + 0.6 * (n / Math.max(1, names.length));
-    ctx.fillStyle = col;
-    if (kind === 'made') { const a0 = ctx.globalAlpha; ctx.globalAlpha = a0 * 0.3; ctx.beginPath(); ctx.arc(q.x, q.y, 9, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = a0; }
-    ctx.beginPath(); ctx.arc(q.x, q.y, (kind === 'inert' ? 1.5 : 2.5) + n * (kind === 'inert' ? 0.25 : 0.6) + (i === focusFact ? 3 : 0), 0, Math.PI * 2); ctx.fill();
+  facts.forEach((text, i) => {
+    const q = factPos(i), n = counts.get(i) ?? 0, kind = kindOf(text), col = KIND_COLOUR[kind];
+    const dim = (focusAgent !== undefined && !state?.agents[focusAgent]?.knownIds.includes(i)) || (focusFact !== undefined && i !== focusFact);
+    g.globalAlpha = dim ? 0.12 : kind === 'inert' ? 0.45 : 0.4 + 0.6 * (n / Math.max(1, names.length));
+    g.fillStyle = col;
+    if (kind === 'made') { const a0 = g.globalAlpha; g.globalAlpha = a0 * 0.3; g.beginPath(); g.arc(q.x, q.y, 9, 0, Math.PI * 2); g.fill(); g.globalAlpha = a0; }
+    g.beginPath(); g.arc(q.x, q.y, (kind === 'inert' ? 1.5 : 2.5) + n * (kind === 'inert' ? 0.25 : 0.6) + (i === focusFact ? 3 : 0), 0, Math.PI * 2); g.fill();
   });
-  ctx.globalAlpha = 1;
+  g.globalAlpha = 1;
+  names.forEach((name, i) => {
+    const q = agentPos(i, now), a = state?.agents[i];
+    const dim = (focusAgent !== undefined && focusAgent !== i) || (focusFact !== undefined && !a?.knownIds.includes(focusFact));
+    g.globalAlpha = dim ? 0.35 : 1;
+    if (openCouncil?.members.includes(i)) { g.strokeStyle = GOLD; g.lineWidth = 2; g.beginPath(); g.arc(q.x, q.y, 24, 0, Math.PI * 2); g.stroke(); }
+    g.fillStyle = COLOURS[i]; g.globalAlpha *= 0.18; g.beginPath(); g.arc(q.x, q.y, 18, 0, Math.PI * 2); g.fill(); g.globalAlpha = dim ? 0.35 : 1;
+    g.fillStyle = COLOURS[i]; g.beginPath(); g.arc(q.x, q.y, a?.thinking ? 9 : 7, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#e6eef2'; g.font = '600 13px system-ui'; g.textAlign = 'center'; g.fillText(name, q.x, q.y - 26);
+    g.fillStyle = '#a5b4be'; g.font = '11px system-ui'; g.fillText(`${a?.knownIds.length ?? 0} facts${a?.skills.length ? ` · ${a.skills.length} skills` : ''}`, q.x, q.y + 32);
+    g.globalAlpha = 1;
+  });
+}
+
+let lastFrame: number | undefined, smoothed: number | undefined, lastHud = 0;
+const fpsLine = app.querySelector('.fps')!;
+function draw(now: number) {
+  requestAnimationFrame(draw);
+// The debug counter must exist even while idle, so a test can see that nothing is drawn.
+if (new URLSearchParams(location.search).get('debug') === '1') setInterval(() => { (window as unknown as { __WEB__: unknown }).__WEB__ = { draws, packets: packets.length, fps: smoothed ? 1000 / smoothed : 0, litLinks, knowers: selected && 'fact' in selected ? knowers(selected.fact).length : -1,
+  selectFact: (f: number) => { selected = { fact: f }; dirty = true; renderInspector(); } }; }, 200);
+  if (openCouncil && Date.now() > openCouncil.until) { openCouncil = undefined; dirty = true; }
+  // The static layer is redrawn only when what it shows has changed.
+  const signature = `${facts.length}|${(state?.agents ?? []).map(a => `${a.knownIds.length}${a.thinking ? 't' : ''}${a.skills.length}`).join(',')}|${state?.progress.found}|${speech.size}|${openCouncil?.members.join('.') ?? ''}`;
+  if (signature !== layerSignature) { layerSignature = signature; dirty = true; }
+  const animating = packets.length > 0 || pulses.length > 0;
+  if (!dirty && !animating) {
+    lastFrame = undefined;
+    if (now - lastHud > 500) { fpsLine.textContent = 'idle · nothing to redraw'; lastHud = now; }
+    return;
+  }
+  if (dirty) { drawLayer(now); dirty = false; }
+  draws++;
+  if (lastFrame !== undefined) { const dt = now - lastFrame; smoothed = smoothed === undefined ? dt : smoothed * 0.9 + dt * 0.1; }
+  lastFrame = now;
+  if (now - lastHud > 250 && smoothed !== undefined) { fpsLine.textContent = `${(1000 / smoothed).toFixed(0)} fps · ${smoothed.toFixed(1)} ms`; fpsLine.classList.toggle('slow', smoothed > 33); lastHud = now; }
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(layer, 0, 0);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const c = centre();
   for (let i = pulses.length - 1; i >= 0; i--) {
     const pu = pulses[i], t = (now - pu.at) / 1200; if (t < 0) continue; if (t > 1) { pulses.splice(i, 1); continue; }
     const q = pu.core ? c : pu.fact !== undefined && pu.fact < facts.length ? factPos(pu.fact) : c;
     ctx.strokeStyle = pu.colour; ctx.globalAlpha = 1 - t; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(q.x, q.y, (pu.core ? coreRadius() * 1.2 : 14) * t + 2, 0, Math.PI * 2); ctx.stroke();
   }
-  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
   for (let i = packets.length - 1; i >= 0; i--) {
     const pk = packets[i], t = (now - pk.at) / pk.ms; if (t < 0) continue; if (t > 1) { packets.splice(i, 1); continue; }
     const from = agentPos(pk.from, now), to = typeof pk.to === 'number' ? agentPos(pk.to, now) : pk.to.fact < facts.length ? factPos(pk.to.fact) : c;
     const at = curve(from, to, t);
-    // A soft halo and a bright centre: cheap enough for a burst of hundreds.
-    ctx.fillStyle = pk.colour; ctx.globalAlpha = 0.25;
-    ctx.beginPath(); ctx.arc(at.x, at.y, pk.size * 2.6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = pk.colour; ctx.globalAlpha = 0.25; ctx.beginPath(); ctx.arc(at.x, at.y, pk.size * 2.6, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(at.x, at.y, pk.size, 0, Math.PI * 2); ctx.fill();
   }
-  ctx.globalCompositeOperation = 'source-over';
-  // The minds.
-  names.forEach((name, i) => {
-    const q = agentPos(i, now), a = state?.agents[i];
-    const dim = focusAgent !== undefined && focusAgent !== i || focusFact !== undefined && !a?.knownIds.includes(focusFact);
-    ctx.globalAlpha = dim ? 0.35 : 1;
-    if (openCouncil?.members.includes(i)) { ctx.strokeStyle = GOLD; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(q.x, q.y, 24, 0, Math.PI * 2); ctx.stroke(); }
-    ctx.fillStyle = COLOURS[i]; ctx.globalAlpha *= 0.18; ctx.beginPath(); ctx.arc(q.x, q.y, 18, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = dim ? 0.35 : 1;
-    ctx.fillStyle = COLOURS[i]; ctx.beginPath(); ctx.arc(q.x, q.y, a?.thinking ? 9 : 7, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#e6eef2'; ctx.font = '600 13px system-ui'; ctx.textAlign = 'center'; ctx.fillText(name, q.x, q.y - 26);
-    ctx.fillStyle = '#a5b4be'; ctx.font = '11px system-ui'; ctx.fillText(`${a?.knownIds.length ?? 0} facts${a?.skills.length ? ` · ${a.skills.length} skills` : ''}`, q.x, q.y + 32);
-    ctx.globalAlpha = 1;
-  });
-  requestAnimationFrame(draw);
+  if (new URLSearchParams(location.search).get('debug') === '1') (window as unknown as { __WEB__: unknown }).__WEB__ = { draws, packets: packets.length, fps: smoothed ? 1000 / smoothed : 0 };
 }
 
 connect({

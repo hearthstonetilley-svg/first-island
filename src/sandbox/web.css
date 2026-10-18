@@ -10,3 +10,6 @@ canvas.nucleus { cursor: crosshair; }
 .tlist .fact-line { display: block; color: var(--mint); }
 .fact-big { font-size: 14px; color: var(--mint); margin: 4px 0 8px; }
 .web-inspector h4 { margin: 8px 0 2px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.top .fps { position: static; margin-left: auto; padding: 3px 8px; border: 1px solid var(--line); border-radius: 10px; background: none; box-shadow: none; font-size: 11.5px; color: var(--muted); opacity: 1; }
+.top .fps.slow { color: #ffb347; border-color: #ffb347; }
+.top .fps + .web-link { margin-left: 12px; }
