@@ -1,6 +1,7 @@
 import { sampleHeight, WorldData } from '../world/generate';
 import { Ground } from './navigation';
 import { Random } from './random';
+import { daylightAt } from './daylight';
 import { MATING_DISTANCE, reproductionBlockers, reproductionDiagnostics } from './reproduction';
 import { Activity, Agent, DeathCause, Dials, Environment, Plant, PopulationStats, SimEvent, Traits, Tree } from './types';
 interface Body extends Agent { node: number; path: number[]; goal: number; food: number; cooldown: number; decision: number }
@@ -108,7 +109,7 @@ export class Bodies {
   }
   step(dials:Dials,tick:number):void{
     const rate=1800/dials.generationSeconds;
-    const day=(Math.cos(tick/dials.generationSeconds*Math.PI*2)+1)/2;
+    const day=daylightAt(tick,dials.generationSeconds);
     if(tick%Math.max(1,Math.round(dials.generationSeconds/10))===0)this.environment.rain=this.random.next()<0.35?0.3+this.random.next()*0.7:0;
     Object.assign(this.environment,{daylight:day,temperature:0.25+day*0.65-this.environment.rain*0.2});
     for(const plant of this.plants)plant.quantity=Math.min(plant.capacity,plant.quantity+plant.regrowth*dials.foodRegrowth*rate);

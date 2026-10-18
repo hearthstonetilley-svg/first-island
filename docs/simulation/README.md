@@ -1,6 +1,6 @@
 # First agents
 
-Current version: iteration 036 fixes the reproductive collapse diagnosed and committed in 035. Five public seeds meet the owner's ancestry-plus-final-survivor viability definition at tick 21,600. The fixes apply on top of 030–032; 029 was already reviewed/published. A new cross-engine full-state check exposed native-cosine rounding differences; exact browser/Node portability is pending the next correction. No AI calls, chemistry or construction are present.
+Current version: iteration 037 fixes the reproductive collapse diagnosed and committed in 035. Five public seeds meet the owner's ancestry-plus-final-survivor viability definition at tick 21,600. The fixes apply on top of 030–032; 029 was already reviewed/published. The native-cosine rounding difference found in 036 is corrected with a periodic arithmetic daylight calculation. Exact full-state and event hashes match Node/Chromium at all 25 checked seed/tick combinations. No AI calls, chemistry or construction are present.
 
 ## Run and observe
 
@@ -56,7 +56,9 @@ npm run eval:core
 npm run eval:simulation
 ```
 
-The new core eval is in `scripts/eval-sim.mjs`, with fresh Node invocations of `scripts/sim-process.mjs`. It is also called by the existing `eval:simulation` / `npm run eval` path. Two comparison runs use different process IDs and batch sizes (1 versus 37), and a third process uses another seed. A fourth process reconstructs the exported run from its seed, initial dials, tick count and logged interventions, verifies the event sequence and full-state checkpoint, compares final SHA-256 hashes, and checks continued execution. It does not initialize from the checkpoint or repeat the live driver's intervention schedule.
+The separate-process core eval is in `scripts/eval-sim.mjs`, with fresh Node invocations of `scripts/sim-process.mjs`. It is also called by the existing `eval:simulation` / `npm run eval` path. Two comparison runs use different process IDs and batch sizes (1 versus 37), and a third process uses another seed. A fourth process reconstructs the exported run from its seed, initial dials, tick count and logged interventions, verifies the event sequence and full-state checkpoint, compares final SHA-256 hashes, and checks continued execution. It does not initialize from the checkpoint or repeat the live driver's intervention schedule.
+
+`npm run eval` also runs `scripts/eval-sim-browser.mjs` before the unchanged build harness. It compares the actual core module in Node and Chromium at ticks 756/1372/1800/5400/21600 on all five public seeds. Both SHA-256 hashes must match exactly at every checkpoint. `npm run eval:portability` runs that check alone. `sim/daylight.ts` evaluates the same daily curve with range reduction and a degree-20 polynomial, avoiding native cosine variation in mutable simulation state. The maximum measured curve difference through tick 21,600 is below 8e-15; no tolerance is applied to replay or state hashes.
 
 Unit tests additionally exercise the actual worker message handler: world changes log once at the current tick; pause, speed, entry gating and reads do not alter the exported world; a second init cannot replace it. Tree rendering tests consume subsequent snapshots to move/remove trees and shrink/remove/regrow fruit, and check actual agents consume the linked tree food.
 

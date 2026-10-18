@@ -7,9 +7,10 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
-    "eval": "node scripts/eval-simulation.mjs && node scripts/eval-build.mjs",
+    "eval": "node scripts/eval-simulation.mjs && node scripts/eval-sim-browser.mjs && node scripts/eval-build.mjs",
     "eval:simulation": "node scripts/eval-simulation.mjs",
-    "eval:core": "node scripts/eval-sim.mjs"
+    "eval:core": "node scripts/eval-sim.mjs",
+    "eval:portability": "node scripts/eval-sim-browser.mjs"
   },
   "dependencies": {
     "three": "^0.180.0"

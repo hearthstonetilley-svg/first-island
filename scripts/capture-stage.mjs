@@ -71,6 +71,10 @@ try {
    await page.locator('.agent-chooser').selectOption(String(agent.id));
    await page.locator('.agent-follow').click();
    await page.waitForTimeout(2000);
+   // A higher observation angle avoids the terrain-obstructed 036 follow view.
+   await page.mouse.move(500,400);await page.mouse.down();
+   await page.mouse.move(500,480,{steps:8});await page.mouse.up();
+   await page.waitForTimeout(1200);
    assert.deepEqual(await exportRun(),changed,'Following a grandchild must preserve the world');
   }
   await page.screenshot({path:`${prefix}-${item.mode}-seed-${item.seed}.png`});

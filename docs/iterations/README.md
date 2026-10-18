@@ -51,7 +51,8 @@ These archive numbers identify retained captures, not 21 historical code commits
 | [034](034.md) | Revised 3a checkpoint: separate-process determinism, full-state replay, logged world changes with unlogged playback, and snapshot-owned trees/food. Round 12 body viability rejection remains pending; no reproduction tuning. |
 | [035](035.md) | Untuned reproduction diagnostics for all five seeds; parent-age measurements and ancestry-based viability expose 0/5 survivors at 21,600 ticks. |
 | [036](036.md) | Corrected restorative and mating behaviour, measured biological pace, 5/5 ancestry-based viable seeds at 21,600 ticks; full curves/deaths recorded. Cross-engine state mismatch found, to fix next. |
+| [037](037.md) | Portable daylight fixes strict browser/Node state replay; all 25 cross-engine checkpoints match, with ancestry viability retained. |
 
 ## Next iteration
 
-Start with step `037`. Capture and inspect the screenshots, record what changed and what they show, and commit the code, note and images immediately, even if the result needs another fix. Complete that commit before starting another iteration. Multiple seeds from one code version can share a step prefix. Use a distinct step suffix for repeat captures of the same seed, such as `022-webgl2-seed-1.png`, and never overwrite earlier images. Never push; the owner pushes.
+Start with step `038`. Capture and inspect the screenshots, record what changed and what they show, and commit the code, note and images immediately, even if the result needs another fix. Complete that commit before starting another iteration. Multiple seeds from one code version can share a step prefix. Use a distinct step suffix for repeat captures of the same seed, such as `022-webgl2-seed-1.png`, and never overwrite earlier images. Never push; the owner pushes.
