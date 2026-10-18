@@ -10,10 +10,8 @@ export class Simulation {
   protected tick = 0;
   protected generation = 1;
   protected generationProgress = 0;
-  protected speed: Speed = 1;
   private readonly log: SimEvent[] = [];
   private readonly bodies: Bodies;
-  get playbackSpeed(): Speed { return this.speed; }
 
   constructor(readonly seed: number, dials: Partial<Dials> = {}, world?: WorldData) {
     this.initialDials = Object.freeze(resolveDials(dials));
@@ -43,33 +41,45 @@ export class Simulation {
   }
 
   intervene(change: Intervention): void {
-    if ('dials' in change) {
-      if ('startingPopulation' in change.dials) throw new Error('Starting population is a new-run dial');
-      this.dials = resolveDials({ ...this.dials, ...change.dials });
-    } else {
-      if (![0, 1, 10, 100].includes(change.speed)) throw new Error('Invalid speed');
-      this.speed = change.speed;
-    }
+    if (!change || Object.keys(change).length !== 1 || !('dials' in change)
+      || !change.dials || typeof change.dials !== 'object') throw new Error('Unknown world intervention');
+    if ('startingPopulation' in change.dials) throw new Error('Starting population is a new-run dial');
+    this.dials = resolveDials({ ...this.dials, ...change.dials });
     this.emit('intervention', change);
   }
 
-  snapshot(): Snapshot {
+  snapshot(speed: Speed = 1): Snapshot {
     return { tick: this.tick, seconds: this.tick, generation: this.generation,
-      speed: this.speed, dials: { ...this.dials }, eventCount: this.log.length, agents: this.bodies.snapshotAgents(),
+      speed, dials: { ...this.dials }, eventCount: this.log.length, agents: this.bodies.snapshotAgents(),
+      trees: this.bodies.trees.map(tree => ({ ...tree })),
       plants: this.bodies.plants.map(plant => ({ ...plant })), environment: { ...this.bodies.environment },
       stats: structuredClone(this.bodies.stats) };
   }
 
+  /** Canonical plain state for verification, not the lossy rendering snapshot.
+   * Static navigation is derived from terrain; all mutable future-affecting body data is included. */
+  state(): Record<string, unknown> {
+    return { seed: this.seed, initialDials: { ...this.initialDials }, dials: { ...this.dials },
+      tick: this.tick, generation: this.generation, generationProgress: this.generationProgress,
+      terrain: { size: this.world.size, resolution: this.world.resolution,
+        heights: Array.from(this.world.heights), bands: [...this.world.bands] }, bodies: this.bodies.state() };
+  }
+
   record(): RunRecord {
-    return { version: 1, seed: this.seed, initialDials: { ...this.initialDials }, ticks: this.tick,
-      events: structuredClone(this.log) };
+    return { version: 2, seed: this.seed, initialDials: { ...this.initialDials }, ticks: this.tick,
+      events: structuredClone(this.log), finalState: this.state() };
   }
 }
 
 /** Replay external interventions at their original tick; regenerate and verify every outcome. */
 export function replay(record: RunRecord): Simulation {
-  if (record.version !== 1 || !Number.isSafeInteger(record.ticks) || record.ticks < 0) throw new Error('Unsupported run');
+  if (record.version !== 2 || !Number.isSafeInteger(record.ticks) || record.ticks < 0) throw new Error('Unsupported run');
   const simulation = new Simulation(record.seed, record.initialDials);
+  for (let i = 0; i < record.events.length; i++) {
+    const event = record.events[i];
+    if (event.seq !== i || !Number.isSafeInteger(event.tick) || event.tick < 0 || event.tick > record.ticks
+      || (i > 0 && event.tick < record.events[i - 1].tick)) throw new Error('Replay diverged: invalid event order');
+  }
   let tick = 0;
   for (const event of record.events) {
     if (event.type !== 'intervention') continue;
@@ -80,5 +90,6 @@ export function replay(record: RunRecord): Simulation {
   }
   simulation.step(record.ticks - tick);
   if (JSON.stringify(simulation.record().events) !== JSON.stringify(record.events)) throw new Error('Replay diverged from event log');
+  if (JSON.stringify(simulation.state()) !== JSON.stringify(record.finalState)) throw new Error('Replay state diverged');
   return simulation;
 }

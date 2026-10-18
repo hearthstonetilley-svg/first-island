@@ -1,8 +1,8 @@
 import {
-  ACESFilmicToneMapping, BackSide, Color as ThreeColor, ConeGeometry, CylinderGeometry,
-  DataTexture, DirectionalLight, DoubleSide, Euler, Float32BufferAttribute, FloatType, FogExp2,
-  HemisphereLight, InstancedMesh, LinearFilter, Matrix4, Mesh, PerspectiveCamera, PlaneGeometry,
-  Quaternion, RedFormat, Scene, SphereGeometry, SRGBColorSpace, Vector3,
+  ACESFilmicToneMapping, BackSide, Color as ThreeColor,
+  DataTexture, DirectionalLight, Float32BufferAttribute, FloatType, FogExp2,
+  HemisphereLight, InstancedMesh, LinearFilter, Mesh, PerspectiveCamera, PlaneGeometry,
+  RedFormat, Scene, SphereGeometry, SRGBColorSpace, Vector3,
 } from 'three';
 import { MeshBasicNodeMaterial, MeshStandardNodeMaterial, Node, PostProcessing, WebGPURenderer } from 'three/webgpu';
 import {
@@ -11,10 +11,10 @@ import {
 } from 'three/tsl';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
-import { sampleSlope, TreeData, TreeKind, WorldData } from '../world/generate';
+import { sampleSlope, WorldData } from '../world/generate';
 import { initializeRenderer } from './startup';
 import { DeviceWatch } from './device';
-import { createBroadleafParts, TreePart } from './broadleaf';
+import { TreeFigures } from './trees';
 import { FrameDiagnostics } from './diagnostics';
 import { QualityChange } from './quality';
 import { warmRenderer } from './warmup';
@@ -89,85 +89,6 @@ function addTerrain(scene: Scene, world: WorldData): void {
 function smooth(low: number, high: number, value: number): number {
   const t = Math.max(0, Math.min(1, (value - low) / (high - low)));
   return t * t * (3 - 2 * t);
-}
-
-function treeMaterial(time: ReturnType<typeof uniform>): MeshStandardNodeMaterial {
-  // Instance colours already contain the bark/leaf hue. A second dark base colour
-  // would multiply it again and turn the trunks almost black.
-  const material = new MeshStandardNodeMaterial({ color: '#ffffff', roughness: 0.92, vertexColors: true });
-  const bend = max(positionLocal.y, float(0)).pow(2).mul(0.012);
-  material.positionNode = positionLocal.add(vec3(
-    sin(time.mul(1.2).add(positionWorld.x.mul(0.4))).mul(bend), 0,
-    cos(time.mul(0.85).add(positionWorld.z.mul(0.3))).mul(bend).mul(0.6),
-  ));
-  return material;
-}
-
-function addTreeKind(scene: Scene, trees: TreeData[], kind: TreeKind, time: ReturnType<typeof uniform>): void {
-  const selected = trees.filter((tree) => tree.kind === kind);
-  if (!selected.length) return;
-  const material = treeMaterial(time);
-  if (kind === 'broadleaf') {
-    for (let variant = 0; variant < 3; variant += 1) {
-      const group = selected.filter((tree) => Math.min(2, Math.floor(tree.tint * 3)) === variant);
-      if (group.length) addTreeParts(scene, group, createBroadleafParts(variant), material);
-    }
-    return;
-  }
-  const trunkHeight = kind === 'palm' ? 1.8 : 1.5;
-  // Geometry is rooted at y=0 so the same instance matrix joins every tree part.
-  const trunkGeometry = new CylinderGeometry(0.065, 0.12, trunkHeight, 7);
-  trunkGeometry.translate(0, trunkHeight / 2, 0);
-  const parts: TreePart[] = [
-    { geometry: trunkGeometry, tint: '#99714c' },
-  ];
-  if (kind === 'pine') {
-    for (let layer = 0; layer < 3; layer += 1) {
-      const canopy = new ConeGeometry(0.65 - layer * 0.15, 1.15 - layer * 0.15, 9);
-      canopy.translate(0, 1.05 + layer * 0.48, 0);
-      parts.push({ geometry: canopy, tint: ['#385c3e', '#48774b', '#5a8652'][layer] });
-    }
-  } else {
-    // Curved tapered fronds replace the old solid umbrella cone.
-    for (let frond = 0; frond < 7; frond += 1) {
-      const leaf = new PlaneGeometry(1, 1, 1, 6);
-      const pos = leaf.attributes.position;
-      for (let i = 0; i < pos.count; i += 1) {
-        const t = pos.getY(i) + 0.5;
-        const width = Math.sin(t * Math.PI) * 0.26;
-        const a = frond * Math.PI * 2 / 7;
-        const side = pos.getX(i) * width;
-        const length = t * 1.15;
-        pos.setXYZ(i, Math.cos(a) * length - Math.sin(a) * side,
-          1.8 + Math.sin(t * Math.PI) * 0.3 - t * t * 0.38,
-          Math.sin(a) * length + Math.cos(a) * side);
-      }
-      leaf.computeVertexNormals();
-      parts.push({ geometry: leaf, tint: '#6b944e' });
-    }
-  }
-  if (kind === 'palm') material.side = DoubleSide;
-  addTreeParts(scene, selected, parts, material);
-}
-
-function addTreeParts(scene: Scene, selected: TreeData[], parts: TreePart[], material: MeshStandardNodeMaterial): void {
-  for (const { geometry, tint } of parts) {
-    const mesh = new InstancedMesh(geometry, material, selected.length);
-    const matrix = new Matrix4();
-    const quaternion = new Quaternion();
-    selected.forEach((tree, index) => {
-      quaternion.setFromEuler(new Euler(tree.lean, tree.rotation, tree.lean * 0.6));
-      const wide = tree.kind === 'broadleaf' ? 1 + Math.sin(tree.rotation * 2.7) * 0.18 : 1;
-      const deep = tree.kind === 'broadleaf' ? 1 + Math.cos(tree.rotation * 1.9) * 0.15 : 1;
-      matrix.compose(new Vector3(tree.x, tree.y - 0.035, tree.z), quaternion,
-        new Vector3(tree.scale * wide, tree.scale * (0.92 + tree.tint * 0.16), tree.scale * deep));
-      mesh.setMatrixAt(index, matrix);
-      mesh.setColorAt(index, new ThreeColor(tint).offsetHSL((tree.tint - 0.5) * 0.055, (tree.tint - 0.5) * 0.1, (tree.tint - 0.5) * 0.07));
-    });
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    scene.add(mesh);
-  }
 }
 
 function addOcean(scene: Scene, world: WorldData): { time: ReturnType<typeof uniform>; mesh: Mesh; heightTexture: DataTexture } {
@@ -427,7 +348,8 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
   addTerrain(scene, world);
   await progress({ stage: 'trees', message: 'Building forest canopies', percent: 51 });
   const treeTime = uniform(0);
-  for (const kind of ['pine', 'broadleaf', 'palm'] as const) addTreeKind(scene, world.trees, kind, treeTime);
+  const trees = new TreeFigures(scene, treeTime, options.snapshot);
+  disposables.push(trees);
   await progress({ stage: 'water', message: 'Preparing the ocean', percent: 56 });
   const figures = new AgentFigures(scene, options.snapshot);
   disposables.push(figures);
@@ -506,14 +428,14 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
       const count = object instanceof InstancedMesh ? object.count : 1;
       if (object instanceof InstancedMesh) {
         if (object.userData.agentFigure) agentDrawMeshes += 1;
-        else treeDrawMeshes += 1;
+        else if (!object.userData.foodFigure) treeDrawMeshes += 1;
       }
       triangles += (object.geometry.index?.count ?? object.geometry.attributes.position.count) / 3 * count;
     });
     options.diagnostics.report.scene = {
       backend: label, viewport: [innerWidth, innerHeight], pixelRatio: renderer.getPixelRatio(), initialPixelRatio: renderer.getPixelRatio(),
       shadowMap: [sun.shadow.mapSize.x, sun.shadow.mapSize.y], meshes, triangles, treeDrawMeshes, agentDrawMeshes, initialAgentInstances: options.snapshot?.agents.length ?? 0,
-      trees: world.trees.length, terrainVertices: (world.resolution + 2) ** 2, oceanVertices: 225 ** 2,
+      trees: options.snapshot?.trees.length ?? 0, terrainVertices: (world.resolution + 2) ** 2, oceanVertices: 225 ** 2,
       postEnabled: options.postEnabled !== false, ao: options.postEnabled !== false, bloom: options.postEnabled !== false,
     };
   }
@@ -580,7 +502,7 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
     draw();
   };
   return { renderer, label, render, resize, setQuality, dispose,
-    updateSnapshot: (snapshot, timestamp) => figures.receive(snapshot, timestamp),
+    updateSnapshot: (snapshot, timestamp) => { trees.receive(snapshot); figures.receive(snapshot, timestamp); },
     selectAgent: (id) => { figures.selected = id; },
     followAgent: (id) => { followed = id; if (id !== undefined) { distance = 15; orbitPitch = 0.45; } },
     islandView: () => { followed = undefined; target.copy(islandTarget); distance = islandDistance; orbitYaw = 0.58; orbitPitch = 0.13; updateCamera(); },

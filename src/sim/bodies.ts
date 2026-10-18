@@ -1,7 +1,7 @@
 import { sampleHeight, WorldData } from '../world/generate';
 import { Ground } from './navigation';
 import { Random } from './random';
-import { Activity, Agent, DeathCause, Dials, Environment, Plant, PopulationStats, SimEvent, Traits } from './types';
+import { Activity, Agent, DeathCause, Dials, Environment, Plant, PopulationStats, SimEvent, Traits, Tree } from './types';
 interface Body extends Agent { node: number; path: number[]; goal: number; food: number; cooldown: number; decision: number }
 const clamp=(x:number,min=0,max=100)=>Math.max(min,Math.min(max,x));
 const distance=(a:{x:number;z:number},b:{x:number;z:number})=>Math.hypot(a.x-b.x,a.z-b.z);
@@ -9,6 +9,7 @@ const distance=(a:{x:number;z:number},b:{x:number;z:number})=>Math.hypot(a.x-b.x
 export class Bodies {
   readonly ground: Ground;
   readonly plants: Plant[]=[];
+  readonly trees: Tree[]=[];
   readonly agents: Body[]=[];
   readonly environment: Environment={daylight:1,rain:0,temperature:0.9};
   readonly stats: PopulationStats={population:0,births:0,deaths:0,deathsByCause:{starvation:0,exposure:0,'old age':0,exhaustion:0}};
@@ -23,12 +24,13 @@ export class Bodies {
       const n=this.ground.nodes[node];this.plantNodes.push(node);
       this.plants.push({id:this.plants.length,x:n.x,y:n.y,z:n.z,nutrition,quantity:tree?5:3,capacity:tree?5:3,regrowth:tree?0.0025:0.004,tree});
     };
-    const treeNodes=new Set<number>();
+    const treeNodes=new Map<number,number>();
     for(const tree of world.trees){
       const node=this.ground.nearest(tree.x,tree.z);
       if(distance(tree,this.ground.nodes[node])<1.3&&!treeNodes.has(node)){
-        treeNodes.add(node);plant(node,true,0.8+this.random.next()*0.4);
+        treeNodes.set(node,this.plants.length);plant(node,true,0.8+this.random.next()*0.4);
       }
+      this.trees.push({...tree,id:this.trees.length,foodId:distance(tree,this.ground.nodes[node])<1.3?treeNodes.get(node)??null:null});
     }
     for(const node of this.ground.habitable){
       if(!this.ground.nodes[node].cover&&this.random.next()<0.16)plant(node,false,0.7+this.random.next()*0.4);
@@ -140,6 +142,11 @@ export class Bodies {
       }
     }
     for(let i=this.agents.length-1;i>=0;i--)if(this.agents[i].health===0)this.agents.splice(i,1);
+  }
+  /** All mutable state, including future-affecting internals omitted from render snapshots. */
+  state(){
+    return structuredClone({agents:this.agents,plants:this.plants,trees:this.trees,environment:this.environment,
+      stats:this.stats,random:this.random.snapshot(),nextId:this.nextId});
   }
   snapshotAgents():Agent[]{
     return this.agents.map(({node:_node,path:_path,goal:_goal,food:_food,cooldown:_cooldown,decision:_decision,...a})=>({...a,parents:[...a.parents],traits:{...a.traits}}));

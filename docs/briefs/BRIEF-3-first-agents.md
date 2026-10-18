@@ -41,3 +41,17 @@ only: no AI minds, no chemistry, no building yet. Work on branch `stage-2`. Comm
 - The build eval must still pass in both modes, and its screenshots must show agents on the island.
 
 Never push. Report what you measured, not what you hope.
+
+## Reviewer additions (apply from iteration 034)
+
+1. New evals belong in separate scripts, for example `scripts/eval-sim.mjs`. Do not edit `scripts/eval-build.mjs`.
+2. The two determinism comparison runs must use separate Node processes. Replay must rebuild state from seed plus
+   event log and compare the final state hash with the live run, not merely compare logs from seed.
+3. Every renderer message that changes simulation state is a logged event at its tick. Pause and speed changes are excluded.
+4. The simulation owns trees and food. The renderer reads trees from snapshots, with consumed fruit visible; food must
+   remain replaceable by stage 2c chemistry.
+5. Stop and commit at the end of revised 3a as its own review point before further 3b work, and report that 3a is done.
+
+Round 12's body rejection and replacement viability criteria remain pending for the next bodies iteration. Instrument
+all reproduction conditions for all five seeds before changing any threshold or dial. The revised 3a checkpoint must
+not claim that the existing three-generation observation establishes long-run viability.

@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { evaluateCost, evaluateDeterminism, evaluateViability } from '../src/sim/evaluate';
-describe('Brief 3d simulation evals',()=>{
- it('has identical SHA-256 event logs across batching/replay, different seeds, and exact continued replay',async()=>{
-  const result=await evaluateDeterminism();expect(result.passed).toBe(true);
- });
- it('survives three generations on at least four of five seeds without exceeding the cap',async()=>{
+import { evaluateCost, evaluateViability } from '../src/sim/evaluate';
+describe('Bounded body observations (Round 12 long-run viability is still pending)',()=>{
+ it('observes the original three-generation window without exceeding the cap',async()=>{
   const result=await evaluateViability();
   console.info('viability',JSON.stringify(result.results.map(({seed,population,births,deaths,deathsByCause,maxPopulation})=>({seed,population,births,deaths,deathsByCause,maxPopulation}))));
   expect(result.passed).toBe(true);expect(result.survived).toBeGreaterThanOrEqual(4);

@@ -8,7 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
     "eval": "node scripts/eval-simulation.mjs && node scripts/eval-build.mjs",
-    "eval:simulation": "node scripts/eval-simulation.mjs"
+    "eval:simulation": "node scripts/eval-simulation.mjs",
+    "eval:core": "node scripts/eval-sim.mjs"
   },
   "dependencies": {
     "three": "^0.180.0"

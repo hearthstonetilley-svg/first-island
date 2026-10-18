@@ -31,7 +31,7 @@ export class SimulationHUD {
     this.generation = this.element.querySelector('.sim-generation')!;
     this.status = this.element.querySelector('.sim-status')!;
     this.element.querySelectorAll<HTMLButtonElement>('[data-speed]').forEach(button => {
-      button.onclick = () => simulation.intervene({ speed: Number(button.dataset.speed) as Speed });
+      button.onclick = () => simulation.setSpeed(Number(button.dataset.speed) as Speed);
     });
     const form = this.element.querySelector('form')!;
     const readDials = (): Partial<Dials> => Object.fromEntries([...new FormData(form)].map(([key,value])=>[key,Number(value)]));

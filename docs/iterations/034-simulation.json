@@ -1,0 +1,1329 @@
+{
+  "scope": "Revised 3a checkpoint plus legacy body observations",
+  "bodyAcceptance": {
+    "passed": false,
+    "status": "Round 12 rejection remains; stronger long-run viability and diagnosis belong to the next bodies iteration"
+  },
+  "passed": true,
+  "determinism": {
+    "passed": true,
+    "ticks": 6000,
+    "continuationTicks": 500,
+    "parentPid": 14,
+    "first": {
+      "pid": 40,
+      "seed": 42,
+      "ticks": 6000,
+      "eventHash": "d3108f78abd7b25aecbe83b205158362712ae282ba48d4be4b4275673acb2793",
+      "stateHash": "1257ee33e4e265076cee7293437331dffd5f50c60125e8b3325f06d2c4c70622",
+      "continuedStateHash": "7d4f9706ac70786cf5d443abefc043ff855a22ee7f18161402008a04cdeabfac",
+      "continuedEventHash": "88b4067d5c536d9f778690e4b6bb3479107060abbe36a64aa51aeb51defccd70"
+    },
+    "repeat": {
+      "pid": 41,
+      "seed": 42,
+      "ticks": 6000,
+      "eventHash": "d3108f78abd7b25aecbe83b205158362712ae282ba48d4be4b4275673acb2793",
+      "stateHash": "1257ee33e4e265076cee7293437331dffd5f50c60125e8b3325f06d2c4c70622",
+      "continuedStateHash": "7d4f9706ac70786cf5d443abefc043ff855a22ee7f18161402008a04cdeabfac",
+      "continuedEventHash": "88b4067d5c536d9f778690e4b6bb3479107060abbe36a64aa51aeb51defccd70"
+    },
+    "different": {
+      "pid": 42,
+      "seed": 7,
+      "ticks": 6000,
+      "eventHash": "b371d59aecfd4d0667ee4e12709c5ec9fb97851417b2f5cf6e0d22e20a49d64e",
+      "stateHash": "b74fd3591f722b7fb0ae258d32bb90eaae55166da6ccf66abfddd0d8eb545772",
+      "continuedStateHash": "a9463fcf3268af9b722a2f4170f7643d9995671381b2d7a28db7749b2a747f11",
+      "continuedEventHash": "38f2786d51371324ddd1e01ae200de8b1594f3381f9239f2dcb1996f8544877a"
+    },
+    "replay": {
+      "pid": 130,
+      "seed": 42,
+      "ticks": 6000,
+      "eventHash": "d3108f78abd7b25aecbe83b205158362712ae282ba48d4be4b4275673acb2793",
+      "stateHash": "1257ee33e4e265076cee7293437331dffd5f50c60125e8b3325f06d2c4c70622",
+      "seedOnlyStateHash": "19d45c0fcf1d19fb8796999dfec6749fe88871f20e452718e85472ea6b07e8ab",
+      "continuedStateHash": "7d4f9706ac70786cf5d443abefc043ff855a22ee7f18161402008a04cdeabfac",
+      "continuedEventHash": "88b4067d5c536d9f778690e4b6bb3479107060abbe36a64aa51aeb51defccd70"
+    }
+  },
+  "viability": {
+    "passed": true,
+    "requiredSurvivors": 4,
+    "survived": 5,
+    "seeds": 5,
+    "dials": {
+      "generationSeconds": 1800,
+      "foodRegrowth": 1,
+      "mutationRate": 0.04,
+      "startingPopulation": 20,
+      "populationCap": 200
+    },
+    "results": [
+      {
+        "seed": 1,
+        "ticks": 5400,
+        "generationsElapsed": 3,
+        "survived": true,
+        "capHeld": true,
+        "maxPopulation": 38,
+        "population": 9,
+        "births": 48,
+        "deaths": 39,
+        "deathsByCause": {
+          "starvation": 0,
+          "exposure": 0,
+          "old age": 39,
+          "exhaustion": 0
+        },
+        "offspring": 28,
+        "eventHash": "56e19865fcf20f30331360af6d0103a3f0b73667a1ab3840a32b8d2fc87f46b6",
+        "samples": [
+          {
+            "tick": 0,
+            "population": 20,
+            "births": 20,
+            "deaths": 0,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 300,
+            "population": 24,
+            "births": 24,
+            "deaths": 0,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 600,
+            "population": 25,
+            "births": 25,
+            "deaths": 0,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 900,
+            "population": 28,
+            "births": 28,
+            "deaths": 0,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 1200,
+            "population": 33,
+            "births": 33,
+            "deaths": 0,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 1500,
+            "population": 36,
+            "births": 36,
+            "deaths": 0,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 1800,
+            "population": 38,
+            "births": 38,
+            "deaths": 0,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 2100,
+            "population": 36,
+            "births": 38,
+            "deaths": 2,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 2,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 2400,
+            "population": 26,
+            "births": 39,
+            "deaths": 13,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 13,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 2700,
+            "population": 22,
+            "births": 41,
+            "deaths": 19,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 19,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 3000,
+            "population": 22,
+            "births": 43,
+            "deaths": 21,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 21,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 3300,
+            "population": 21,
+            "births": 44,
+            "deaths": 23,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 23,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 3600,
+            "population": 20,
+            "births": 45,
+            "deaths": 25,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 25,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 3900,
+            "population": 16,
+            "births": 45,
+            "deaths": 29,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 29,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 4200,
+            "population": 15,
+            "births": 47,
+            "deaths": 32,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 32,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 4500,
+            "population": 12,
+            "births": 47,
+            "deaths": 35,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 35,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 4800,
+            "population": 9,
+            "births": 47,
+            "deaths": 38,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 38,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 5100,
+            "population": 10,
+            "births": 48,
+            "deaths": 38,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 38,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 5400,
+            "population": 9,
+            "births": 48,
+            "deaths": 39,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 39,
+              "exhaustion": 0
+            }
+          }
+        ]
+      },
+      {
+        "seed": 7,
+        "ticks": 5400,
+        "generationsElapsed": 3,
+        "survived": true,
+        "capHeld": true,
+        "maxPopulation": 30,
+        "population": 10,
+        "births": 40,
+        "deaths": 30,
+        "deathsByCause": {
+          "starvation": 3,
+          "exposure": 0,
+          "old age": 27,
+          "exhaustion": 0
+        },
+        "offspring": 20,
+        "eventHash": "5952cbe48d39acb5b95d34d3b22f697e826925bde4186468fbe604d50121b3e1",
+        "samples": [
+          {
+            "tick": 0,
+            "population": 20,
+            "births": 20,
+            "deaths": 0,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 300,
+            "population": 23,
+            "births": 23,
+            "deaths": 0,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 600,
+            "population": 24,
+            "births": 24,
+            "deaths": 0,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 900,
+            "population": 24,
+            "births": 24,
+            "deaths": 0,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 1200,
+            "population": 26,
+            "births": 26,
+            "deaths": 0,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 1500,
+            "population": 28,
+            "births": 28,
+            "deaths": 0,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 1800,
+            "population": 28,
+            "births": 30,
+            "deaths": 2,
+            "deathsByCause": {
+              "starvation": 2,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 2100,
+            "population": 27,
+            "births": 30,
+            "deaths": 3,
+            "deathsByCause": {
+              "starvation": 3,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 2400,
+            "population": 22,
+            "births": 31,
+            "deaths": 9,
+            "deathsByCause": {
+              "starvation": 3,
+              "exposure": 0,
+              "old age": 6,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 2700,
+            "population": 13,
+            "births": 31,
+            "deaths": 18,
+            "deathsByCause": {
+              "starvation": 3,
+              "exposure": 0,
+              "old age": 15,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 3000,
+            "population": 12,
+            "births": 33,
+            "deaths": 21,
+            "deathsByCause": {
+              "starvation": 3,
+              "exposure": 0,
+              "old age": 18,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 3300,
+            "population": 10,
+            "births": 33,
+            "deaths": 23,
+            "deathsByCause": {
+              "starvation": 3,
+              "exposure": 0,
+              "old age": 20,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 3600,
+            "population": 12,
+            "births": 35,
+            "deaths": 23,
+            "deathsByCause": {
+              "starvation": 3,
+              "exposure": 0,
+              "old age": 20,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 3900,
+            "population": 12,
+            "births": 36,
+            "deaths": 24,
+            "deathsByCause": {
+              "starvation": 3,
+              "exposure": 0,
+              "old age": 21,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 4200,
+            "population": 13,
+            "births": 37,
+            "deaths": 24,
+            "deathsByCause": {
+              "starvation": 3,
+              "exposure": 0,
+              "old age": 21,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 4500,
+            "population": 11,
+            "births": 38,
+            "deaths": 27,
+            "deathsByCause": {
+              "starvation": 3,
+              "exposure": 0,
+              "old age": 24,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 4800,
+            "population": 10,
+            "births": 39,
+            "deaths": 29,
+            "deathsByCause": {
+              "starvation": 3,
+              "exposure": 0,
+              "old age": 26,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 5100,
+            "population": 9,
+            "births": 39,
+            "deaths": 30,
+            "deathsByCause": {
+              "starvation": 3,
+              "exposure": 0,
+              "old age": 27,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 5400,
+            "population": 10,
+            "births": 40,
+            "deaths": 30,
+            "deathsByCause": {
+              "starvation": 3,
+              "exposure": 0,
+              "old age": 27,
+              "exhaustion": 0
+            }
+          }
+        ]
+      },
+      {
+        "seed": 42,
+        "ticks": 5400,
+        "generationsElapsed": 3,
+        "survived": true,
+        "capHeld": true,
+        "maxPopulation": 34,
+        "population": 9,
+        "births": 47,
+        "deaths": 38,
+        "deathsByCause": {
+          "starvation": 1,
+          "exposure": 0,
+          "old age": 37,
+          "exhaustion": 0
+        },
+        "offspring": 27,
+        "eventHash": "e6295dad0049fad33ca6f3e5cc09a091d8eda8351fd18290fcc225ddfc6cf774",
+        "samples": [
+          {
+            "tick": 0,
+            "population": 20,
+            "births": 20,
+            "deaths": 0,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 300,
+            "population": 22,
+            "births": 22,
+            "deaths": 0,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 600,
+            "population": 25,
+            "births": 25,
+            "deaths": 0,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 900,
+            "population": 26,
+            "births": 26,
+            "deaths": 0,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 1200,
+            "population": 32,
+            "births": 32,
+            "deaths": 0,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 1500,
+            "population": 34,
+            "births": 34,
+            "deaths": 0,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 1800,
+            "population": 34,
+            "births": 35,
+            "deaths": 1,
+            "deathsByCause": {
+              "starvation": 1,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 2100,
+            "population": 33,
+            "births": 38,
+            "deaths": 5,
+            "deathsByCause": {
+              "starvation": 1,
+              "exposure": 0,
+              "old age": 4,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 2400,
+            "population": 26,
+            "births": 38,
+            "deaths": 12,
+            "deathsByCause": {
+              "starvation": 1,
+              "exposure": 0,
+              "old age": 11,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 2700,
+            "population": 22,
+            "births": 39,
+            "deaths": 17,
+            "deathsByCause": {
+              "starvation": 1,
+              "exposure": 0,
+              "old age": 16,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 3000,
+            "population": 19,
+            "births": 39,
+            "deaths": 20,
+            "deathsByCause": {
+              "starvation": 1,
+              "exposure": 0,
+              "old age": 19,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 3300,
+            "population": 18,
+            "births": 40,
+            "deaths": 22,
+            "deathsByCause": {
+              "starvation": 1,
+              "exposure": 0,
+              "old age": 21,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 3600,
+            "population": 17,
+            "births": 42,
+            "deaths": 25,
+            "deathsByCause": {
+              "starvation": 1,
+              "exposure": 0,
+              "old age": 24,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 3900,
+            "population": 18,
+            "births": 44,
+            "deaths": 26,
+            "deathsByCause": {
+              "starvation": 1,
+              "exposure": 0,
+              "old age": 25,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 4200,
+            "population": 14,
+            "births": 44,
+            "deaths": 30,
+            "deathsByCause": {
+              "starvation": 1,
+              "exposure": 0,
+              "old age": 29,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 4500,
+            "population": 13,
+            "births": 46,
+            "deaths": 33,
+            "deathsByCause": {
+              "starvation": 1,
+              "exposure": 0,
+              "old age": 32,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 4800,
+            "population": 12,
+            "births": 46,
+            "deaths": 34,
+            "deathsByCause": {
+              "starvation": 1,
+              "exposure": 0,
+              "old age": 33,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 5100,
+            "population": 10,
+            "births": 46,
+            "deaths": 36,
+            "deathsByCause": {
+              "starvation": 1,
+              "exposure": 0,
+              "old age": 35,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 5400,
+            "population": 9,
+            "births": 47,
+            "deaths": 38,
+            "deathsByCause": {
+              "starvation": 1,
+              "exposure": 0,
+              "old age": 37,
+              "exhaustion": 0
+            }
+          }
+        ]
+      },
+      {
+        "seed": 99,
+        "ticks": 5400,
+        "generationsElapsed": 3,
+        "survived": true,
+        "capHeld": true,
+        "maxPopulation": 35,
+        "population": 8,
+        "births": 45,
+        "deaths": 37,
+        "deathsByCause": {
+          "starvation": 3,
+          "exposure": 0,
+          "old age": 34,
+          "exhaustion": 0
+        },
+        "offspring": 25,
+        "eventHash": "0381042ca8e21b90070751d9d6dc72cbde7f84f10013cc31f9f426cb7269b87a",
+        "samples": [
+          {
+            "tick": 0,
+            "population": 20,
+            "births": 20,
+            "deaths": 0,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 300,
+            "population": 23,
+            "births": 23,
+            "deaths": 0,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 600,
+            "population": 26,
+            "births": 26,
+            "deaths": 0,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 900,
+            "population": 28,
+            "births": 28,
+            "deaths": 0,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 1200,
+            "population": 31,
+            "births": 31,
+            "deaths": 0,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 1500,
+            "population": 33,
+            "births": 34,
+            "deaths": 1,
+            "deathsByCause": {
+              "starvation": 1,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 1800,
+            "population": 35,
+            "births": 37,
+            "deaths": 2,
+            "deathsByCause": {
+              "starvation": 2,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 2100,
+            "population": 32,
+            "births": 37,
+            "deaths": 5,
+            "deathsByCause": {
+              "starvation": 2,
+              "exposure": 0,
+              "old age": 3,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 2400,
+            "population": 27,
+            "births": 38,
+            "deaths": 11,
+            "deathsByCause": {
+              "starvation": 3,
+              "exposure": 0,
+              "old age": 8,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 2700,
+            "population": 19,
+            "births": 39,
+            "deaths": 20,
+            "deathsByCause": {
+              "starvation": 3,
+              "exposure": 0,
+              "old age": 17,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 3000,
+            "population": 20,
+            "births": 40,
+            "deaths": 20,
+            "deathsByCause": {
+              "starvation": 3,
+              "exposure": 0,
+              "old age": 17,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 3300,
+            "population": 18,
+            "births": 40,
+            "deaths": 22,
+            "deathsByCause": {
+              "starvation": 3,
+              "exposure": 0,
+              "old age": 19,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 3600,
+            "population": 16,
+            "births": 41,
+            "deaths": 25,
+            "deathsByCause": {
+              "starvation": 3,
+              "exposure": 0,
+              "old age": 22,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 3900,
+            "population": 13,
+            "births": 41,
+            "deaths": 28,
+            "deathsByCause": {
+              "starvation": 3,
+              "exposure": 0,
+              "old age": 25,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 4200,
+            "population": 14,
+            "births": 43,
+            "deaths": 29,
+            "deathsByCause": {
+              "starvation": 3,
+              "exposure": 0,
+              "old age": 26,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 4500,
+            "population": 11,
+            "births": 43,
+            "deaths": 32,
+            "deathsByCause": {
+              "starvation": 3,
+              "exposure": 0,
+              "old age": 29,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 4800,
+            "population": 8,
+            "births": 43,
+            "deaths": 35,
+            "deathsByCause": {
+              "starvation": 3,
+              "exposure": 0,
+              "old age": 32,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 5100,
+            "population": 6,
+            "births": 43,
+            "deaths": 37,
+            "deathsByCause": {
+              "starvation": 3,
+              "exposure": 0,
+              "old age": 34,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 5400,
+            "population": 8,
+            "births": 45,
+            "deaths": 37,
+            "deathsByCause": {
+              "starvation": 3,
+              "exposure": 0,
+              "old age": 34,
+              "exhaustion": 0
+            }
+          }
+        ]
+      },
+      {
+        "seed": 2026,
+        "ticks": 5400,
+        "generationsElapsed": 3,
+        "survived": true,
+        "capHeld": true,
+        "maxPopulation": 32,
+        "population": 7,
+        "births": 39,
+        "deaths": 32,
+        "deathsByCause": {
+          "starvation": 2,
+          "exposure": 0,
+          "old age": 30,
+          "exhaustion": 0
+        },
+        "offspring": 19,
+        "eventHash": "bf1501ac0c89314629a84335cc4822686b2259f9c3cd8739527671cad8345dfe",
+        "samples": [
+          {
+            "tick": 0,
+            "population": 20,
+            "births": 20,
+            "deaths": 0,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 300,
+            "population": 24,
+            "births": 24,
+            "deaths": 0,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 600,
+            "population": 26,
+            "births": 26,
+            "deaths": 0,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 900,
+            "population": 27,
+            "births": 27,
+            "deaths": 0,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 1200,
+            "population": 29,
+            "births": 29,
+            "deaths": 0,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 1500,
+            "population": 31,
+            "births": 31,
+            "deaths": 0,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 1800,
+            "population": 32,
+            "births": 32,
+            "deaths": 0,
+            "deathsByCause": {
+              "starvation": 0,
+              "exposure": 0,
+              "old age": 0,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 2100,
+            "population": 26,
+            "births": 32,
+            "deaths": 6,
+            "deathsByCause": {
+              "starvation": 1,
+              "exposure": 0,
+              "old age": 5,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 2400,
+            "population": 19,
+            "births": 32,
+            "deaths": 13,
+            "deathsByCause": {
+              "starvation": 1,
+              "exposure": 0,
+              "old age": 12,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 2700,
+            "population": 16,
+            "births": 34,
+            "deaths": 18,
+            "deathsByCause": {
+              "starvation": 1,
+              "exposure": 0,
+              "old age": 17,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 3000,
+            "population": 13,
+            "births": 34,
+            "deaths": 21,
+            "deathsByCause": {
+              "starvation": 1,
+              "exposure": 0,
+              "old age": 20,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 3300,
+            "population": 12,
+            "births": 35,
+            "deaths": 23,
+            "deathsByCause": {
+              "starvation": 1,
+              "exposure": 0,
+              "old age": 22,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 3600,
+            "population": 11,
+            "births": 36,
+            "deaths": 25,
+            "deathsByCause": {
+              "starvation": 1,
+              "exposure": 0,
+              "old age": 24,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 3900,
+            "population": 8,
+            "births": 36,
+            "deaths": 28,
+            "deathsByCause": {
+              "starvation": 2,
+              "exposure": 0,
+              "old age": 26,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 4200,
+            "population": 7,
+            "births": 37,
+            "deaths": 30,
+            "deathsByCause": {
+              "starvation": 2,
+              "exposure": 0,
+              "old age": 28,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 4500,
+            "population": 7,
+            "births": 37,
+            "deaths": 30,
+            "deathsByCause": {
+              "starvation": 2,
+              "exposure": 0,
+              "old age": 28,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 4800,
+            "population": 7,
+            "births": 38,
+            "deaths": 31,
+            "deathsByCause": {
+              "starvation": 2,
+              "exposure": 0,
+              "old age": 29,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 5100,
+            "population": 6,
+            "births": 38,
+            "deaths": 32,
+            "deathsByCause": {
+              "starvation": 2,
+              "exposure": 0,
+              "old age": 30,
+              "exhaustion": 0
+            }
+          },
+          {
+            "tick": 5400,
+            "population": 7,
+            "births": 39,
+            "deaths": 32,
+            "deathsByCause": {
+              "starvation": 2,
+              "exposure": 0,
+              "old age": 30,
+              "exhaustion": 0
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "cost": {
+    "passed": true,
+    "agents": 200,
+    "ticks": 10000,
+    "dials": {
+      "generationSeconds": 86400,
+      "foodRegrowth": 1,
+      "mutationRate": 0.04,
+      "startingPopulation": 200,
+      "populationCap": 200
+    },
+    "budgetMs": 5000,
+    "initializationMs": 73.22080000000005,
+    "stepMs": 1966.198813,
+    "totalMs": 2039.419613,
+    "finalPopulation": 200,
+    "deaths": 0
+  }
+}

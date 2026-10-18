@@ -1,29 +1,10 @@
-import { Simulation, replay } from './core';
+import { Simulation } from './core';
 import { DEFAULT_DIALS, SimEvent } from './types';
 
 export async function eventLogHash(events: readonly SimEvent[]): Promise<string> {
   const bytes=new TextEncoder().encode(JSON.stringify(events));
   const digest=await crypto.subtle.digest('SHA-256',bytes);
   return Array.from(new Uint8Array(digest),byte=>byte.toString(16).padStart(2,'0')).join('');
-}
-
-export async function evaluateDeterminism(){
-  const run=(seed:number,batch:number)=>{
-    const simulation=new Simulation(seed);
-    for(let ticks=0;ticks<1200;ticks+=batch)simulation.step(Math.min(batch,1200-ticks));
-    simulation.intervene({dials:{mutationRate:0.06}});simulation.intervene({speed:100});
-    for(let ticks=1200;ticks<6000;ticks+=batch)simulation.step(Math.min(batch,6000-ticks));
-    return simulation;
-  };
-  const a=run(42,1),b=run(42,37),different=run(7,1),restored=replay(a.record());
-  const [firstHash,repeatHash,differentSeedHash,replayedHash]=await Promise.all([
-    eventLogHash(a.record().events),eventLogHash(b.record().events),eventLogHash(different.record().events),eventLogHash(restored.record().events),
-  ]);
-  const sameSnapshot=JSON.stringify(a.snapshot())===JSON.stringify(b.snapshot())&&JSON.stringify(a.snapshot())===JSON.stringify(restored.snapshot());
-  a.step(500);restored.step(500);
-  const continuation=JSON.stringify(a.record())===JSON.stringify(restored.record())&&JSON.stringify(a.snapshot())===JSON.stringify(restored.snapshot());
-  return {passed:firstHash===repeatHash&&firstHash===replayedHash&&firstHash!==differentSeedHash&&sameSnapshot&&continuation,
-    seed:42,differentSeed:7,ticks:6000,firstHash,repeatHash,differentSeedHash,replayedHash,continuation};
 }
 
 export async function evaluateViability(){

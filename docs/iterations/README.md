@@ -48,7 +48,8 @@ These archive numbers identify retained captures, not 21 historical code commits
 | [031](031.md) | 3c: instanced figures, interpolation, picking, needs/traits inspector and follow. Eight checked captures include close follow, dials and mobile layout. |
 | [032](032.md) | 3d: 61 tests; 5/5 seeds survive three generations; 200 bodies / 10k ticks in 1.15s; 30/30 build eval. All 33 images checked; recovery notice needs HUD clearance in 033. |
 | [033](033.md) | Recovery notice clears measured HUD height: four checked captures, 12 px desktop and 20 px narrow-screen gaps; controls remain clickable. Resolves the 032 visual finding. |
+| [034](034.md) | Revised 3a checkpoint: separate-process determinism, full-state replay, logged world changes with unlogged playback, and snapshot-owned trees/food. Round 12 body viability rejection remains pending; no reproduction tuning. |
 
 ## Next iteration
 
-Start with step `034`. Capture and inspect the screenshots, record what changed and what they show, and commit the code, note and images immediately, even if the result needs another fix. Complete that commit before starting another iteration. Multiple seeds from one code version can share a step prefix. Use a distinct step suffix for repeat captures of the same seed, such as `022-webgl2-seed-1.png`, and never overwrite earlier images. Never push; the owner pushes.
+Start with step `035`. Capture and inspect the screenshots, record what changed and what they show, and commit the code, note and images immediately, even if the result needs another fix. Complete that commit before starting another iteration. Multiple seeds from one code version can share a step prefix. Use a distinct step suffix for repeat captures of the same seed, such as `022-webgl2-seed-1.png`, and never overwrite earlier images. Never push; the owner pushes.
