@@ -182,8 +182,10 @@ function updatePressure(dt: number) {
       if (now < a.collapsedUntil) continue;
       a.collapsedUntil = undefined; a.energy = 0.4;
       const home = PLACES['south shore']; a.node = home; a.x = nodes[home].x; a.y = nodes[home].y; a.z = nodes[home].z; a.path = [];
-      a.lastResult = 'You collapsed from weakness, lost what you carried, and woke on the south shore. Find food.';
-      emit('result', 'wakes on the south shore, weak and empty-handed', a.id); continue;
+      // Where they wake is described by what they know of it, never by a built-in name.
+      const where = placeLabel(a, regionAt(a.x, a.z));
+      a.lastResult = `You collapsed from weakness, lost what you carried, and woke in ${where}, where you first woke. Find food.`;
+      emit('result', `wakes in ${where}, weak and empty-handed`, a.id); continue;
     }
     a.sheltered = structures.some(b => SHELTERING.includes(b.kind) && Math.hypot(b.x - a.x, b.z - a.z) < 3);
     let rate = DRAIN_PER_S * (a.activity === 'resting' ? 0.5 : 1);
