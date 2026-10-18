@@ -1,0 +1,4279 @@
+{
+  "context": {
+    "seed": 1,
+    "forceWebGL2": false,
+    "postEnabled": true,
+    "qualityLocked": false
+  },
+  "phasesMs": {
+    "worldGeneration": 60.79999998211861,
+    "rendererInit": 324.40000000596046,
+    "sceneBuild": 122.19999998807907,
+    "sceneCompile": 381.40000000596046,
+    "renderWarmup": 4624.4000000059605
+  },
+  "scene": {
+    "backend": "WebGL2",
+    "viewport": [
+      1280,
+      800
+    ],
+    "pixelRatio": 0.75,
+    "initialPixelRatio": 1,
+    "shadowMap": [
+      2048,
+      2048
+    ],
+    "meshes": 21,
+    "triangles": 410240,
+    "treeDrawMeshes": 18,
+    "trees": 299,
+    "terrainVertices": 66564,
+    "oceanVertices": 50625,
+    "postEnabled": true,
+    "ao": false,
+    "bloom": true
+  },
+  "timeToFirstFrameMs": 5643.5999999940395,
+  "frames": [
+    {
+      "frame": 1,
+      "elapsedMs": 0,
+      "intervalMs": null,
+      "renderCpuMs": 4.0999999940395355,
+      "quality": "high"
+    },
+    {
+      "frame": 2,
+      "elapsedMs": 16.699999999999818,
+      "intervalMs": 16.699999999999818,
+      "renderCpuMs": 5.200000017881393,
+      "quality": "high"
+    },
+    {
+      "frame": 3,
+      "elapsedMs": 716.6000000000004,
+      "intervalMs": 699.9000000000005,
+      "renderCpuMs": 3.699999988079071,
+      "quality": "high"
+    },
+    {
+      "frame": 4,
+      "elapsedMs": 1383.3000000000002,
+      "intervalMs": 666.6999999999998,
+      "renderCpuMs": 3.4000000059604645,
+      "quality": "high"
+    },
+    {
+      "frame": 5,
+      "elapsedMs": 2066.6000000000004,
+      "intervalMs": 683.3000000000002,
+      "renderCpuMs": 4.0999999940395355,
+      "quality": "balanced"
+    },
+    {
+      "frame": 6,
+      "elapsedMs": 2749.8999999999996,
+      "intervalMs": 683.2999999999993,
+      "renderCpuMs": 3.0999999940395355,
+      "quality": "balanced"
+    },
+    {
+      "frame": 7,
+      "elapsedMs": 2766.6000000000004,
+      "intervalMs": 16.700000000000728,
+      "renderCpuMs": 2.9000000059604645,
+      "quality": "balanced"
+    },
+    {
+      "frame": 8,
+      "elapsedMs": 3316.5,
+      "intervalMs": 549.8999999999996,
+      "renderCpuMs": 4.5999999940395355,
+      "quality": "balanced"
+    },
+    {
+      "frame": 9,
+      "elapsedMs": 3799.7999999999993,
+      "intervalMs": 483.2999999999993,
+      "renderCpuMs": 3.2999999821186066,
+      "quality": "balanced"
+    },
+    {
+      "frame": 10,
+      "elapsedMs": 4266.5,
+      "intervalMs": 466.7000000000007,
+      "renderCpuMs": 3.100000023841858,
+      "quality": "balanced"
+    },
+    {
+      "frame": 11,
+      "elapsedMs": 4716.4,
+      "intervalMs": 449.89999999999964,
+      "renderCpuMs": 3.5999999940395355,
+      "quality": "balanced"
+    },
+    {
+      "frame": 12,
+      "elapsedMs": 5199.799999999999,
+      "intervalMs": 483.39999999999964,
+      "renderCpuMs": 3.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 13,
+      "elapsedMs": 5649.799999999999,
+      "intervalMs": 450,
+      "renderCpuMs": 3.0999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 14,
+      "elapsedMs": 6116.4,
+      "intervalMs": 466.60000000000036,
+      "renderCpuMs": 3.100000023841858,
+      "quality": "low"
+    },
+    {
+      "frame": 15,
+      "elapsedMs": 6549.700000000001,
+      "intervalMs": 433.3000000000011,
+      "renderCpuMs": 2.300000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 16,
+      "elapsedMs": 6999.700000000001,
+      "intervalMs": 450,
+      "renderCpuMs": 2.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 17,
+      "elapsedMs": 7449.700000000001,
+      "intervalMs": 450,
+      "renderCpuMs": 2.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 18,
+      "elapsedMs": 7883,
+      "intervalMs": 433.2999999999993,
+      "renderCpuMs": 3,
+      "quality": "low"
+    },
+    {
+      "frame": 19,
+      "elapsedMs": 8333,
+      "intervalMs": 450,
+      "renderCpuMs": 2.899999976158142,
+      "quality": "low"
+    },
+    {
+      "frame": 20,
+      "elapsedMs": 8949.6,
+      "intervalMs": 616.6000000000004,
+      "renderCpuMs": 2.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 21,
+      "elapsedMs": 9383,
+      "intervalMs": 433.39999999999964,
+      "renderCpuMs": 2.5,
+      "quality": "low"
+    },
+    {
+      "frame": 22,
+      "elapsedMs": 9932.9,
+      "intervalMs": 549.8999999999996,
+      "renderCpuMs": 2.0999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 23,
+      "elapsedMs": 10382.9,
+      "intervalMs": 450,
+      "renderCpuMs": 2.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 24,
+      "elapsedMs": 10832.900000000001,
+      "intervalMs": 450.0000000000018,
+      "renderCpuMs": 2.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 25,
+      "elapsedMs": 11282.900000000001,
+      "intervalMs": 450,
+      "renderCpuMs": 2.399999976158142,
+      "quality": "low"
+    },
+    {
+      "frame": 26,
+      "elapsedMs": 11749.5,
+      "intervalMs": 466.59999999999854,
+      "renderCpuMs": 2.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 27,
+      "elapsedMs": 12182.8,
+      "intervalMs": 433.2999999999993,
+      "renderCpuMs": 2.0999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 28,
+      "elapsedMs": 12632.8,
+      "intervalMs": 450,
+      "renderCpuMs": 2.2000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 29,
+      "elapsedMs": 13082.8,
+      "intervalMs": 450,
+      "renderCpuMs": 2.5,
+      "quality": "low"
+    },
+    {
+      "frame": 30,
+      "elapsedMs": 13532.8,
+      "intervalMs": 450,
+      "renderCpuMs": 2.300000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 31,
+      "elapsedMs": 13982.7,
+      "intervalMs": 449.90000000000146,
+      "renderCpuMs": 3.4000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 32,
+      "elapsedMs": 14416,
+      "intervalMs": 433.2999999999993,
+      "renderCpuMs": 2.199999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 33,
+      "elapsedMs": 14882.7,
+      "intervalMs": 466.7000000000007,
+      "renderCpuMs": 2.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 34,
+      "elapsedMs": 15349.400000000001,
+      "intervalMs": 466.7000000000007,
+      "renderCpuMs": 2.199999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 35,
+      "elapsedMs": 15799.400000000001,
+      "intervalMs": 450,
+      "renderCpuMs": 2.4000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 36,
+      "elapsedMs": 16249.3,
+      "intervalMs": 449.8999999999978,
+      "renderCpuMs": 2.199999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 37,
+      "elapsedMs": 16699.3,
+      "intervalMs": 450,
+      "renderCpuMs": 3.300000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 38,
+      "elapsedMs": 17166,
+      "intervalMs": 466.7000000000007,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 39,
+      "elapsedMs": 17615.9,
+      "intervalMs": 449.90000000000146,
+      "renderCpuMs": 2.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 40,
+      "elapsedMs": 18099.2,
+      "intervalMs": 483.2999999999993,
+      "renderCpuMs": 2.0999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 41,
+      "elapsedMs": 18582.6,
+      "intervalMs": 483.3999999999978,
+      "renderCpuMs": 2.300000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 42,
+      "elapsedMs": 19049.2,
+      "intervalMs": 466.6000000000022,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 43,
+      "elapsedMs": 19499.2,
+      "intervalMs": 450,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 44,
+      "elapsedMs": 19949.2,
+      "intervalMs": 450,
+      "renderCpuMs": 2.0999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 45,
+      "elapsedMs": 20399.1,
+      "intervalMs": 449.8999999999978,
+      "renderCpuMs": 2.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 46,
+      "elapsedMs": 20882.5,
+      "intervalMs": 483.40000000000146,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 47,
+      "elapsedMs": 21382.5,
+      "intervalMs": 500,
+      "renderCpuMs": 2.0999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 48,
+      "elapsedMs": 21832.5,
+      "intervalMs": 450,
+      "renderCpuMs": 2.4000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 49,
+      "elapsedMs": 22299.1,
+      "intervalMs": 466.59999999999854,
+      "renderCpuMs": 2.0999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 50,
+      "elapsedMs": 22749,
+      "intervalMs": 449.90000000000146,
+      "renderCpuMs": 2.5,
+      "quality": "low"
+    },
+    {
+      "frame": 51,
+      "elapsedMs": 23199.1,
+      "intervalMs": 450.09999999999854,
+      "renderCpuMs": 2.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 52,
+      "elapsedMs": 23732.4,
+      "intervalMs": 533.3000000000029,
+      "renderCpuMs": 2.2999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 53,
+      "elapsedMs": 24199,
+      "intervalMs": 466.59999999999854,
+      "renderCpuMs": 2.399999976158142,
+      "quality": "low"
+    },
+    {
+      "frame": 54,
+      "elapsedMs": 24632.3,
+      "intervalMs": 433.2999999999993,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 55,
+      "elapsedMs": 25115.6,
+      "intervalMs": 483.2999999999993,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 56,
+      "elapsedMs": 25582.3,
+      "intervalMs": 466.7000000000007,
+      "renderCpuMs": 1.7999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 57,
+      "elapsedMs": 26082.3,
+      "intervalMs": 500,
+      "renderCpuMs": 2.600000023841858,
+      "quality": "low"
+    },
+    {
+      "frame": 58,
+      "elapsedMs": 26548.9,
+      "intervalMs": 466.6000000000022,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 59,
+      "elapsedMs": 26998.9,
+      "intervalMs": 450,
+      "renderCpuMs": 2.0999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 60,
+      "elapsedMs": 27465.6,
+      "intervalMs": 466.6999999999971,
+      "renderCpuMs": 2.2000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 61,
+      "elapsedMs": 27898.9,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 2.300000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 62,
+      "elapsedMs": 28348.9,
+      "intervalMs": 450,
+      "renderCpuMs": 2.4000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 63,
+      "elapsedMs": 28798.9,
+      "intervalMs": 450,
+      "renderCpuMs": 2.5,
+      "quality": "low"
+    },
+    {
+      "frame": 64,
+      "elapsedMs": 29248.800000000003,
+      "intervalMs": 449.90000000000146,
+      "renderCpuMs": 2.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 65,
+      "elapsedMs": 29698.800000000003,
+      "intervalMs": 450,
+      "renderCpuMs": 3.5,
+      "quality": "low"
+    },
+    {
+      "frame": 66,
+      "elapsedMs": 30132.1,
+      "intervalMs": 433.29999999999563,
+      "renderCpuMs": 2.100000023841858,
+      "quality": "low"
+    },
+    {
+      "frame": 67,
+      "elapsedMs": 30598.800000000003,
+      "intervalMs": 466.70000000000437,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 68,
+      "elapsedMs": 31048.699999999997,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 69,
+      "elapsedMs": 31482,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 70,
+      "elapsedMs": 31965.4,
+      "intervalMs": 483.40000000000146,
+      "renderCpuMs": 2.5,
+      "quality": "low"
+    },
+    {
+      "frame": 71,
+      "elapsedMs": 32415.300000000003,
+      "intervalMs": 449.90000000000146,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 72,
+      "elapsedMs": 32865.3,
+      "intervalMs": 450,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 73,
+      "elapsedMs": 33315.3,
+      "intervalMs": 450,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 74,
+      "elapsedMs": 33765.3,
+      "intervalMs": 450,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 75,
+      "elapsedMs": 34231.9,
+      "intervalMs": 466.59999999999854,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 76,
+      "elapsedMs": 34698.6,
+      "intervalMs": 466.6999999999971,
+      "renderCpuMs": 2.2000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 77,
+      "elapsedMs": 35132,
+      "intervalMs": 433.40000000000146,
+      "renderCpuMs": 2.4000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 78,
+      "elapsedMs": 35581.9,
+      "intervalMs": 449.90000000000146,
+      "renderCpuMs": 1.899999976158142,
+      "quality": "low"
+    },
+    {
+      "frame": 79,
+      "elapsedMs": 36031.8,
+      "intervalMs": 449.90000000000146,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 80,
+      "elapsedMs": 36481.8,
+      "intervalMs": 450,
+      "renderCpuMs": 3.199999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 81,
+      "elapsedMs": 36931.8,
+      "intervalMs": 450,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 82,
+      "elapsedMs": 37398.4,
+      "intervalMs": 466.59999999999854,
+      "renderCpuMs": 2.4000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 83,
+      "elapsedMs": 37865.2,
+      "intervalMs": 466.79999999999563,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 84,
+      "elapsedMs": 38298.5,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 1.7999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 85,
+      "elapsedMs": 38748.5,
+      "intervalMs": 450,
+      "renderCpuMs": 2.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 86,
+      "elapsedMs": 39215,
+      "intervalMs": 466.5,
+      "renderCpuMs": 2.300000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 87,
+      "elapsedMs": 39648.4,
+      "intervalMs": 433.40000000000146,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 88,
+      "elapsedMs": 40148.4,
+      "intervalMs": 500,
+      "renderCpuMs": 2.100000023841858,
+      "quality": "low"
+    },
+    {
+      "frame": 89,
+      "elapsedMs": 40598.4,
+      "intervalMs": 450,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 90,
+      "elapsedMs": 41065,
+      "intervalMs": 466.59999999999854,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 91,
+      "elapsedMs": 41498.3,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 92,
+      "elapsedMs": 41948.3,
+      "intervalMs": 450,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 93,
+      "elapsedMs": 42398.2,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 1.899999976158142,
+      "quality": "low"
+    },
+    {
+      "frame": 94,
+      "elapsedMs": 42848.2,
+      "intervalMs": 450,
+      "renderCpuMs": 1.899999976158142,
+      "quality": "low"
+    },
+    {
+      "frame": 95,
+      "elapsedMs": 43298.2,
+      "intervalMs": 450,
+      "renderCpuMs": 2.0999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 96,
+      "elapsedMs": 43731.6,
+      "intervalMs": 433.40000000000146,
+      "renderCpuMs": 2.0999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 97,
+      "elapsedMs": 44181.5,
+      "intervalMs": 449.90000000000146,
+      "renderCpuMs": 1.7999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 98,
+      "elapsedMs": 44631.5,
+      "intervalMs": 450,
+      "renderCpuMs": 1.300000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 99,
+      "elapsedMs": 45114.8,
+      "intervalMs": 483.3000000000029,
+      "renderCpuMs": 1.4000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 100,
+      "elapsedMs": 45548.2,
+      "intervalMs": 433.3999999999942,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 101,
+      "elapsedMs": 45998.2,
+      "intervalMs": 450,
+      "renderCpuMs": 1.7999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 102,
+      "elapsedMs": 46431.4,
+      "intervalMs": 433.20000000000437,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 103,
+      "elapsedMs": 46898.1,
+      "intervalMs": 466.6999999999971,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 104,
+      "elapsedMs": 47331.5,
+      "intervalMs": 433.40000000000146,
+      "renderCpuMs": 1.4000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 105,
+      "elapsedMs": 47781.4,
+      "intervalMs": 449.90000000000146,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 106,
+      "elapsedMs": 48214.7,
+      "intervalMs": 433.29999999999563,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 107,
+      "elapsedMs": 48681.4,
+      "intervalMs": 466.70000000000437,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 108,
+      "elapsedMs": 49148,
+      "intervalMs": 466.59999999999854,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 109,
+      "elapsedMs": 49598,
+      "intervalMs": 450,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 110,
+      "elapsedMs": 50048,
+      "intervalMs": 450,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 111,
+      "elapsedMs": 50481.3,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 2.100000023841858,
+      "quality": "low"
+    },
+    {
+      "frame": 112,
+      "elapsedMs": 50948,
+      "intervalMs": 466.6999999999971,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 113,
+      "elapsedMs": 51381.3,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 114,
+      "elapsedMs": 51864.6,
+      "intervalMs": 483.29999999999563,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 115,
+      "elapsedMs": 52347.9,
+      "intervalMs": 483.3000000000029,
+      "renderCpuMs": 2.300000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 116,
+      "elapsedMs": 52797.9,
+      "intervalMs": 450,
+      "renderCpuMs": 1.7999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 117,
+      "elapsedMs": 53247.8,
+      "intervalMs": 449.90000000000146,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 118,
+      "elapsedMs": 53697.8,
+      "intervalMs": 450,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 119,
+      "elapsedMs": 54131.1,
+      "intervalMs": 433.29999999999563,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 120,
+      "elapsedMs": 54581.1,
+      "intervalMs": 450,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 121,
+      "elapsedMs": 55031.2,
+      "intervalMs": 450.09999999999854,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 122,
+      "elapsedMs": 55464.5,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 1.899999976158142,
+      "quality": "low"
+    },
+    {
+      "frame": 123,
+      "elapsedMs": 55914.4,
+      "intervalMs": 449.90000000000146,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 124,
+      "elapsedMs": 56347.7,
+      "intervalMs": 433.29999999999563,
+      "renderCpuMs": 2.600000023841858,
+      "quality": "low"
+    },
+    {
+      "frame": 125,
+      "elapsedMs": 56864.3,
+      "intervalMs": 516.6000000000058,
+      "renderCpuMs": 2.300000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 126,
+      "elapsedMs": 57314.3,
+      "intervalMs": 450,
+      "renderCpuMs": 2.300000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 127,
+      "elapsedMs": 57764.3,
+      "intervalMs": 450,
+      "renderCpuMs": 2.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 128,
+      "elapsedMs": 58264.4,
+      "intervalMs": 500.09999999999854,
+      "renderCpuMs": 2.100000023841858,
+      "quality": "low"
+    },
+    {
+      "frame": 129,
+      "elapsedMs": 58714.3,
+      "intervalMs": 449.90000000000146,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 130,
+      "elapsedMs": 59164.3,
+      "intervalMs": 450,
+      "renderCpuMs": 1.899999976158142,
+      "quality": "low"
+    },
+    {
+      "frame": 131,
+      "elapsedMs": 59597.6,
+      "intervalMs": 433.29999999999563,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 132,
+      "elapsedMs": 60047.600000000006,
+      "intervalMs": 450.0000000000073,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 133,
+      "elapsedMs": 60497.5,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 134,
+      "elapsedMs": 60947.600000000006,
+      "intervalMs": 450.1000000000058,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 135,
+      "elapsedMs": 61380.899999999994,
+      "intervalMs": 433.29999999998836,
+      "renderCpuMs": 1.7999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 136,
+      "elapsedMs": 61864.2,
+      "intervalMs": 483.3000000000029,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 137,
+      "elapsedMs": 62314.100000000006,
+      "intervalMs": 449.90000000000873,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 138,
+      "elapsedMs": 62780.8,
+      "intervalMs": 466.6999999999971,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 139,
+      "elapsedMs": 63230.8,
+      "intervalMs": 450,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 140,
+      "elapsedMs": 63680.8,
+      "intervalMs": 450,
+      "renderCpuMs": 2.0999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 141,
+      "elapsedMs": 64114.100000000006,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 142,
+      "elapsedMs": 64547.399999999994,
+      "intervalMs": 433.29999999998836,
+      "renderCpuMs": 2.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 143,
+      "elapsedMs": 64980.7,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 144,
+      "elapsedMs": 65414,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 145,
+      "elapsedMs": 65880.7,
+      "intervalMs": 466.6999999999971,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 146,
+      "elapsedMs": 66314,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 2.2000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 147,
+      "elapsedMs": 66780.7,
+      "intervalMs": 466.6999999999971,
+      "renderCpuMs": 2.2000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 148,
+      "elapsedMs": 67247.3,
+      "intervalMs": 466.6000000000058,
+      "renderCpuMs": 2.0999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 149,
+      "elapsedMs": 67713.9,
+      "intervalMs": 466.59999999999127,
+      "renderCpuMs": 2.199999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 150,
+      "elapsedMs": 68180.6,
+      "intervalMs": 466.70000000001164,
+      "renderCpuMs": 2.2000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 151,
+      "elapsedMs": 68613.9,
+      "intervalMs": 433.29999999998836,
+      "renderCpuMs": 2.2999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 152,
+      "elapsedMs": 69047.2,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 153,
+      "elapsedMs": 69497.2,
+      "intervalMs": 450,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 154,
+      "elapsedMs": 69947.2,
+      "intervalMs": 450,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 155,
+      "elapsedMs": 70380.5,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 156,
+      "elapsedMs": 70863.8,
+      "intervalMs": 483.3000000000029,
+      "renderCpuMs": 2.0999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 157,
+      "elapsedMs": 71297.1,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 158,
+      "elapsedMs": 71763.8,
+      "intervalMs": 466.6999999999971,
+      "renderCpuMs": 1.7999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 159,
+      "elapsedMs": 72197.1,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 1.7999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 160,
+      "elapsedMs": 72647.1,
+      "intervalMs": 450,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 161,
+      "elapsedMs": 73097.1,
+      "intervalMs": 450,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 162,
+      "elapsedMs": 73530.4,
+      "intervalMs": 433.29999999998836,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 163,
+      "elapsedMs": 73963.7,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 164,
+      "elapsedMs": 74397,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 1.600000023841858,
+      "quality": "low"
+    },
+    {
+      "frame": 165,
+      "elapsedMs": 74847,
+      "intervalMs": 450,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 166,
+      "elapsedMs": 75280.3,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 167,
+      "elapsedMs": 75730.3,
+      "intervalMs": 450,
+      "renderCpuMs": 2.300000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 168,
+      "elapsedMs": 76230.3,
+      "intervalMs": 500,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 169,
+      "elapsedMs": 76680.2,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 2.300000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 170,
+      "elapsedMs": 77113.6,
+      "intervalMs": 433.40000000000873,
+      "renderCpuMs": 1.7999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 171,
+      "elapsedMs": 77563.5,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 2.5,
+      "quality": "low"
+    },
+    {
+      "frame": 172,
+      "elapsedMs": 78013.6,
+      "intervalMs": 450.1000000000058,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 173,
+      "elapsedMs": 78463.5,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 174,
+      "elapsedMs": 78946.8,
+      "intervalMs": 483.3000000000029,
+      "renderCpuMs": 2.300000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 175,
+      "elapsedMs": 79430.1,
+      "intervalMs": 483.3000000000029,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 176,
+      "elapsedMs": 79863.5,
+      "intervalMs": 433.3999999999942,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 177,
+      "elapsedMs": 80296.8,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 1.7999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 178,
+      "elapsedMs": 80746.7,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 179,
+      "elapsedMs": 81196.7,
+      "intervalMs": 450,
+      "renderCpuMs": 1.7999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 180,
+      "elapsedMs": 81646.7,
+      "intervalMs": 450,
+      "renderCpuMs": 2.600000023841858,
+      "quality": "low"
+    },
+    {
+      "frame": 181,
+      "elapsedMs": 82096.7,
+      "intervalMs": 450,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 182,
+      "elapsedMs": 82530,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 183,
+      "elapsedMs": 82963.4,
+      "intervalMs": 433.3999999999942,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 184,
+      "elapsedMs": 83413.3,
+      "intervalMs": 449.90000000000873,
+      "renderCpuMs": 1.7999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 185,
+      "elapsedMs": 83896.6,
+      "intervalMs": 483.3000000000029,
+      "renderCpuMs": 2.199999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 186,
+      "elapsedMs": 84396.6,
+      "intervalMs": 500,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 187,
+      "elapsedMs": 84879.9,
+      "intervalMs": 483.29999999998836,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 188,
+      "elapsedMs": 85313.3,
+      "intervalMs": 433.40000000000873,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 189,
+      "elapsedMs": 85763.2,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 190,
+      "elapsedMs": 86213.2,
+      "intervalMs": 450,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 191,
+      "elapsedMs": 86663.2,
+      "intervalMs": 450,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 192,
+      "elapsedMs": 87129.8,
+      "intervalMs": 466.6000000000058,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 193,
+      "elapsedMs": 87563.1,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 1.4000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 194,
+      "elapsedMs": 88013.1,
+      "intervalMs": 450,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 195,
+      "elapsedMs": 88463.1,
+      "intervalMs": 450,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 196,
+      "elapsedMs": 88963.1,
+      "intervalMs": 500,
+      "renderCpuMs": 2.2000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 197,
+      "elapsedMs": 89429.8,
+      "intervalMs": 466.6999999999971,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 198,
+      "elapsedMs": 89863.1,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 199,
+      "elapsedMs": 90296.4,
+      "intervalMs": 433.29999999998836,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 200,
+      "elapsedMs": 90763,
+      "intervalMs": 466.6000000000058,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 201,
+      "elapsedMs": 91196.4,
+      "intervalMs": 433.3999999999942,
+      "renderCpuMs": 2.0999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 202,
+      "elapsedMs": 91629.6,
+      "intervalMs": 433.20000000001164,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 203,
+      "elapsedMs": 92079.6,
+      "intervalMs": 450,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 204,
+      "elapsedMs": 92529.7,
+      "intervalMs": 450.09999999999127,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 205,
+      "elapsedMs": 92979.6,
+      "intervalMs": 449.90000000000873,
+      "renderCpuMs": 2.199999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 206,
+      "elapsedMs": 93412.9,
+      "intervalMs": 433.29999999998836,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 207,
+      "elapsedMs": 93862.9,
+      "intervalMs": 450,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 208,
+      "elapsedMs": 94296.2,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 209,
+      "elapsedMs": 94746.2,
+      "intervalMs": 450,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 210,
+      "elapsedMs": 95196.1,
+      "intervalMs": 449.90000000000873,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 211,
+      "elapsedMs": 95629.5,
+      "intervalMs": 433.3999999999942,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 212,
+      "elapsedMs": 96079.5,
+      "intervalMs": 450,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 213,
+      "elapsedMs": 96529.5,
+      "intervalMs": 450,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 214,
+      "elapsedMs": 96962.8,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 215,
+      "elapsedMs": 97412.7,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 216,
+      "elapsedMs": 97846,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 217,
+      "elapsedMs": 98279.4,
+      "intervalMs": 433.3999999999942,
+      "renderCpuMs": 2.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 218,
+      "elapsedMs": 98729.4,
+      "intervalMs": 450,
+      "renderCpuMs": 1.7999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 219,
+      "elapsedMs": 99162.7,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 220,
+      "elapsedMs": 99612.7,
+      "intervalMs": 450,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 221,
+      "elapsedMs": 100062.7,
+      "intervalMs": 450,
+      "renderCpuMs": 2.199999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 222,
+      "elapsedMs": 100512.6,
+      "intervalMs": 449.90000000000873,
+      "renderCpuMs": 2.0999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 223,
+      "elapsedMs": 100946,
+      "intervalMs": 433.3999999999942,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 224,
+      "elapsedMs": 101379.2,
+      "intervalMs": 433.1999999999971,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 225,
+      "elapsedMs": 101829.2,
+      "intervalMs": 450,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 226,
+      "elapsedMs": 102262.6,
+      "intervalMs": 433.40000000000873,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 227,
+      "elapsedMs": 102712.5,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 228,
+      "elapsedMs": 103162.6,
+      "intervalMs": 450.1000000000058,
+      "renderCpuMs": 2.0999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 229,
+      "elapsedMs": 103612.5,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 2.300000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 230,
+      "elapsedMs": 104045.8,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 231,
+      "elapsedMs": 104479.2,
+      "intervalMs": 433.3999999999942,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 232,
+      "elapsedMs": 104929.1,
+      "intervalMs": 449.90000000000873,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 233,
+      "elapsedMs": 105412.4,
+      "intervalMs": 483.29999999998836,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 234,
+      "elapsedMs": 105845.7,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 235,
+      "elapsedMs": 106295.7,
+      "intervalMs": 450,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 236,
+      "elapsedMs": 106729.1,
+      "intervalMs": 433.40000000000873,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 237,
+      "elapsedMs": 107162.3,
+      "intervalMs": 433.1999999999971,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 238,
+      "elapsedMs": 107595.6,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 239,
+      "elapsedMs": 108045.7,
+      "intervalMs": 450.09999999999127,
+      "renderCpuMs": 1.600000023841858,
+      "quality": "low"
+    },
+    {
+      "frame": 240,
+      "elapsedMs": 108479,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 241,
+      "elapsedMs": 108928.9,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 2.0999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 242,
+      "elapsedMs": 109362.3,
+      "intervalMs": 433.40000000000873,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 243,
+      "elapsedMs": 109795.6,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 244,
+      "elapsedMs": 110245.6,
+      "intervalMs": 450,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 245,
+      "elapsedMs": 110678.9,
+      "intervalMs": 433.29999999998836,
+      "renderCpuMs": 2.199999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 246,
+      "elapsedMs": 111112.2,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 247,
+      "elapsedMs": 111578.9,
+      "intervalMs": 466.6999999999971,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 248,
+      "elapsedMs": 112012.1,
+      "intervalMs": 433.20000000001164,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 249,
+      "elapsedMs": 112462.2,
+      "intervalMs": 450.09999999999127,
+      "renderCpuMs": 2.0999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 250,
+      "elapsedMs": 112912.1,
+      "intervalMs": 449.90000000000873,
+      "renderCpuMs": 1.300000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 251,
+      "elapsedMs": 113345.4,
+      "intervalMs": 433.29999999998836,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 252,
+      "elapsedMs": 113795.4,
+      "intervalMs": 450,
+      "renderCpuMs": 2.5,
+      "quality": "low"
+    },
+    {
+      "frame": 253,
+      "elapsedMs": 114278.7,
+      "intervalMs": 483.3000000000029,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 254,
+      "elapsedMs": 114795.4,
+      "intervalMs": 516.6999999999971,
+      "renderCpuMs": 2.199999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 255,
+      "elapsedMs": 115245.4,
+      "intervalMs": 450,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 256,
+      "elapsedMs": 115678.7,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 257,
+      "elapsedMs": 116128.7,
+      "intervalMs": 450,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 258,
+      "elapsedMs": 116562,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 259,
+      "elapsedMs": 117011.9,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 260,
+      "elapsedMs": 117461.9,
+      "intervalMs": 450,
+      "renderCpuMs": 2.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 261,
+      "elapsedMs": 117911.9,
+      "intervalMs": 450,
+      "renderCpuMs": 1.2999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 262,
+      "elapsedMs": 118361.9,
+      "intervalMs": 450,
+      "renderCpuMs": 1.7999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 263,
+      "elapsedMs": 118845.3,
+      "intervalMs": 483.40000000000873,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 264,
+      "elapsedMs": 119328.6,
+      "intervalMs": 483.3000000000029,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 265,
+      "elapsedMs": 119795.2,
+      "intervalMs": 466.59999999999127,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 266,
+      "elapsedMs": 120245.1,
+      "intervalMs": 449.90000000000873,
+      "renderCpuMs": 2.0999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 267,
+      "elapsedMs": 120678.4,
+      "intervalMs": 433.29999999998836,
+      "renderCpuMs": 2.2999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 268,
+      "elapsedMs": 121145.2,
+      "intervalMs": 466.8000000000029,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 269,
+      "elapsedMs": 121578.5,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 270,
+      "elapsedMs": 122045.1,
+      "intervalMs": 466.6000000000058,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 271,
+      "elapsedMs": 122478.4,
+      "intervalMs": 433.29999999998836,
+      "renderCpuMs": 1.4000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 272,
+      "elapsedMs": 122945.1,
+      "intervalMs": 466.70000000001164,
+      "renderCpuMs": 1.300000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 273,
+      "elapsedMs": 123395,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 274,
+      "elapsedMs": 123861.7,
+      "intervalMs": 466.6999999999971,
+      "renderCpuMs": 1.600000023841858,
+      "quality": "low"
+    },
+    {
+      "frame": 275,
+      "elapsedMs": 124345,
+      "intervalMs": 483.3000000000029,
+      "renderCpuMs": 2.199999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 276,
+      "elapsedMs": 124778.3,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 2.4000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 277,
+      "elapsedMs": 125211.6,
+      "intervalMs": 433.3000000000029,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 278,
+      "elapsedMs": 125661.6,
+      "intervalMs": 450,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 279,
+      "elapsedMs": 126094.9,
+      "intervalMs": 433.29999999998836,
+      "renderCpuMs": 2.4000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 280,
+      "elapsedMs": 126544.9,
+      "intervalMs": 450,
+      "renderCpuMs": 1.600000023841858,
+      "quality": "low"
+    },
+    {
+      "frame": 281,
+      "elapsedMs": 126994.9,
+      "intervalMs": 450,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 282,
+      "elapsedMs": 127444.9,
+      "intervalMs": 450,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 283,
+      "elapsedMs": 127894.9,
+      "intervalMs": 450,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 284,
+      "elapsedMs": 128344.79999999999,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 1.7999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 285,
+      "elapsedMs": 128844.79999999999,
+      "intervalMs": 500,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 286,
+      "elapsedMs": 129311.5,
+      "intervalMs": 466.70000000001164,
+      "renderCpuMs": 1.7999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 287,
+      "elapsedMs": 129744.79999999999,
+      "intervalMs": 433.29999999998836,
+      "renderCpuMs": 3.0999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 288,
+      "elapsedMs": 130194.79999999999,
+      "intervalMs": 450,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 289,
+      "elapsedMs": 130628.1,
+      "intervalMs": 433.30000000001746,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 290,
+      "elapsedMs": 131078,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 291,
+      "elapsedMs": 131544.7,
+      "intervalMs": 466.70000000001164,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 292,
+      "elapsedMs": 132028,
+      "intervalMs": 483.29999999998836,
+      "renderCpuMs": 2.2000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 293,
+      "elapsedMs": 132478,
+      "intervalMs": 450,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 294,
+      "elapsedMs": 132978,
+      "intervalMs": 500,
+      "renderCpuMs": 1.600000023841858,
+      "quality": "low"
+    },
+    {
+      "frame": 295,
+      "elapsedMs": 133411.3,
+      "intervalMs": 433.29999999998836,
+      "renderCpuMs": 1.899999976158142,
+      "quality": "low"
+    },
+    {
+      "frame": 296,
+      "elapsedMs": 133844.6,
+      "intervalMs": 433.30000000001746,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 297,
+      "elapsedMs": 134294.6,
+      "intervalMs": 450,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 298,
+      "elapsedMs": 134744.6,
+      "intervalMs": 450,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 299,
+      "elapsedMs": 135177.9,
+      "intervalMs": 433.29999999998836,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 300,
+      "elapsedMs": 135611.2,
+      "intervalMs": 433.30000000001746,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 301,
+      "elapsedMs": 136077.9,
+      "intervalMs": 466.69999999998254,
+      "renderCpuMs": 1.600000023841858,
+      "quality": "low"
+    },
+    {
+      "frame": 302,
+      "elapsedMs": 136544.6,
+      "intervalMs": 466.70000000001164,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 303,
+      "elapsedMs": 136994.5,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 304,
+      "elapsedMs": 137427.8,
+      "intervalMs": 433.29999999998836,
+      "renderCpuMs": 1.7999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 305,
+      "elapsedMs": 137861.2,
+      "intervalMs": 433.4000000000233,
+      "renderCpuMs": 1.399999976158142,
+      "quality": "low"
+    },
+    {
+      "frame": 306,
+      "elapsedMs": 138311.1,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 2.300000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 307,
+      "elapsedMs": 138794.4,
+      "intervalMs": 483.29999999998836,
+      "renderCpuMs": 3.2999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 308,
+      "elapsedMs": 139244.4,
+      "intervalMs": 450,
+      "renderCpuMs": 2.399999976158142,
+      "quality": "low"
+    },
+    {
+      "frame": 309,
+      "elapsedMs": 139677.7,
+      "intervalMs": 433.30000000001746,
+      "renderCpuMs": 2.2000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 310,
+      "elapsedMs": 140127.7,
+      "intervalMs": 450,
+      "renderCpuMs": 2.199999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 311,
+      "elapsedMs": 140627.7,
+      "intervalMs": 500,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 312,
+      "elapsedMs": 141077.7,
+      "intervalMs": 450,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 313,
+      "elapsedMs": 141561,
+      "intervalMs": 483.29999999998836,
+      "renderCpuMs": 2.2999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 314,
+      "elapsedMs": 142027.6,
+      "intervalMs": 466.6000000000058,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 315,
+      "elapsedMs": 142477.6,
+      "intervalMs": 450,
+      "renderCpuMs": 1.4000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 316,
+      "elapsedMs": 142927.6,
+      "intervalMs": 450,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 317,
+      "elapsedMs": 143377.6,
+      "intervalMs": 450,
+      "renderCpuMs": 1.899999976158142,
+      "quality": "low"
+    },
+    {
+      "frame": 318,
+      "elapsedMs": 143827.5,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 1.399999976158142,
+      "quality": "low"
+    },
+    {
+      "frame": 319,
+      "elapsedMs": 144294.2,
+      "intervalMs": 466.70000000001164,
+      "renderCpuMs": 2.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 320,
+      "elapsedMs": 144744.2,
+      "intervalMs": 450,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 321,
+      "elapsedMs": 145210.8,
+      "intervalMs": 466.5999999999767,
+      "renderCpuMs": 1.7999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 322,
+      "elapsedMs": 145660.8,
+      "intervalMs": 450,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 323,
+      "elapsedMs": 146110.8,
+      "intervalMs": 450,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 324,
+      "elapsedMs": 146594.1,
+      "intervalMs": 483.30000000001746,
+      "renderCpuMs": 2.4000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 325,
+      "elapsedMs": 147077.4,
+      "intervalMs": 483.29999999998836,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 326,
+      "elapsedMs": 147510.8,
+      "intervalMs": 433.3999999999942,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 327,
+      "elapsedMs": 147977.4,
+      "intervalMs": 466.6000000000058,
+      "renderCpuMs": 2.100000023841858,
+      "quality": "low"
+    },
+    {
+      "frame": 328,
+      "elapsedMs": 148427.4,
+      "intervalMs": 450,
+      "renderCpuMs": 1.300000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 329,
+      "elapsedMs": 148877.3,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 330,
+      "elapsedMs": 149360.6,
+      "intervalMs": 483.30000000001746,
+      "renderCpuMs": 2.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 331,
+      "elapsedMs": 149827.3,
+      "intervalMs": 466.69999999998254,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 332,
+      "elapsedMs": 150277.3,
+      "intervalMs": 450,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 333,
+      "elapsedMs": 150727.3,
+      "intervalMs": 450,
+      "renderCpuMs": 3,
+      "quality": "low"
+    },
+    {
+      "frame": 334,
+      "elapsedMs": 151194,
+      "intervalMs": 466.70000000001164,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 335,
+      "elapsedMs": 151627.3,
+      "intervalMs": 433.29999999998836,
+      "renderCpuMs": 1.7999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 336,
+      "elapsedMs": 152093.9,
+      "intervalMs": 466.6000000000058,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 337,
+      "elapsedMs": 152527.2,
+      "intervalMs": 433.30000000001746,
+      "renderCpuMs": 1.600000023841858,
+      "quality": "low"
+    },
+    {
+      "frame": 338,
+      "elapsedMs": 152993.9,
+      "intervalMs": 466.69999999998254,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 339,
+      "elapsedMs": 153460.5,
+      "intervalMs": 466.6000000000058,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 340,
+      "elapsedMs": 153993.9,
+      "intervalMs": 533.3999999999942,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 341,
+      "elapsedMs": 154443.8,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 342,
+      "elapsedMs": 154910.5,
+      "intervalMs": 466.70000000001164,
+      "renderCpuMs": 2.199999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 343,
+      "elapsedMs": 155377.1,
+      "intervalMs": 466.6000000000058,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 344,
+      "elapsedMs": 155810.4,
+      "intervalMs": 433.29999999998836,
+      "renderCpuMs": 1.2000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 345,
+      "elapsedMs": 156277.1,
+      "intervalMs": 466.70000000001164,
+      "renderCpuMs": 2.0999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 346,
+      "elapsedMs": 156743.7,
+      "intervalMs": 466.6000000000058,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 347,
+      "elapsedMs": 157177.1,
+      "intervalMs": 433.3999999999942,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 348,
+      "elapsedMs": 157627,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 349,
+      "elapsedMs": 158093.7,
+      "intervalMs": 466.70000000001164,
+      "renderCpuMs": 2.4000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 350,
+      "elapsedMs": 158560.3,
+      "intervalMs": 466.5999999999767,
+      "renderCpuMs": 2.2999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 351,
+      "elapsedMs": 159027,
+      "intervalMs": 466.70000000001164,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 352,
+      "elapsedMs": 159477,
+      "intervalMs": 450,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 353,
+      "elapsedMs": 159943.5,
+      "intervalMs": 466.5,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 354,
+      "elapsedMs": 160393.6,
+      "intervalMs": 450.1000000000058,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 355,
+      "elapsedMs": 160826.8,
+      "intervalMs": 433.19999999998254,
+      "renderCpuMs": 1.899999976158142,
+      "quality": "low"
+    },
+    {
+      "frame": 356,
+      "elapsedMs": 161293.5,
+      "intervalMs": 466.70000000001164,
+      "renderCpuMs": 1.7999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 357,
+      "elapsedMs": 161743.6,
+      "intervalMs": 450.1000000000058,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 358,
+      "elapsedMs": 162193.5,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 1.4000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 359,
+      "elapsedMs": 162643.5,
+      "intervalMs": 450,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 360,
+      "elapsedMs": 163143.5,
+      "intervalMs": 500,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 361,
+      "elapsedMs": 163593.4,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 362,
+      "elapsedMs": 164043.5,
+      "intervalMs": 450.1000000000058,
+      "renderCpuMs": 2.100000023841858,
+      "quality": "low"
+    },
+    {
+      "frame": 363,
+      "elapsedMs": 164476.7,
+      "intervalMs": 433.20000000001164,
+      "renderCpuMs": 1.4000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 364,
+      "elapsedMs": 164960,
+      "intervalMs": 483.29999999998836,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 365,
+      "elapsedMs": 165426.7,
+      "intervalMs": 466.70000000001164,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 366,
+      "elapsedMs": 165876.7,
+      "intervalMs": 450,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 367,
+      "elapsedMs": 166326.7,
+      "intervalMs": 450,
+      "renderCpuMs": 2.0999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 368,
+      "elapsedMs": 166793.3,
+      "intervalMs": 466.5999999999767,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 369,
+      "elapsedMs": 167226.6,
+      "intervalMs": 433.30000000001746,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 370,
+      "elapsedMs": 167693.3,
+      "intervalMs": 466.69999999998254,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 371,
+      "elapsedMs": 168143.2,
+      "intervalMs": 449.9000000000233,
+      "renderCpuMs": 1.300000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 372,
+      "elapsedMs": 168593.3,
+      "intervalMs": 450.0999999999767,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 373,
+      "elapsedMs": 169043.2,
+      "intervalMs": 449.9000000000233,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 374,
+      "elapsedMs": 169476.6,
+      "intervalMs": 433.3999999999942,
+      "renderCpuMs": 1.2999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 375,
+      "elapsedMs": 169926.6,
+      "intervalMs": 450,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 376,
+      "elapsedMs": 170376.5,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 377,
+      "elapsedMs": 170826.5,
+      "intervalMs": 450,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 378,
+      "elapsedMs": 171293.1,
+      "intervalMs": 466.6000000000058,
+      "renderCpuMs": 2.0999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 379,
+      "elapsedMs": 171776.5,
+      "intervalMs": 483.3999999999942,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 380,
+      "elapsedMs": 172276.4,
+      "intervalMs": 499.8999999999942,
+      "renderCpuMs": 1.899999976158142,
+      "quality": "low"
+    },
+    {
+      "frame": 381,
+      "elapsedMs": 172776.4,
+      "intervalMs": 500,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 382,
+      "elapsedMs": 173226.4,
+      "intervalMs": 450,
+      "renderCpuMs": 1.4000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 383,
+      "elapsedMs": 173676.3,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 1.600000023841858,
+      "quality": "low"
+    },
+    {
+      "frame": 384,
+      "elapsedMs": 174109.7,
+      "intervalMs": 433.4000000000233,
+      "renderCpuMs": 1.2999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 385,
+      "elapsedMs": 174559.6,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 2.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 386,
+      "elapsedMs": 175009.7,
+      "intervalMs": 450.1000000000058,
+      "renderCpuMs": 1.2999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 387,
+      "elapsedMs": 175459.6,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 1.4000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 388,
+      "elapsedMs": 175909.6,
+      "intervalMs": 450,
+      "renderCpuMs": 2.0999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 389,
+      "elapsedMs": 176376.3,
+      "intervalMs": 466.69999999998254,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 390,
+      "elapsedMs": 176826.3,
+      "intervalMs": 450,
+      "renderCpuMs": 1.4000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 391,
+      "elapsedMs": 177309.6,
+      "intervalMs": 483.30000000001746,
+      "renderCpuMs": 1.7999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 392,
+      "elapsedMs": 177759.5,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 393,
+      "elapsedMs": 178242.8,
+      "intervalMs": 483.29999999998836,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 394,
+      "elapsedMs": 178726.1,
+      "intervalMs": 483.30000000001746,
+      "renderCpuMs": 2.199999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 395,
+      "elapsedMs": 179226.2,
+      "intervalMs": 500.1000000000058,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 396,
+      "elapsedMs": 179659.4,
+      "intervalMs": 433.19999999998254,
+      "renderCpuMs": 1.600000023841858,
+      "quality": "low"
+    },
+    {
+      "frame": 397,
+      "elapsedMs": 180126.1,
+      "intervalMs": 466.70000000001164,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 398,
+      "elapsedMs": 180642.8,
+      "intervalMs": 516.6999999999825,
+      "renderCpuMs": 2.5,
+      "quality": "low"
+    },
+    {
+      "frame": 399,
+      "elapsedMs": 181126,
+      "intervalMs": 483.20000000001164,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 400,
+      "elapsedMs": 181592.8,
+      "intervalMs": 466.79999999998836,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 401,
+      "elapsedMs": 182192.7,
+      "intervalMs": 599.9000000000233,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 402,
+      "elapsedMs": 182692.7,
+      "intervalMs": 500,
+      "renderCpuMs": 2.300000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 403,
+      "elapsedMs": 183176,
+      "intervalMs": 483.29999999998836,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 404,
+      "elapsedMs": 183659.3,
+      "intervalMs": 483.29999999998836,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 405,
+      "elapsedMs": 184109.3,
+      "intervalMs": 450,
+      "renderCpuMs": 1.7999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 406,
+      "elapsedMs": 184576,
+      "intervalMs": 466.70000000001164,
+      "renderCpuMs": 1.600000023841858,
+      "quality": "low"
+    },
+    {
+      "frame": 407,
+      "elapsedMs": 185025.9,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 408,
+      "elapsedMs": 185492.5,
+      "intervalMs": 466.6000000000058,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 409,
+      "elapsedMs": 185942.6,
+      "intervalMs": 450.1000000000058,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 410,
+      "elapsedMs": 186392.5,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 1.300000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 411,
+      "elapsedMs": 186842.5,
+      "intervalMs": 450,
+      "renderCpuMs": 2.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 412,
+      "elapsedMs": 187325.8,
+      "intervalMs": 483.29999999998836,
+      "renderCpuMs": 1.2999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 413,
+      "elapsedMs": 187775.8,
+      "intervalMs": 450,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 414,
+      "elapsedMs": 188225.8,
+      "intervalMs": 450,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 415,
+      "elapsedMs": 188659.1,
+      "intervalMs": 433.30000000001746,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 416,
+      "elapsedMs": 189125.7,
+      "intervalMs": 466.6000000000058,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 417,
+      "elapsedMs": 189559.1,
+      "intervalMs": 433.3999999999942,
+      "renderCpuMs": 1.2999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 418,
+      "elapsedMs": 190009,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 419,
+      "elapsedMs": 190459,
+      "intervalMs": 450,
+      "renderCpuMs": 1.4000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 420,
+      "elapsedMs": 190909,
+      "intervalMs": 450,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 421,
+      "elapsedMs": 191375.6,
+      "intervalMs": 466.6000000000058,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 422,
+      "elapsedMs": 191825.6,
+      "intervalMs": 450,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 423,
+      "elapsedMs": 192292.3,
+      "intervalMs": 466.69999999998254,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 424,
+      "elapsedMs": 192742.3,
+      "intervalMs": 450,
+      "renderCpuMs": 1.4000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 425,
+      "elapsedMs": 193192.2,
+      "intervalMs": 449.9000000000233,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 426,
+      "elapsedMs": 193658.9,
+      "intervalMs": 466.69999999998254,
+      "renderCpuMs": 2.5,
+      "quality": "low"
+    },
+    {
+      "frame": 427,
+      "elapsedMs": 194142.2,
+      "intervalMs": 483.30000000001746,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 428,
+      "elapsedMs": 194592.2,
+      "intervalMs": 450,
+      "renderCpuMs": 1.300000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 429,
+      "elapsedMs": 195058.8,
+      "intervalMs": 466.5999999999767,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 430,
+      "elapsedMs": 195508.8,
+      "intervalMs": 450,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 431,
+      "elapsedMs": 195975.4,
+      "intervalMs": 466.6000000000058,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 432,
+      "elapsedMs": 196408.8,
+      "intervalMs": 433.3999999999942,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 433,
+      "elapsedMs": 196858.8,
+      "intervalMs": 450,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 434,
+      "elapsedMs": 197308.8,
+      "intervalMs": 450,
+      "renderCpuMs": 1.399999976158142,
+      "quality": "low"
+    },
+    {
+      "frame": 435,
+      "elapsedMs": 197792,
+      "intervalMs": 483.20000000001164,
+      "renderCpuMs": 1.7999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 436,
+      "elapsedMs": 198258.7,
+      "intervalMs": 466.70000000001164,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 437,
+      "elapsedMs": 198742,
+      "intervalMs": 483.29999999998836,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 438,
+      "elapsedMs": 199208.6,
+      "intervalMs": 466.6000000000058,
+      "renderCpuMs": 1.4000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 439,
+      "elapsedMs": 199658.7,
+      "intervalMs": 450.1000000000058,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 440,
+      "elapsedMs": 200175.3,
+      "intervalMs": 516.5999999999767,
+      "renderCpuMs": 2.2000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 441,
+      "elapsedMs": 200625.3,
+      "intervalMs": 450,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 442,
+      "elapsedMs": 201075.2,
+      "intervalMs": 449.9000000000233,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 443,
+      "elapsedMs": 201541.9,
+      "intervalMs": 466.69999999998254,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 444,
+      "elapsedMs": 201991.9,
+      "intervalMs": 450,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 445,
+      "elapsedMs": 202458.6,
+      "intervalMs": 466.70000000001164,
+      "renderCpuMs": 2.2999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 446,
+      "elapsedMs": 202925.2,
+      "intervalMs": 466.6000000000058,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 447,
+      "elapsedMs": 203375.2,
+      "intervalMs": 450,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 448,
+      "elapsedMs": 203825.2,
+      "intervalMs": 450,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 449,
+      "elapsedMs": 204275.1,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 3,
+      "quality": "low"
+    },
+    {
+      "frame": 450,
+      "elapsedMs": 204808.5,
+      "intervalMs": 533.3999999999942,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 451,
+      "elapsedMs": 205258.4,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 452,
+      "elapsedMs": 205691.7,
+      "intervalMs": 433.30000000001746,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 453,
+      "elapsedMs": 206125.1,
+      "intervalMs": 433.3999999999942,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 454,
+      "elapsedMs": 206591.7,
+      "intervalMs": 466.6000000000058,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 455,
+      "elapsedMs": 207058.4,
+      "intervalMs": 466.69999999998254,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 456,
+      "elapsedMs": 207508.3,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 457,
+      "elapsedMs": 207958.4,
+      "intervalMs": 450.1000000000058,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 458,
+      "elapsedMs": 208408.3,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 459,
+      "elapsedMs": 208841.7,
+      "intervalMs": 433.4000000000233,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 460,
+      "elapsedMs": 209308.2,
+      "intervalMs": 466.5,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 461,
+      "elapsedMs": 209791.6,
+      "intervalMs": 483.3999999999942,
+      "renderCpuMs": 2.199999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 462,
+      "elapsedMs": 210258.3,
+      "intervalMs": 466.69999999998254,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 463,
+      "elapsedMs": 210691.6,
+      "intervalMs": 433.30000000001746,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 464,
+      "elapsedMs": 211191.5,
+      "intervalMs": 499.8999999999942,
+      "renderCpuMs": 1.899999976158142,
+      "quality": "low"
+    },
+    {
+      "frame": 465,
+      "elapsedMs": 211641.5,
+      "intervalMs": 450,
+      "renderCpuMs": 1.4000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 466,
+      "elapsedMs": 212091.4,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 467,
+      "elapsedMs": 212541.4,
+      "intervalMs": 450,
+      "renderCpuMs": 1.4000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 468,
+      "elapsedMs": 212974.8,
+      "intervalMs": 433.3999999999942,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 469,
+      "elapsedMs": 213441.5,
+      "intervalMs": 466.70000000001164,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 470,
+      "elapsedMs": 213908.1,
+      "intervalMs": 466.6000000000058,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 471,
+      "elapsedMs": 214374.7,
+      "intervalMs": 466.6000000000058,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 472,
+      "elapsedMs": 214824.7,
+      "intervalMs": 450,
+      "renderCpuMs": 2.5,
+      "quality": "low"
+    },
+    {
+      "frame": 473,
+      "elapsedMs": 215274.7,
+      "intervalMs": 450,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 474,
+      "elapsedMs": 215724.6,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 1.7999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 475,
+      "elapsedMs": 216174.7,
+      "intervalMs": 450.1000000000058,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 476,
+      "elapsedMs": 216624.6,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 477,
+      "elapsedMs": 217091.3,
+      "intervalMs": 466.69999999998254,
+      "renderCpuMs": 2.0999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 478,
+      "elapsedMs": 217541.3,
+      "intervalMs": 450,
+      "renderCpuMs": 2.199999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 479,
+      "elapsedMs": 217991.2,
+      "intervalMs": 449.9000000000233,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 480,
+      "elapsedMs": 218441.3,
+      "intervalMs": 450.0999999999767,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 481,
+      "elapsedMs": 218891.3,
+      "intervalMs": 450,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 482,
+      "elapsedMs": 219324.5,
+      "intervalMs": 433.20000000001164,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 483,
+      "elapsedMs": 219791.2,
+      "intervalMs": 466.70000000001164,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 484,
+      "elapsedMs": 220274.5,
+      "intervalMs": 483.29999999998836,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 485,
+      "elapsedMs": 220741.2,
+      "intervalMs": 466.70000000001164,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 486,
+      "elapsedMs": 221191.2,
+      "intervalMs": 450,
+      "renderCpuMs": 1.399999976158142,
+      "quality": "low"
+    },
+    {
+      "frame": 487,
+      "elapsedMs": 221624.4,
+      "intervalMs": 433.19999999998254,
+      "renderCpuMs": 1.2999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 488,
+      "elapsedMs": 222091.1,
+      "intervalMs": 466.70000000001164,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 489,
+      "elapsedMs": 222524.4,
+      "intervalMs": 433.29999999998836,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 490,
+      "elapsedMs": 222991,
+      "intervalMs": 466.6000000000058,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 491,
+      "elapsedMs": 223441.1,
+      "intervalMs": 450.1000000000058,
+      "renderCpuMs": 2.0999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 492,
+      "elapsedMs": 223907.7,
+      "intervalMs": 466.6000000000058,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 493,
+      "elapsedMs": 224407.6,
+      "intervalMs": 499.8999999999942,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 494,
+      "elapsedMs": 224874.4,
+      "intervalMs": 466.79999999998836,
+      "renderCpuMs": 1.399999976158142,
+      "quality": "low"
+    },
+    {
+      "frame": 495,
+      "elapsedMs": 225340.9,
+      "intervalMs": 466.5,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 496,
+      "elapsedMs": 225807.6,
+      "intervalMs": 466.70000000001164,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 497,
+      "elapsedMs": 226257.6,
+      "intervalMs": 450,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 498,
+      "elapsedMs": 226724.2,
+      "intervalMs": 466.6000000000058,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 499,
+      "elapsedMs": 227240.9,
+      "intervalMs": 516.6999999999825,
+      "renderCpuMs": 1.2999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 500,
+      "elapsedMs": 227690.9,
+      "intervalMs": 450,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 501,
+      "elapsedMs": 228140.9,
+      "intervalMs": 450,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 502,
+      "elapsedMs": 228590.8,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 1.4000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 503,
+      "elapsedMs": 229074.1,
+      "intervalMs": 483.30000000001746,
+      "renderCpuMs": 3.2000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 504,
+      "elapsedMs": 229540.8,
+      "intervalMs": 466.69999999998254,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 505,
+      "elapsedMs": 229990.8,
+      "intervalMs": 450,
+      "renderCpuMs": 2.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 506,
+      "elapsedMs": 230440.8,
+      "intervalMs": 450,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 507,
+      "elapsedMs": 230890.8,
+      "intervalMs": 450,
+      "renderCpuMs": 2.5,
+      "quality": "low"
+    },
+    {
+      "frame": 508,
+      "elapsedMs": 231340.7,
+      "intervalMs": 449.9000000000233,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 509,
+      "elapsedMs": 231790.7,
+      "intervalMs": 450,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 510,
+      "elapsedMs": 232240.7,
+      "intervalMs": 450,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 511,
+      "elapsedMs": 232674,
+      "intervalMs": 433.29999999998836,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 512,
+      "elapsedMs": 233174,
+      "intervalMs": 500,
+      "renderCpuMs": 1.4000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 513,
+      "elapsedMs": 233640.7,
+      "intervalMs": 466.70000000001164,
+      "renderCpuMs": 1.7999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 514,
+      "elapsedMs": 234090.6,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 1.199999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 515,
+      "elapsedMs": 234540.6,
+      "intervalMs": 450,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 516,
+      "elapsedMs": 234990.6,
+      "intervalMs": 450,
+      "renderCpuMs": 1.300000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 517,
+      "elapsedMs": 235440.6,
+      "intervalMs": 450,
+      "renderCpuMs": 1.7999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 518,
+      "elapsedMs": 235940.6,
+      "intervalMs": 500,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 519,
+      "elapsedMs": 236440.5,
+      "intervalMs": 499.8999999999942,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 520,
+      "elapsedMs": 236923.9,
+      "intervalMs": 483.3999999999942,
+      "renderCpuMs": 1.2999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 521,
+      "elapsedMs": 237373.8,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 522,
+      "elapsedMs": 237840.4,
+      "intervalMs": 466.6000000000058,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 523,
+      "elapsedMs": 238290.5,
+      "intervalMs": 450.1000000000058,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 524,
+      "elapsedMs": 238740.5,
+      "intervalMs": 450,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 525,
+      "elapsedMs": 239207,
+      "intervalMs": 466.5,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 526,
+      "elapsedMs": 239657,
+      "intervalMs": 450,
+      "renderCpuMs": 1.4000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 527,
+      "elapsedMs": 240107,
+      "intervalMs": 450,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 528,
+      "elapsedMs": 240557,
+      "intervalMs": 450,
+      "renderCpuMs": 1.300000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 529,
+      "elapsedMs": 241057,
+      "intervalMs": 500,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 530,
+      "elapsedMs": 241540.3,
+      "intervalMs": 483.29999999998836,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 531,
+      "elapsedMs": 242040.3,
+      "intervalMs": 500,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 532,
+      "elapsedMs": 242540.3,
+      "intervalMs": 500,
+      "renderCpuMs": 1.4000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 533,
+      "elapsedMs": 242990.3,
+      "intervalMs": 450,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 534,
+      "elapsedMs": 243456.9,
+      "intervalMs": 466.6000000000058,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 535,
+      "elapsedMs": 243990.3,
+      "intervalMs": 533.3999999999942,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 536,
+      "elapsedMs": 244473.6,
+      "intervalMs": 483.30000000001746,
+      "renderCpuMs": 1.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 537,
+      "elapsedMs": 244923.5,
+      "intervalMs": 449.8999999999942,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 538,
+      "elapsedMs": 245340.2,
+      "intervalMs": 416.70000000001164,
+      "renderCpuMs": 1.7999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 539,
+      "elapsedMs": 245773.5,
+      "intervalMs": 433.29999999998836,
+      "renderCpuMs": 1.2000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 540,
+      "elapsedMs": 246290.1,
+      "intervalMs": 516.6000000000058,
+      "renderCpuMs": 1.600000023841858,
+      "quality": "low"
+    },
+    {
+      "frame": 541,
+      "elapsedMs": 246773.4,
+      "intervalMs": 483.29999999998836,
+      "renderCpuMs": 1.199999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 542,
+      "elapsedMs": 247323.4,
+      "intervalMs": 550,
+      "renderCpuMs": 1.2999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 543,
+      "elapsedMs": 247856.7,
+      "intervalMs": 533.3000000000175,
+      "renderCpuMs": 2.7999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 544,
+      "elapsedMs": 248390.1,
+      "intervalMs": 533.3999999999942,
+      "renderCpuMs": 1.199999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 545,
+      "elapsedMs": 248856.7,
+      "intervalMs": 466.6000000000058,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 546,
+      "elapsedMs": 249323.4,
+      "intervalMs": 466.69999999998254,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 547,
+      "elapsedMs": 249790,
+      "intervalMs": 466.6000000000058,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 548,
+      "elapsedMs": 250223.3,
+      "intervalMs": 433.29999999998836,
+      "renderCpuMs": 1.300000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 549,
+      "elapsedMs": 250673.3,
+      "intervalMs": 450,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 550,
+      "elapsedMs": 251123.3,
+      "intervalMs": 450,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 551,
+      "elapsedMs": 251556.6,
+      "intervalMs": 433.30000000001746,
+      "renderCpuMs": 1.4000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 552,
+      "elapsedMs": 252006.6,
+      "intervalMs": 450,
+      "renderCpuMs": 1.300000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 553,
+      "elapsedMs": 252423.3,
+      "intervalMs": 416.69999999998254,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 554,
+      "elapsedMs": 252839.9,
+      "intervalMs": 416.6000000000058,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 555,
+      "elapsedMs": 253256.5,
+      "intervalMs": 416.6000000000058,
+      "renderCpuMs": 1.600000023841858,
+      "quality": "low"
+    },
+    {
+      "frame": 556,
+      "elapsedMs": 253673.2,
+      "intervalMs": 416.70000000001164,
+      "renderCpuMs": 1.199999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 557,
+      "elapsedMs": 254089.8,
+      "intervalMs": 416.5999999999767,
+      "renderCpuMs": 2.2000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 558,
+      "elapsedMs": 254523.1,
+      "intervalMs": 433.30000000001746,
+      "renderCpuMs": 1.7999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 559,
+      "elapsedMs": 254956.5,
+      "intervalMs": 433.3999999999942,
+      "renderCpuMs": 2.199999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 560,
+      "elapsedMs": 255406.5,
+      "intervalMs": 450,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 561,
+      "elapsedMs": 255856.5,
+      "intervalMs": 450,
+      "renderCpuMs": 1.4000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 562,
+      "elapsedMs": 256323,
+      "intervalMs": 466.5,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 563,
+      "elapsedMs": 256773.09999999998,
+      "intervalMs": 450.0999999999767,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 564,
+      "elapsedMs": 257223,
+      "intervalMs": 449.9000000000233,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 565,
+      "elapsedMs": 257673,
+      "intervalMs": 450,
+      "renderCpuMs": 2.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 566,
+      "elapsedMs": 258156.3,
+      "intervalMs": 483.29999999998836,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 567,
+      "elapsedMs": 258639.59999999998,
+      "intervalMs": 483.29999999998836,
+      "renderCpuMs": 1.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 568,
+      "elapsedMs": 259156.3,
+      "intervalMs": 516.7000000000116,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 569,
+      "elapsedMs": 259639.59999999998,
+      "intervalMs": 483.29999999998836,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 570,
+      "elapsedMs": 260239.59999999998,
+      "intervalMs": 600,
+      "renderCpuMs": 1.899999976158142,
+      "quality": "low"
+    },
+    {
+      "frame": 571,
+      "elapsedMs": 260772.90000000002,
+      "intervalMs": 533.3000000000466,
+      "renderCpuMs": 1.7999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 572,
+      "elapsedMs": 261289.5,
+      "intervalMs": 516.5999999999767,
+      "renderCpuMs": 3.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 573,
+      "elapsedMs": 261806.2,
+      "intervalMs": 516.7000000000116,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 574,
+      "elapsedMs": 262222.8,
+      "intervalMs": 416.5999999999767,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 575,
+      "elapsedMs": 262672.8,
+      "intervalMs": 450,
+      "renderCpuMs": 2.399999976158142,
+      "quality": "low"
+    },
+    {
+      "frame": 576,
+      "elapsedMs": 263172.8,
+      "intervalMs": 500,
+      "renderCpuMs": 2.300000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 577,
+      "elapsedMs": 263589.4,
+      "intervalMs": 416.6000000000349,
+      "renderCpuMs": 2.600000023841858,
+      "quality": "low"
+    },
+    {
+      "frame": 578,
+      "elapsedMs": 264039.4,
+      "intervalMs": 450,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 579,
+      "elapsedMs": 264472.7,
+      "intervalMs": 433.29999999998836,
+      "renderCpuMs": 1.300000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 580,
+      "elapsedMs": 264922.7,
+      "intervalMs": 450,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 581,
+      "elapsedMs": 265372.7,
+      "intervalMs": 450,
+      "renderCpuMs": 1.2000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 582,
+      "elapsedMs": 265772.7,
+      "intervalMs": 400,
+      "renderCpuMs": 2.0999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 583,
+      "elapsedMs": 266206,
+      "intervalMs": 433.29999999998836,
+      "renderCpuMs": 1.600000023841858,
+      "quality": "low"
+    },
+    {
+      "frame": 584,
+      "elapsedMs": 266622.6,
+      "intervalMs": 416.5999999999767,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 585,
+      "elapsedMs": 267039.3,
+      "intervalMs": 416.70000000001164,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 586,
+      "elapsedMs": 267472.6,
+      "intervalMs": 433.29999999998836,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 587,
+      "elapsedMs": 267905.9,
+      "intervalMs": 433.30000000004657,
+      "renderCpuMs": 1.2999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 588,
+      "elapsedMs": 268339.2,
+      "intervalMs": 433.29999999998836,
+      "renderCpuMs": 1.800000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 589,
+      "elapsedMs": 268789.2,
+      "intervalMs": 450,
+      "renderCpuMs": 2.199999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 590,
+      "elapsedMs": 269205.9,
+      "intervalMs": 416.70000000001164,
+      "renderCpuMs": 1.300000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 591,
+      "elapsedMs": 269622.5,
+      "intervalMs": 416.5999999999767,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 592,
+      "elapsedMs": 270055.9,
+      "intervalMs": 433.4000000000233,
+      "renderCpuMs": 1.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 593,
+      "elapsedMs": 270472.5,
+      "intervalMs": 416.5999999999767,
+      "renderCpuMs": 1.4000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 594,
+      "elapsedMs": 270889.1,
+      "intervalMs": 416.5999999999767,
+      "renderCpuMs": 1.4000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 595,
+      "elapsedMs": 271305.8,
+      "intervalMs": 416.70000000001164,
+      "renderCpuMs": 1.7000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 596,
+      "elapsedMs": 271722.4,
+      "intervalMs": 416.6000000000349,
+      "renderCpuMs": 1.2999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 597,
+      "elapsedMs": 272139.1,
+      "intervalMs": 416.69999999995343,
+      "renderCpuMs": 1.5,
+      "quality": "low"
+    },
+    {
+      "frame": 598,
+      "elapsedMs": 272572.4,
+      "intervalMs": 433.30000000004657,
+      "renderCpuMs": 1.300000011920929,
+      "quality": "low"
+    },
+    {
+      "frame": 599,
+      "elapsedMs": 272989,
+      "intervalMs": 416.5999999999767,
+      "renderCpuMs": 1.199999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 600,
+      "elapsedMs": 273405.8,
+      "intervalMs": 416.79999999998836,
+      "renderCpuMs": 1.300000011920929,
+      "quality": "low"
+    }
+  ],
+  "summary": {
+    "frames": 600,
+    "worstFrameMs": 699.9000000000005,
+    "framesOver50Ms": 597,
+    "medianFrameMs": 450,
+    "first30MedianMs": 450,
+    "last120MedianMs": 450,
+    "settledFrame": 31,
+    "settledAfterMs": 13982.7
+  },
+  "complete": true,
+  "qualityChanges": [
+    {
+      "atMs": 2066.6000000000004,
+      "level": "balanced",
+      "pixelRatio": 0.75,
+      "aoEnabled": true,
+      "medianMs": 675,
+      "elapsedMs": 2066.6000000000004
+    },
+    {
+      "atMs": 5199.799999999999,
+      "level": "low",
+      "pixelRatio": 0.75,
+      "aoEnabled": false,
+      "medianMs": 475,
+      "elapsedMs": 2449.8999999999996
+    }
+  ],
+  "capture": {
+    "viewport": [
+      1280,
+      800
+    ],
+    "deviceScaleFactor": 1,
+    "softwareRenderer": true,
+    "coldBrowserProfile": true,
+    "label": "seed 1 · WebGL2"
+  }
+}

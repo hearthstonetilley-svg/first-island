@@ -97,7 +97,10 @@ export function sampleSlope(world: Pick<WorldData, 'heights' | 'size' | 'resolut
   ) / (step * 2);
 }
 
-export function generateWorld(seed = 1, resolution = 256, size = 64): WorldData {
+export interface WorldProgress { stage: 'terrain' | 'trees'; fraction: number }
+
+function* generateWorldSteps(seed: number, resolution: number, size: number): Generator<WorldProgress, WorldData> {
+  yield { stage: 'terrain', fraction: 0 };
   const random = new SeededRandom(seed);
   // Layout is chosen before the noise table so one PRNG drives the entire world.
   const layout = Math.floor(random.next() * 4);
@@ -144,6 +147,7 @@ export function generateWorld(seed = 1, resolution = 256, size = 64): WorldData 
   const bands: TerrainBand[] = [];
 
   for (let row = 0; row < resolution; row += 1) {
+    if (row % 32 === 0) yield { stage: 'terrain', fraction: row / resolution * 0.85 };
     for (let column = 0; column < resolution; column += 1) {
       const nx = column / (resolution - 1) * 2 - 1;
       const nz = row / (resolution - 1) * 2 - 1;
@@ -186,6 +190,7 @@ export function generateWorld(seed = 1, resolution = 256, size = 64): WorldData 
     }
   }
 
+  yield { stage: 'terrain', fraction: 0.85 };
   const world = { seed, size, resolution, heights, bands, trees: [] as TreeData[] };
   for (let row = 0; row < resolution; row += 1) {
     for (let column = 0; column < resolution; column += 1) {
@@ -197,9 +202,12 @@ export function generateWorld(seed = 1, resolution = 256, size = 64): WorldData 
     }
   }
 
+  yield { stage: 'terrain', fraction: 1 };
+  yield { stage: 'trees', fraction: 0 };
   const trees = world.trees;
   const occupied = new Set<string>();
   for (let attempt = 0; attempt < 14000; attempt += 1) {
+    if (attempt > 0 && attempt % 2000 === 0) yield { stage: 'trees', fraction: attempt / 14000 };
     const x = (random.next() - 0.5) * size * 0.85;
     const z = (random.next() - 0.5) * size * 0.85;
     const y = sampleHeight(world, x, z);
@@ -224,5 +232,27 @@ export function generateWorld(seed = 1, resolution = 256, size = 64): WorldData 
       rotation: random.next() * Math.PI * 2, lean: (random.next() - 0.5) * 0.16, tint: random.next() });
     occupied.add(`${cx},${cz}`);
   }
+  yield { stage: 'trees', fraction: 1 };
   return world;
+}
+
+/** Synchronous API for data consumers/tests; both paths consume identical PRNG work. */
+export function generateWorld(seed = 1, resolution = 256, size = 64): WorldData {
+  const steps = generateWorldSteps(seed, resolution, size);
+  let next = steps.next();
+  while (!next.done) next = steps.next();
+  return next.value;
+}
+
+/** Yield between completed terrain/placement chunks so loading UI can paint. */
+export async function generateWorldAsync(seed = 1, resolution = 256, size = 64,
+  onProgress: (progress: WorldProgress) => Promise<void> = () => new Promise((resolve) => setTimeout(resolve, 0)),
+): Promise<WorldData> {
+  const steps = generateWorldSteps(seed, resolution, size);
+  let next = steps.next();
+  while (!next.done) {
+    await onProgress(next.value);
+    next = steps.next();
+  }
+  return next.value;
 }

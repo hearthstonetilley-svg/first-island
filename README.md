@@ -35,6 +35,7 @@ as much about how the world gets built as about the world itself.
 | v0.1.2 | Round 5, changes requested: the big visual leap (peaks, distinct coastlines, foam, sky), but renderer start-up can hang; 21 iteration screenshots in docs/iterations ([review](docs/reviews/v0.1.2.md)) |
 | v0.2.0 | Round 6, accepted: start-up can no longer hang (8/8 loads); the round 5 island look ships ([review](docs/reviews/v0.2.0.md)) |
 | v0.2.1 | Round 7, accepted: dark volcanic rock with crevices, softer sun glitter, branched canopies ([review](docs/reviews/v0.2.1.md)) |
+| v0.3.0 | Round 8, accepted: shaders warmed before the first frame, adaptive quality, staged loading screen; build eval 5/5 on WebGL2, WebGPU device-lost bug outstanding ([review](docs/reviews/v0.3.0.md)) |
 
 ## Run it
 
@@ -45,6 +46,11 @@ npm test
 ```
 
 `?seed=N` picks the island. `?renderer=webgl2` forces the WebGL2 path.
+`?debug=1` records startup phases and the first 600 frame times in the console and `window.__ISLAND_DEBUG__`.
+`?post=0` disables AO and bloom for comparison. Quality adapts after slow two-second windows and is shown beside FPS.
+A staged loading screen covers generation, shader compilation and warm-up, then checks completed frame cadence before
+fading into the island. Devices below the smoothness target get a performance notice and an explicit entry button.
+See [iteration 025](docs/iterations/025.md) for profiling controls and [iteration 026](docs/iterations/026.md) for loading-screen checks.
 
 ## Licence
 

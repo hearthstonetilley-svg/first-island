@@ -1,0 +1,425 @@
+{
+  "context": {
+    "seed": 42,
+    "forceWebGL2": false,
+    "postEnabled": true,
+    "qualityLocked": false
+  },
+  "phasesMs": {
+    "worldGeneration": 735.5,
+    "rendererInit": 38.20000001788139,
+    "sceneBuild": 172.2999999821186,
+    "waterCompile": 34.39999997615814,
+    "sceneCompile": 674.8999999761581,
+    "renderWarmup": 7637.200000017881,
+    "readinessCheck": 10459.299999982119
+  },
+  "scene": {
+    "backend": "WebGL2",
+    "viewport": [
+      1280,
+      800
+    ],
+    "pixelRatio": 0.75,
+    "initialPixelRatio": 1,
+    "shadowMap": [
+      2048,
+      2048
+    ],
+    "meshes": 21,
+    "triangles": 444844,
+    "treeDrawMeshes": 18,
+    "trees": 331,
+    "terrainVertices": 66564,
+    "oceanVertices": 50625,
+    "postEnabled": true,
+    "ao": false,
+    "bloom": true
+  },
+  "timeToFirstFrameMs": 20975.90000000596,
+  "frames": [
+    {
+      "frame": 1,
+      "elapsedMs": 0,
+      "intervalMs": null,
+      "renderCpuMs": 2.0999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 2,
+      "elapsedMs": 283.2999999999993,
+      "intervalMs": 283.2999999999993,
+      "renderCpuMs": 6.0999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 3,
+      "elapsedMs": 1033.2999999999993,
+      "intervalMs": 750,
+      "renderCpuMs": 3,
+      "quality": "low"
+    },
+    {
+      "frame": 4,
+      "elapsedMs": 1916.5999999999985,
+      "intervalMs": 883.2999999999993,
+      "renderCpuMs": 3.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 5,
+      "elapsedMs": 3116.5999999999985,
+      "intervalMs": 1200,
+      "renderCpuMs": 2.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 6,
+      "elapsedMs": 3133.2999999999993,
+      "intervalMs": 16.700000000000728,
+      "renderCpuMs": 4.199999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 7,
+      "elapsedMs": 4183.0999999999985,
+      "intervalMs": 1049.7999999999993,
+      "renderCpuMs": 3.5,
+      "quality": "low"
+    },
+    {
+      "frame": 8,
+      "elapsedMs": 4849.799999999999,
+      "intervalMs": 666.7000000000007,
+      "renderCpuMs": 3,
+      "quality": "low"
+    },
+    {
+      "frame": 9,
+      "elapsedMs": 5633.0999999999985,
+      "intervalMs": 783.2999999999993,
+      "renderCpuMs": 2.2000000178813934,
+      "quality": "low"
+    },
+    {
+      "frame": 10,
+      "elapsedMs": 6299.799999999999,
+      "intervalMs": 666.7000000000007,
+      "renderCpuMs": 3.0999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 11,
+      "elapsedMs": 7149.799999999999,
+      "intervalMs": 850,
+      "renderCpuMs": 3.2999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 12,
+      "elapsedMs": 8033,
+      "intervalMs": 883.2000000000007,
+      "renderCpuMs": 3.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 13,
+      "elapsedMs": 8866.399999999998,
+      "intervalMs": 833.3999999999978,
+      "renderCpuMs": 2.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 14,
+      "elapsedMs": 9849.599999999999,
+      "intervalMs": 983.2000000000007,
+      "renderCpuMs": 4,
+      "quality": "low"
+    },
+    {
+      "frame": 15,
+      "elapsedMs": 10916.3,
+      "intervalMs": 1066.7000000000007,
+      "renderCpuMs": 2.7999999821186066,
+      "quality": "low"
+    },
+    {
+      "frame": 16,
+      "elapsedMs": 11849.599999999999,
+      "intervalMs": 933.2999999999993,
+      "renderCpuMs": 3.699999988079071,
+      "quality": "low"
+    },
+    {
+      "frame": 17,
+      "elapsedMs": 12949.5,
+      "intervalMs": 1099.9000000000015,
+      "renderCpuMs": 3.9000000059604645,
+      "quality": "low"
+    },
+    {
+      "frame": 18,
+      "elapsedMs": 13899.5,
+      "intervalMs": 950,
+      "renderCpuMs": 2.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 19,
+      "elapsedMs": 14832.699999999997,
+      "intervalMs": 933.1999999999971,
+      "renderCpuMs": 4.5999999940395355,
+      "quality": "low"
+    },
+    {
+      "frame": 20,
+      "elapsedMs": 16282.699999999997,
+      "intervalMs": 1450,
+      "renderCpuMs": 2,
+      "quality": "low"
+    },
+    {
+      "frame": 21,
+      "elapsedMs": 16399.4,
+      "intervalMs": 116.70000000000437,
+      "renderCpuMs": 3,
+      "quality": "low"
+    }
+  ],
+  "summary": null,
+  "complete": false,
+  "qualityChanges": [
+    {
+      "atMs": 2466.5,
+      "level": "balanced",
+      "pixelRatio": 0.75,
+      "aoEnabled": true,
+      "medianMs": 1233.25,
+      "elapsedMs": 2466.5
+    },
+    {
+      "atMs": 6116.5,
+      "level": "low",
+      "pixelRatio": 0.75,
+      "aoEnabled": false,
+      "medianMs": 916.6000000000004,
+      "elapsedMs": 2616.6000000000004
+    }
+  ],
+  "loading": {
+    "stages": [
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 1,
+        "atMs": 189.59999999403954
+      },
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 2,
+        "atMs": 290.5
+      },
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 2,
+        "atMs": 382.5
+      },
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 4.762499999999999,
+        "atMs": 414.90000000596046
+      },
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 7.5249999999999995,
+        "atMs": 524.5999999940395
+      },
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 10.2875,
+        "atMs": 549.9000000059605
+      },
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 13.049999999999999,
+        "atMs": 567.5
+      },
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 15.8125,
+        "atMs": 672.5999999940395
+      },
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 18.575,
+        "atMs": 775.8000000119209
+      },
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 21.337500000000002,
+        "atMs": 820.9000000059605
+      },
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 24.099999999999998,
+        "atMs": 875.4000000059605
+      },
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 28,
+        "atMs": 891.3000000119209
+      },
+      {
+        "stage": "trees",
+        "message": "Placing trees",
+        "percent": 28,
+        "atMs": 892.0999999940395
+      },
+      {
+        "stage": "trees",
+        "message": "Placing trees",
+        "percent": 29.428571428571427,
+        "atMs": 910.4000000059605
+      },
+      {
+        "stage": "trees",
+        "message": "Placing trees",
+        "percent": 30.857142857142858,
+        "atMs": 926.6999999880791
+      },
+      {
+        "stage": "trees",
+        "message": "Placing trees",
+        "percent": 32.285714285714285,
+        "atMs": 943.1999999880791
+      },
+      {
+        "stage": "trees",
+        "message": "Placing trees",
+        "percent": 33.714285714285715,
+        "atMs": 959.6999999880791
+      },
+      {
+        "stage": "trees",
+        "message": "Placing trees",
+        "percent": 35.142857142857146,
+        "atMs": 976.0999999940395
+      },
+      {
+        "stage": "trees",
+        "message": "Placing trees",
+        "percent": 36.57142857142857,
+        "atMs": 992.6999999880791
+      },
+      {
+        "stage": "trees",
+        "message": "Placing trees",
+        "percent": 38,
+        "atMs": 1009.5
+      },
+      {
+        "stage": "renderer",
+        "message": "Starting the renderer",
+        "percent": 40,
+        "atMs": 1026
+      },
+      {
+        "stage": "terrain",
+        "message": "Building terrain and coastlines",
+        "percent": 46,
+        "atMs": 1087.800000011921
+      },
+      {
+        "stage": "trees",
+        "message": "Building forest canopies",
+        "percent": 51,
+        "atMs": 1206.0999999940395
+      },
+      {
+        "stage": "water",
+        "message": "Preparing the ocean",
+        "percent": 56,
+        "atMs": 1224.300000011921
+      },
+      {
+        "stage": "water",
+        "message": "Compiling water",
+        "percent": 63,
+        "atMs": 1257.699999988079
+      },
+      {
+        "stage": "post",
+        "message": "Compiling terrain and lighting",
+        "percent": 70,
+        "atMs": 1293.4000000059605
+      },
+      {
+        "stage": "post",
+        "message": "Compiling post-processing",
+        "percent": 78,
+        "atMs": 1969.300000011921
+      },
+      {
+        "stage": "warmup",
+        "message": "Warming up the island",
+        "percent": 86,
+        "atMs": 6840.300000011921
+      },
+      {
+        "stage": "warmup",
+        "message": "Warming up the island",
+        "percent": 86,
+        "atMs": 8273.90000000596
+      },
+      {
+        "stage": "warmup",
+        "message": "Warming up the island",
+        "percent": 86,
+        "atMs": 9591
+      },
+      {
+        "stage": "settling",
+        "message": "Checking frame rate",
+        "percent": 92,
+        "atMs": 9624.90000000596
+      }
+    ],
+    "windows": [
+      {
+        "atMs": 19990.59999999404,
+        "quality": "low",
+        "medianMs": 816.7000000000007,
+        "p95Ms": 899.9000000000015,
+        "elapsedMs": 4216.399999999998,
+        "samples": 5,
+        "ready": false
+      }
+    ],
+    "enteredAtMs": 20101.09999999404,
+    "entry": "manual"
+  },
+  "capture": {
+    "viewport": [
+      1280,
+      800
+    ],
+    "deviceScaleFactor": 1,
+    "softwareRenderer": true,
+    "coldBrowserProfile": true,
+    "label": "seed 42 · WebGL2",
+    "consoleErrors": [],
+    "manuallyEntered": true,
+    "loading": {}
+  }
+}

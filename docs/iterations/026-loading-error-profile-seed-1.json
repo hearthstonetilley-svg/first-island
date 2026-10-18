@@ -1,0 +1,172 @@
+{
+  "context": {
+    "seed": 1,
+    "forceWebGL2": false,
+    "postEnabled": true,
+    "qualityLocked": false
+  },
+  "phasesMs": {
+    "worldGeneration": 648.8000000119209
+  },
+  "scene": {},
+  "timeToFirstFrameMs": null,
+  "frames": [],
+  "summary": null,
+  "complete": false,
+  "qualityChanges": [],
+  "loading": {
+    "stages": [
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 1,
+        "atMs": 98.40000000596046
+      },
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 2,
+        "atMs": 199.09999999403954
+      },
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 2,
+        "atMs": 299.69999998807907
+      },
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 4.762499999999999,
+        "atMs": 317.40000000596046
+      },
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 7.5249999999999995,
+        "atMs": 325.5
+      },
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 10.2875,
+        "atMs": 345.59999999403954
+      },
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 13.049999999999999,
+        "atMs": 454.5
+      },
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 15.8125,
+        "atMs": 559.5999999940395
+      },
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 18.575,
+        "atMs": 626.6999999880791
+      },
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 21.337500000000002,
+        "atMs": 676.6999999880791
+      },
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 24.099999999999998,
+        "atMs": 698.9000000059605
+      },
+      {
+        "stage": "terrain",
+        "message": "Generating terrain",
+        "percent": 28,
+        "atMs": 726.4000000059605
+      },
+      {
+        "stage": "trees",
+        "message": "Placing trees",
+        "percent": 28,
+        "atMs": 727.5
+      },
+      {
+        "stage": "trees",
+        "message": "Placing trees",
+        "percent": 29.428571428571427,
+        "atMs": 733
+      },
+      {
+        "stage": "trees",
+        "message": "Placing trees",
+        "percent": 30.857142857142858,
+        "atMs": 748.1999999880791
+      },
+      {
+        "stage": "trees",
+        "message": "Placing trees",
+        "percent": 32.285714285714285,
+        "atMs": 764.9000000059605
+      },
+      {
+        "stage": "trees",
+        "message": "Placing trees",
+        "percent": 33.714285714285715,
+        "atMs": 781.4000000059605
+      },
+      {
+        "stage": "trees",
+        "message": "Placing trees",
+        "percent": 35.142857142857146,
+        "atMs": 797.6999999880791
+      },
+      {
+        "stage": "trees",
+        "message": "Placing trees",
+        "percent": 36.57142857142857,
+        "atMs": 814.6999999880791
+      },
+      {
+        "stage": "trees",
+        "message": "Placing trees",
+        "percent": 38,
+        "atMs": 831.5999999940395
+      },
+      {
+        "stage": "renderer",
+        "message": "Starting the renderer",
+        "percent": 40,
+        "atMs": 848
+      }
+    ],
+    "windows": [],
+    "enteredAtMs": null,
+    "entry": null
+  },
+  "capture": {
+    "viewport": [
+      1280,
+      800
+    ],
+    "deviceScaleFactor": 1,
+    "softwareRenderer": true,
+    "coldBrowserProfile": true,
+    "label": "seed 1 · WebGL2 initialization failed. Enable graphics acceleration and reload.",
+    "consoleErrors": [
+      "Island startup failed: Error: WebGL2 initialization failed. Enable graphics acceleration and reload.\n    at initializeRenderer (http://localhost:5173/src/render/startup.ts:48:9)\n    at async createIslandScene (http://localhost:5173/src/render/scene.ts?t=1792281637403:270:20)\n    at async http://localhost:5173/src/main.ts?t=1792281777723:48:18",
+      "TypeError: Cannot read properties of null (reading 'getSupportedExtensions')\n    at new WebGLExtensions (http://localhost:5173/node_modules/.vite/deps/chunk-DKLN24KV.js?v=8ae354e8:31623:40)\n    at WebGLBackend.init (http://localhost:5173/node_modules/.vite/deps/chunk-DKLN24KV.js?v=8ae354e8:32087:23)\n    at http://localhost:5173/node_modules/.vite/deps/chunk-DKLN24KV.js?v=8ae354e8:26234:27",
+      "TypeError: Cannot read properties of null (reading 'getSupportedExtensions')\n    at new WebGLExtensions (http://localhost:5173/node_modules/.vite/deps/chunk-DKLN24KV.js?v=8ae354e8:31623:40)\n    at WebGLBackend.init (http://localhost:5173/node_modules/.vite/deps/chunk-DKLN24KV.js?v=8ae354e8:32087:23)\n    at http://localhost:5173/node_modules/.vite/deps/chunk-DKLN24KV.js?v=8ae354e8:26229:23\n    at new Promise (<anonymous>)\n    at WebGPURenderer.init (http://localhost:5173/node_modules/.vite/deps/chunk-DKLN24KV.js?v=8ae354e8:26226:25)\n    at http://localhost:5173/src/render/startup.ts:27:61\n    at async attempt (http://localhost:5173/src/render/startup.ts:37:18)\n    at async initializeRenderer (http://localhost:5173/src/render/startup.ts:44:14)\n    at async createIslandScene (http://localhost:5173/src/render/scene.ts?t=1792281637403:270:20)\n    at async http://localhost:5173/src/main.ts?t=1792281777723:48:18"
+    ],
+    "manuallyEntered": false,
+    "loading": {
+      "state": "error",
+      "stage": "renderer",
+      "status": "The island could not start",
+      "percent": 40
+    }
+  }
+}

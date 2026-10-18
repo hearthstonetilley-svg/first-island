@@ -1,0 +1,84 @@
+{
+  "context": {
+    "seed": 1,
+    "forceWebGL2": true,
+    "postEnabled": true
+  },
+  "phasesMs": {
+    "worldGeneration": 67.80000001192093,
+    "rendererInit": 135.40000000596046,
+    "sceneBuild": 129,
+    "initialRender": 3963.199999988079
+  },
+  "scene": {
+    "backend": "WebGL2",
+    "viewport": [
+      1280,
+      800
+    ],
+    "pixelRatio": 1,
+    "shadowMap": [
+      2048,
+      2048
+    ],
+    "meshes": 21,
+    "triangles": 410240,
+    "treeDrawMeshes": 18,
+    "trees": 299,
+    "terrainVertices": 66564,
+    "oceanVertices": 50625,
+    "postEnabled": true,
+    "ao": true,
+    "bloom": true
+  },
+  "timeToFirstFrameMs": 4429.899999976158,
+  "frames": [
+    {
+      "frame": 1,
+      "elapsedMs": 0,
+      "intervalMs": null,
+      "renderCpuMs": 4.199999988079071,
+      "quality": "high"
+    },
+    {
+      "frame": 2,
+      "elapsedMs": 0.007999999999810825,
+      "intervalMs": 0.007999999999810825,
+      "renderCpuMs": 3.7999999821186066,
+      "quality": "high"
+    },
+    {
+      "frame": 3,
+      "elapsedMs": 1299.9080000000004,
+      "intervalMs": 1299.9000000000005,
+      "renderCpuMs": 3.5,
+      "quality": "high"
+    },
+    {
+      "frame": 4,
+      "elapsedMs": 1466.6080000000002,
+      "intervalMs": 166.69999999999982,
+      "renderCpuMs": 3.4000000059604645,
+      "quality": "high"
+    },
+    {
+      "frame": 5,
+      "elapsedMs": 2183.2079999999996,
+      "intervalMs": 716.5999999999995,
+      "renderCpuMs": 4.899999976158142,
+      "quality": "high"
+    }
+  ],
+  "summary": null,
+  "complete": false,
+  "capture": {
+    "viewport": [
+      1280,
+      800
+    ],
+    "deviceScaleFactor": 1,
+    "softwareRenderer": true,
+    "coldBrowserProfile": true,
+    "label": "seed 1 · WebGL2"
+  }
+}

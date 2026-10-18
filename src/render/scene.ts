@@ -14,6 +14,10 @@ import { ao } from 'three/addons/tsl/display/GTAONode.js';
 import { sampleSlope, TreeData, TreeKind, WorldData } from '../world/generate';
 import { initializeRenderer } from './startup';
 import { createBroadleafParts, TreePart } from './broadleaf';
+import { FrameDiagnostics } from './diagnostics';
+import { QualityChange } from './quality';
+import { warmRenderer } from './warmup';
+import { LoadingProgress, paintLoading } from '../ui/loading';
 
 const SUN_DIRECTION = new Vector3(-0.82, 0.22, -0.53).normalize();
 
@@ -163,7 +167,7 @@ function addTreeParts(scene: Scene, selected: TreeData[], parts: TreePart[], mat
   }
 }
 
-function addOcean(scene: Scene, world: WorldData): { time: ReturnType<typeof uniform> } {
+function addOcean(scene: Scene, world: WorldData): { time: ReturnType<typeof uniform>; mesh: Mesh } {
   const geometry = new PlaneGeometry(2, 2, 224, 224);
   geometry.rotateX(-Math.PI / 2);
   const pos = geometry.attributes.position;
@@ -218,8 +222,9 @@ function addOcean(scene: Scene, world: WorldData): { time: ReturnType<typeof uni
   material.colorNode = mix(reflected.add(glints), color('#f3fff1'), foam);
   // Beer-Lambert absorption: sand remains visible only in the shallow water.
   material.opacityNode = max(float(1).sub(exp(depth.mul(-2.5))), float(0.55)).add(foam).clamp(0, 1);
-  scene.add(new Mesh(geometry, material));
-  return { time };
+  const mesh = new Mesh(geometry, material);
+  scene.add(mesh);
+  return { time, mesh };
 }
 
 function addSky(scene: Scene): void {
@@ -234,21 +239,35 @@ function addSky(scene: Scene): void {
   scene.add(new Mesh(new SphereGeometry(900, 48, 24), material));
 }
 
-export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldData, forceWebGL2 = false): Promise<{
+interface SceneOptions {
+  postEnabled?: boolean;
+  diagnostics?: FrameDiagnostics;
+  onProgress?: (progress: LoadingProgress) => Promise<void>;
+  shadowMapSize?: number;
+  pixelRatio?: number;
+}
+
+export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldData, forceWebGL2 = false, options: SceneOptions = {}): Promise<{
   renderer: WebGPURenderer;
   label: string;
   render: (time: number) => void;
   resize: () => void;
+  setQuality: (change: QualityChange) => void;
 }> {
   // Keep pending WebGPU initialization off the displayed/fallback canvas. Its
   // adapter request cannot be cancelled and may finish after the timeout.
+  await options.onProgress?.({ stage: 'renderer', message: 'Starting the renderer', percent: 40 });
+  const rendererStarted = performance.now();
   const placeholder = canvas;
   const renderer = await initializeRenderer((forceWebGL) => new WebGPURenderer({
     canvas: placeholder.cloneNode(false) as HTMLCanvasElement,
     antialias: true,
     forceWebGL,
   }), forceWebGL2);
+  options.diagnostics?.phase('rendererInit', performance.now() - rendererStarted);
+  const buildStarted = performance.now();
   canvas = renderer.domElement;
+  canvas.style.visibility = 'hidden';
   placeholder.replaceWith(canvas);
 
   const scene = new Scene();
@@ -317,16 +336,19 @@ export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldD
     updateCamera();
   }, { passive: false });
 
+  await options.onProgress?.({ stage: 'terrain', message: 'Building terrain and coastlines', percent: 46 });
   addSky(scene);
   addTerrain(scene, world);
+  await options.onProgress?.({ stage: 'trees', message: 'Building forest canopies', percent: 51 });
   const treeTime = uniform(0);
   for (const kind of ['pine', 'broadleaf', 'palm'] as const) addTreeKind(scene, world.trees, kind, treeTime);
+  await options.onProgress?.({ stage: 'water', message: 'Preparing the ocean', percent: 56 });
   const ocean = addOcean(scene, world);
   scene.add(new HemisphereLight('#c5defc', '#73654b', 3));
   const sun = new DirectionalLight('#ffe1a6', 3.2);
   sun.position.copy(SUN_DIRECTION).multiplyScalar(100);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.mapSize.set(options.shadowMapSize ?? 2048, options.shadowMapSize ?? 2048);
   sun.shadow.radius = 3;
   sun.shadow.bias = -0.00015;
   sun.shadow.normalBias = 0.035;
@@ -339,26 +361,108 @@ export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldD
   scene.add(sun);
 
   const label = (renderer.backend as { isWebGLBackend?: boolean }).isWebGLBackend ? 'WebGL2' : 'WebGPU';
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+  renderer.setPixelRatio(options.pixelRatio ?? Math.min(devicePixelRatio, 1.5));
   renderer.setSize(innerWidth, innerHeight);
   renderer.outputColorSpace = SRGBColorSpace;
   renderer.toneMapping = ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1;
   renderer.shadowMap.enabled = true;
 
-  const post = new PostProcessing(renderer);
-  const scenePass = pass(scene, camera);
-  scenePass.setMRT(mrt({ output, normal: normalView }));
-  const sceneColor = scenePass.getTextureNode('output');
-  const occlusion = ao(scenePass.getTextureNode('depth'), scenePass.getTextureNode('normal'), camera);
-  occlusion.resolutionScale = 0.5;
-  occlusion.samples.value = 8;
-  occlusion.radius.value = 0.55;
-  occlusion.thickness.value = 1;
-  // Gentle contact shading; HDR bloom is restricted to sun and water highlights.
-  const shaded = sceneColor.mul(mix(float(1), occlusion.getTextureNode().r, float(0.35)));
-  post.outputNode = shaded.add(bloom(sceneColor, 0.16, 0.4, 1.5));
-  post.render();
+  options.diagnostics?.phase('sceneBuild', performance.now() - buildStarted);
+  let draw: () => void = () => { renderer.render(scene, camera); };
+  let drawWithoutAO = draw;
+  let compileScene = () => renderer.compileAsync(scene, camera);
+  let compileWater = () => renderer.compileAsync(ocean.mesh, camera, scene);
+
+  if (options.postEnabled !== false) {
+    const post = new PostProcessing(renderer);
+    const scenePass = pass(scene, camera);
+    scenePass.setMRT(mrt({ output, normal: normalView }));
+    const sceneColor = scenePass.getTextureNode('output');
+    const occlusion = ao(scenePass.getTextureNode('depth'), scenePass.getTextureNode('normal'), camera);
+    occlusion.resolutionScale = 0.5;
+    occlusion.samples.value = 8;
+    occlusion.radius.value = 0.55;
+    occlusion.thickness.value = 1;
+    // Gentle contact shading; HDR bloom is restricted to sun and water highlights.
+    const shaded = sceneColor.mul(mix(float(1), occlusion.getTextureNode().r, float(0.35)));
+    const glow = bloom(sceneColor, 0.16, 0.4, 1.5);
+    post.outputNode = shaded.add(glow);
+    const withoutAO = new PostProcessing(renderer);
+    // Share scene and bloom nodes; bypass GTAO entirely in the low quality graph.
+    withoutAO.outputNode = sceneColor.add(glow);
+    draw = () => post.render();
+    drawWithoutAO = () => withoutAO.render();
+    // PassNode compiles the scene against its MRT target via renderer.compileAsync.
+    compileScene = () => scenePass.compileAsync(renderer);
+    compileWater = async () => {
+      const target = renderer.getRenderTarget();
+      const activeMRT = renderer.getMRT();
+      renderer.setRenderTarget(scenePass.renderTarget);
+      renderer.setMRT(scenePass.getMRT());
+      try { await renderer.compileAsync(ocean.mesh, camera, scene); }
+      finally { renderer.setRenderTarget(target); renderer.setMRT(activeMRT); }
+    };
+  }
+  if (options.diagnostics) {
+    let meshes = 0;
+    let triangles = 0;
+    let treeDrawMeshes = 0;
+    scene.traverse((object) => {
+      if (!(object instanceof Mesh)) return;
+      meshes += 1;
+      const count = object instanceof InstancedMesh ? object.count : 1;
+      if (object instanceof InstancedMesh) treeDrawMeshes += 1;
+      triangles += (object.geometry.index?.count ?? object.geometry.attributes.position.count) / 3 * count;
+    });
+    options.diagnostics.report.scene = {
+      backend: label, viewport: [innerWidth, innerHeight], pixelRatio: renderer.getPixelRatio(), initialPixelRatio: renderer.getPixelRatio(),
+      shadowMap: [sun.shadow.mapSize.x, sun.shadow.mapSize.y], meshes, triangles, treeDrawMeshes,
+      trees: world.trees.length, terrainVertices: (world.resolution + 2) ** 2, oceanVertices: 225 ** 2,
+      postEnabled: options.postEnabled !== false, ao: options.postEnabled !== false, bloom: options.postEnabled !== false,
+    };
+  }
+  let warmupStarted = 0;
+  await warmRenderer({
+    compile: async (isExpired) => {
+      await options.onProgress?.({ stage: 'water', message: 'Compiling water', percent: 63 });
+      if (isExpired()) return;
+      const waterCompileStarted = performance.now();
+      await compileWater();
+      if (isExpired()) return;
+      options.diagnostics?.phase('waterCompile', performance.now() - waterCompileStarted);
+      await options.onProgress?.({ stage: 'post', message: 'Compiling terrain and lighting', percent: 70 });
+      if (isExpired()) return;
+      const compileStarted = performance.now();
+      await compileScene();
+      if (isExpired()) return;
+      options.diagnostics?.phase('sceneCompile', performance.now() - compileStarted);
+      await options.onProgress?.({ stage: 'post', message: options.postEnabled !== false
+        ? 'Compiling post-processing' : 'Preparing the final image', percent: 78 });
+      if (isExpired()) return;
+      warmupStarted = performance.now();
+    },
+    // PostProcessing has no public compileAsync. Hidden renders compile its full
+    // graph, including shadows, AO, bloom and the output transform. Warm both
+    // quality graphs, then fence the GPU before revealing the final high frame.
+    draws: options.postEnabled !== false ? [drawWithoutAO, draw, draw] : [draw, draw],
+    waitForGPU: async () => {
+      await renderer.waitForGPU();
+      await options.onProgress?.({ stage: 'warmup', message: 'Warming up the island', percent: 86 });
+    },
+    dispose: () => renderer.dispose(),
+  });
+  options.diagnostics?.phase('renderWarmup', performance.now() - warmupStarted);
+  canvas.style.visibility = 'visible';
+  await paintLoading();
+
+  const setQuality = (change: QualityChange) => {
+    renderer.setPixelRatio(change.pixelRatio);
+    draw = change.aoEnabled ? draw : drawWithoutAO;
+    if (options.diagnostics) Object.assign(options.diagnostics.report.scene, {
+      pixelRatio: change.pixelRatio, ao: change.aoEnabled,
+    });
+  };
 
   const resize = () => {
     camera.aspect = innerWidth / innerHeight;
@@ -368,7 +472,7 @@ export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldD
   const render = (time: number) => {
     treeTime.value = time * 0.001;
     ocean.time.value = time * 0.001;
-    post.render();
+    draw();
   };
-  return { renderer, label, render, resize };
+  return { renderer, label, render, resize, setQuality };
 }
