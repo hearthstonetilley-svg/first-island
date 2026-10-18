@@ -40,6 +40,13 @@ describe('hypothesis marking', () => {
     expect(mark('I think it makes sparks', 'sparks')).toBe('correct');
     expect(mark('probably fire', 'fire')).toBe('correct');
   });
+  it('rejects contradictions and repeated negation (sixth audit)', () => {
+    expect(mark('cord not cord', 'cord')).toBe('missing');
+    expect(mark('cord. Not cord.', 'cord')).toBe('missing');
+    expect(mark('not not cord', 'cord')).toBe('missing');
+    expect(mark('cord cord', 'cord')).toBe('missing');
+    expect(mark('Sparks.', 'sparks')).toBe('correct');
+  });
   it('marks plain predictions', () => {
     expect(mark('sparks', 'sparks')).toBe('correct');
     expect(mark('a spark', 'sparks')).toBe('correct');

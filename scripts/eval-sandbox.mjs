@@ -47,7 +47,7 @@ let buffer = '';
       if (!data) continue;
       const d = JSON.parse(data);
       if (kind === 'state') { seen.last = d; seen.states++; seen.agents = d.agents.length; seen.maxDay = Math.max(seen.maxDay, d.world.daylight); seen.minDay = Math.min(seen.minDay, d.world.daylight); for (const a of d.agents) seen.minEnergy = Math.min(seen.minEnergy, a.energy); for (const a of d.agents) if (a.council === null) seen.maxCarry = Math.max(seen.maxCarry, a.inventory.length); }
-      if (kind === 'event') { seen.types.add(d.type); if (/^sets down /.test(d.text)) seen.drops++; if (['action', 'result', 'thought', 'say'].includes(d.type)) seen.actions++; if (/^gathers (sand|shell|seaweed|driftwood|water|wood|plant fibre|resin|fruit|clay|dry grass|red berries|flint|stone|pyrite)$/.test(d.text)) seen.realItems++; if (d.type === 'hypothesis') seen.hyps++; if (/^(eats|tries to eat) /.test(d.text)) seen.eats++; if (d.type === 'council_merge' && /^ADJOURNED/.test(d.text)) seen.adjourned = true; if (d.type === 'ledger_mismatch') seen.ledger = d.text; if (d.type === 'council_open') seen.councilOpens++; if (d.type === 'ledger_check') seen.ledgerChecks++; }
+      if (kind === 'event') { seen.types.add(d.type); if (/^sets down /.test(d.text)) { seen.drops++; if (seen.watchDrop && d.agent === seen.watchDrop.agent && d.text === `sets down ${seen.watchDrop.item}`) seen.droppedBy = d.agent; } if (['action', 'result', 'thought', 'say'].includes(d.type)) seen.actions++; if (/^gathers (sand|shell|seaweed|driftwood|water|wood|plant fibre|resin|fruit|clay|dry grass|red berries|flint|stone|pyrite)$/.test(d.text)) seen.realItems++; if (d.type === 'hypothesis') seen.hyps++; if (/^(eats|tries to eat) /.test(d.text)) seen.eats++; if (d.type === 'council_merge' && /^ADJOURNED/.test(d.text)) seen.adjourned = true; if (d.type === 'ledger_mismatch') seen.ledger = d.text; if (d.type === 'council_open') seen.councilOpens++; if (d.type === 'ledger_check') seen.ledgerChecks++; }
     }
   }
 })().catch(() => {});
@@ -156,8 +156,9 @@ check('a council opens, splits and merges', ['council_open', 'council_split', 'c
 await sleep(30000);
 // Deterministic: tell an agent that is carrying something to set one thing down.
 const carrier = seen.last?.agents.find(a => a.inventory.length && a.council === null && !a.collapsed);
-if (carrier) { await api('/api/control', { cmd: 'act', agent: carrier.id, decision: { action: 'drop', target: carrier.inventory[0] } }); await sleep(1500); }
-check('agents can set things down', seen.types.has('action') && seen.drops > 0, `${seen.drops} set down`);
+seen.droppedBy = null;
+if (carrier) { seen.watchDrop = { agent: carrier.id, item: carrier.inventory[0] }; await api('/api/control', { cmd: 'act', agent: carrier.id, decision: { action: 'drop', target: carrier.inventory[0] } }); await sleep(1500); }
+check('the set-down action itself works', !!carrier && seen.droppedBy === carrier.id, carrier ? `${carrier.id} set down ${carrier.inventory[0]}: ${seen.droppedBy === carrier.id ? 'seen' : 'not seen'}` : 'nobody was carrying anything');
 check('the carry law holds (six or fewer)', seen.maxCarry <= 6, `max carried ${seen.maxCarry} over ${seen.states} states`);
 check('knowledge passes between agents', seen.types.has('learn'));
 check('materials are real-world things', seen.realItems > 0, `${seen.realItems} gathers of real materials`);

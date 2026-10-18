@@ -29,6 +29,8 @@ export function readPrediction(raw: unknown, names: string[]): Prediction {
   if (typeof raw !== 'string') return { kind: 'missing' };
   // Punctuation is read before it is cleaned away: "cord, not fire" is two claims.
   if (/[,;/:()|\-]/.test(raw)) return { kind: 'missing' };
+  // More than one sentence is more than one claim; a single closing full stop is fine.
+  if (/[.!?]\s*\S/.test(raw.trim())) return { kind: 'missing' };
   let t = clean(raw);
   if (!t) return { kind: 'missing' };
   // "Nothing" in any of its forms is checked first, before "no" is read as negation.
@@ -41,7 +43,10 @@ export function readPrediction(raw: unknown, names: string[]): Prediction {
   // Negation can sit anywhere before the outcome: "not cord", "I expect not cord", "it will not make fire".
   let negated = false;
   const neg = /\b(not|no|never|won't|wont|cannot|can't|doesn't|does not|will not)\b/;
-  if (neg.test(t)) { negated = true; t = t.replace(new RegExp(neg.source, 'g'), ' '); }
+  const negations = t.match(new RegExp(neg.source, 'g'))?.length ?? 0;
+  // Two negations cancel or contradict: either way not one readable claim.
+  if (negations > 1) return { kind: 'missing' };
+  if (negations === 1) { negated = true; t = t.replace(new RegExp(neg.source, 'g'), ' '); }
   t = t.replace(STRIP, ' ').replace(/\s+/g, ' ').trim();
   if (/^(nothing|none)$/.test(t) || (!t && negated)) return negated ? { kind: 'something' } : { kind: 'nothing' };
   if (!t || VAGUE.test(t)) return { kind: 'missing' };
@@ -50,12 +55,14 @@ export function readPrediction(raw: unknown, names: string[]): Prediction {
   // Find every outcome the sentence names (longest words first, each span used once).
   // More than one distinct outcome is not one testable claim: reject it.
   const found = new Set<string>();
+  let mentions = 0;
   let rest = ` ${t} `;
   for (const [word, name] of candidates) {
     const re = new RegExp(` ${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} `);
-    while (re.test(rest)) { found.add(name); rest = rest.replace(re, ' | '); }
+    while (re.test(rest)) { found.add(name); mentions++; rest = rest.replace(re, ' | '); }
   }
-  if (found.size > 1) return { kind: 'missing' };
+  // Naming an outcome twice ("cord not cord", "cord cord") is not one claim either.
+  if (found.size > 1 || mentions > 1) return { kind: 'missing' };
   // Anything left over that is neither an outcome nor a filler word is a second claim we cannot read
   // ("cord steel", "cord not nothing"): reject rather than guess.
   if (found.size === 1 && rest.replace(/\|/g, ' ').replace(/\b(nothing|none)\b/g, ' X ').trim().split(/\s+/).filter(w => w && w !== '|').length > 0) return { kind: 'missing' };
