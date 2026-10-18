@@ -181,13 +181,12 @@ check('agents explore and name places themselves', seen.types.has('explored') &&
 check('the map panel shows their map', await page.evaluate(() => /explored/.test(document.querySelector('.map-score')?.textContent ?? '')));
 // Deterministic disagreement: pick two agents who are awake and outside any council, clear the
 // pair cooldown, teach the listener one result, and have the speaker contradict it beside them.
-// Wait until two agents are awake and outside councils, then hold them still (no thinking, no
-// skill) while the fixture runs, so nothing else can pull them away.
+// Reserve two free agents atomically on the server: they stop thinking, and no other agent's
+// council can recruit them while the fixture runs.
 let free = [];
-for (let i = 0; i < 40; i++) { free = (seen.last?.agents ?? []).filter(a => a.council === null && !a.collapsed && !a.thinking).map(a => a.id); if (free.length >= 2) break; await sleep(500); }
+for (let i = 0; i < 40 && free.length < 2; i++) { free = (await (await api('/api/control', { cmd: 'reserve', count: 2 })).json()).reserved ?? []; if (free.length < 2) await sleep(500); }
 const [listener, speaker] = free;
-check('two agents are free for the disagreement fixture', free.length >= 2, `${free.length} free`);
-await api('/api/control', { cmd: 'wake', agents: [listener, speaker] });
+check('two agents are free for the disagreement fixture', free.length >= 2, `${free.length} reserved`);
 await api('/api/control', { cmd: 'know', agent: listener, fact: 'flint + pyrite makes sparks' });
 await api('/api/control', { cmd: 'meet', agent: speaker, to: listener });
 const dBefore = (seen.disagreements ?? []).length, oBefore = (seen.opens ?? []).length;

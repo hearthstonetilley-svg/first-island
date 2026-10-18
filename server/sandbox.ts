@@ -113,6 +113,8 @@ interface SandboxAgent {
   hyp?: { tried: number; right: number; missing?: number; untested?: number };
   energy?: number; sheltered?: boolean; collapsedUntil?: number; mindEpoch?: number;
   visited?: number[]; places?: number[];
+  /** Test fixtures only: until this time the agent can only join a council a reserved agent chairs. */
+  reservedUntil?: number;
   /** Who made the decision being carried out: the model, or the scripted fallback. */
   source?: Mind;
 }
@@ -607,7 +609,8 @@ async function council(chair: SandboxAgent, problem: string, observer = false) {
   const epoch = pauseEpoch;
   let dealtPot: Array<{ item: Item; owner: SandboxAgent; home: boolean }> = [];
   if (chair.collapsedUntil || chair.council !== null) return;
-  const members = [chair, ...near(chair).filter(o => o.council === null && !o.collapsedUntil)].slice(0, 6);
+  const reserved = (o: SandboxAgent) => !!o.reservedUntil && o.reservedUntil > Date.now();
+  const members = [chair, ...near(chair).filter(o => o.council === null && !o.collapsedUntil && (!reserved(o) || reserved(chair)))].slice(0, 6);
   if (members.length < 2) { chair.lastResult = 'Nobody is near enough to hold a council.'; emit('result', 'calls a council but nobody is near', chair.id); return; }
   const rec: CouncilRecord = { id: councils.length + 1, chair: chair.id, members: members.map(m => m.id), problem: scrub(problem).slice(0, 160), mode: '',
     parts: [], winner: null, summary: '', calls: 0, openedAt: Date.now(), observer, epoch: pauseEpoch };
@@ -846,7 +849,7 @@ createServer(async (req, res) => {
   if (req.url === '/api/usage') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(usage())); return; }
   if (req.url === '/api/councils') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(councils)); return; }
   if (req.url === '/api/control' && req.method === 'POST') {
-    const b = await body(req);
+    const b = await body(req), reply: Record<string, unknown> = {};
     if (b.cmd === 'start') { running = true; emit('system', 'The island wakes.'); }
     if (b.cmd === 'pause') { running = false; pauseEpoch++; emit('system', 'Paused.'); }
     // Test hook (eval only): feed an agent an arbitrary, possibly malformed, decision.
@@ -854,7 +857,14 @@ createServer(async (req, res) => {
     if (process.env.SANDBOX_TEST === '1' && b.cmd === 'know') { const ag = agents[Number(b.agent)]; if (ag && typeof b.fact === 'string') learn(ag, factId(b.fact)); }
     // Test hook: place an agent next to another.
     if (process.env.SANDBOX_TEST === '1' && b.cmd === 'meet') { const ag = agents[Number(b.agent)], to = agents[Number(b.to)]; if (ag && to) { ag.node = to.node; ag.x = to.x; ag.y = to.y; ag.z = to.z; ag.path = []; } }
-    if (process.env.SANDBOX_TEST === '1' && b.cmd === 'wake') { for (const k of Object.keys(lastDisagreement)) delete lastDisagreement[k]; for (const i of Array.isArray(b.agents) ? b.agents : []) { const ag = agents[Number(i)]; if (ag && !ag.collapsedUntil) { ag.energy = 1; ag.running = null; ag.path = []; ag.busyUntil = Date.now() + 15000; ag.nextThink = Date.now() + 15000; } } }
+    // Test hook: atomically reserve free agents for a fixture. They stop thinking, and only a
+    // council chaired by a reserved agent may recruit them, until the reservation ends.
+    if (process.env.SANDBOX_TEST === '1' && b.cmd === 'reserve') {
+      for (const k of Object.keys(lastDisagreement)) delete lastDisagreement[k];
+      const until = Date.now() + 15000, picked = agents.filter(a => a.council === null && !a.collapsedUntil && !a.thinking && !(a.reservedUntil && a.reservedUntil > Date.now())).slice(0, Math.max(0, Number(b.count) || 0));
+      for (const a of picked) { a.reservedUntil = until; a.energy = 1; a.running = null; a.path = []; a.busyUntil = until; a.nextThink = until; }
+      reply.reserved = picked.map(a => a.id);
+    }
     if (process.env.SANDBOX_TEST === '1' && b.cmd === 'act') { const ag = agents[Number(b.agent)]; if (ag) try { act(ag, cleanDecision(b.decision)); } catch (err) { console.error('act failed', (err as Error).message); } }
     if (b.cmd === 'council') {
       const a = agents[Number(b.agent)];
@@ -865,7 +875,7 @@ createServer(async (req, res) => {
     if (Array.isArray(b.mix) && b.mix.length === NAMES.length && b.mix.every(m => minds.includes(String(m)))) {
       mix = b.mix.map(String) as Mind[]; emit('system', `Minds mix: ${NAMES.map((n, i) => `${n} ${mix[i]}`).join(', ')}`);
     }
-    res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ running, mindMode }));
+    res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ running, mindMode, ...reply }));
     return;
   }
   res.writeHead(404); res.end();
