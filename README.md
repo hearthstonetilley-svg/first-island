@@ -37,6 +37,7 @@ as much about how the world gets built as about the world itself.
 | v0.2.1 | Round 7, accepted: dark volcanic rock with crevices, softer sun glitter, branched canopies ([review](docs/reviews/v0.2.1.md)) |
 | v0.3.0 | Round 8, accepted: shaders warmed before the first frame, adaptive quality, staged loading screen; build eval 5/5 on WebGL2, WebGPU device-lost bug outstanding ([review](docs/reviews/v0.3.0.md)) |
 | v0.3.1 | Round 9, accepted: a lost WebGPU device now rebuilds on WebGL2 without reloading; build eval 10/10 in both modes ([review](docs/reviews/v0.3.1.md)) |
+| v0.3.2 | Round 10, accepted: the loader measures real play frames and quality steps back up; owner confirmed on real WebGPU hardware ([review](docs/reviews/v0.3.2.md)) |
 
 ## Run it
 

@@ -11,3 +11,13 @@ start". On real hardware a device can be lost at any time (driver reset, sleep, 
 3. The label and FPS counter must never claim a renderer that is not drawing.
 4. Done means `npm run eval` passes in BOTH modes (auto and webgl2), every seed, every run. Run it yourself: it is in
    package.json. Commit each iteration per AGENTS.md. Never push.
+
+## Owner addition: representative readiness and quality recovery
+
+Real hardware reports **WebGPU**, a loader stuck at 97% and about 10 fps with an Enter button, then 80–100 fps
+once entered. The loading measurement incorrectly reduced quality to minimum.
+
+- Measure readiness with normal play rendering: no per-frame GPU completion waits and no expensive overlay effects
+  (including backdrop blur) over the live canvas while measuring.
+- Never reduce quality based on loading-time frames. Re-measure after entry and raise quality again when frames allow.
+- Add a regression test for the quality step-up path. Continue the same documented iteration/commit rules; never push.
