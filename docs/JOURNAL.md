@@ -63,6 +63,21 @@ The owner's reaction: "that's the design equivalent of the Matrix."
   stage 2 is reviewed: for a simulation, a screenshot of dots passes even when the simulation is wrong, so reviews
   read the event logs and population curves instead.
 
+## 18 Oct 2026: the first agents, and what "real agents" means
+
+- The simulation clock shipped on its own (v0.4.0), proven deterministic across separate processes before any body was
+  built on it. Bodies followed: about 20 agents that eat, rest, reproduce and die, driven by simple scripts.
+- **"But the agents are not real agents?"** the owner asked. Right: they are bodies with scripted needs and no thinking.
+  The design held minds back until there was something to think about. The owner pushed on cost and on the swarm:
+  minds should run on "super cost effective" models, split across "claude -p and codex variation loops".
+- A quick test settled feasibility: Haiku through `claude -p` and Luna through `codex exec` each answer in 3 to 4
+  seconds from an isolated, empty folder. It also gave the first leak: shown only "a tall swaying thing with round
+  soft things hanging from it", Haiku replied with "tree" and "fruit". Earth knowledge walks straight in unless
+  the leak eval stops it.
+- **"How do we get to the swarm, the dynamic spider web?"** Through talking, which makes the threads, and councils,
+  where groups choose to split, branch and merge. Underneath, the mind router runs those pieces in parallel: the
+  owner's original torrent of thought, running for real (design section 8a).
+
 ## Next
 
 Stage 2: the simulation clock and the first agents (bodies only, no AI minds yet). See docs/briefs/BRIEF-3-first-agents.md.

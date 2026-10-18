@@ -85,6 +85,34 @@ fibrous. Nothing more specific is coded.
 - Sees only that agent's senses and memory, written as text. Never element names, never code, below layer 4.
 - A fixed per-run budget of mind calls, so runs are affordable and comparable. Spending it is part of the experiment.
 
+### 5.5 The mind router
+The router is an **interface with pluggable backends**. A run records which backend and model answered every call.
+
+**Mind answers are events.** Every mind response is written to the event log with its tick, the prompt it answered,
+and the backend and model that produced it. **Replay reads the recorded answer from the log and never calls a model.**
+This keeps principle 2.4 (every run is reproducible from seed, dials and event log) true once minds exist. The replay
+eval must hold with minds enabled.
+
+**Backends:**
+- **The owner's local setup (owner direction, 18 Oct 2026):** the cheapest capable models through the command-line
+  tools the owner already has, "super cost effective" and split across "claude -p and codex variation loops":
+  Claude Haiku via `claude -p` and GPT Luna at low effort via `codex exec`, rotating so the load is split across two
+  existing plans. Measured on 18 Oct 2026: about 3 to 4 seconds per thought for either. This is a personal, local
+  configuration: other people cannot reproduce a run through it, and the plans' terms must be checked before minds
+  run at volume.
+- **The portable path:** a paid API backend, or a free local open model (for example through Ollama on the owner's
+  GPU, planned as the routine-thought tier). Anyone can run these.
+
+**Requirements for every backend:**
+- **Strict isolation:** an empty working folder, no tools, no settings, no MCP servers, no session persistence, a fixed
+  system prompt. A mind must never see the owner's files, memory or other projects. Isolation is **verified before use**:
+  each isolated mind is asked what it knows about its operator and which projects it knows of, and must answer empty.
+- **Budget and back-off:** a hard cap on calls per usage window and on concurrent calls per backend, with automatic
+  back-off when a plan nears its limit, so minds never starve the owner's other work.
+
+First evidence that the leak eval is essential: asked to act on a senses-only description ("a tall swaying thing with
+round soft things hanging from it"), Haiku answered with "tree" and "fruit" on the first try.
+
 ## 6. Needs meet physics
 
 - **Food:** some materials restore energy, some poison; nutrition is a hidden property. Plants regrow at a dial rate.
@@ -116,6 +144,33 @@ Most simulations plateau. Counter-pressure:
 **Complexity score:** distinct materials made, depth of the longest recipe chain, number of named concepts in use,
 knowledge surviving across generations, structures built.
 
+## 8a. The web and the councils (the swarm)
+
+The project began with an image from the owner: turn one thought process into something like a torrent, cut it
+into pieces, send them off and reassemble them, a dynamic spider web. In this world the web exists twice.
+
+### The social web, inside the world
+- Every message, lesson or demonstration between two agents is a **thread**. Threads strengthen with use, fade when
+  unused and vanish with the agent. The web rewires itself all the time; its shape is a live picture of who thinks
+  with whom, and of how ideas spread.
+- Drawn above the island: threads as lines, thoughts as pulses travelling along them.
+
+### Councils: the swarm, chosen by the society
+- When a group faces a problem too big for one mind (a winter, a boat, a new material), it may hold a **council**.
+- A council can **split** the problem into parts handed to different agents, **branch** by trying competing plans
+  with different agents, and **merge** by keeping what worked and recombining the results.
+- We never code which pattern to use. Agents choose to split, branch or merge, or not. A society that learns to
+  coordinate is an emergent swarm; one that does not is a finding too.
+
+### The compute web, outside the world
+- When a council splits or branches, the mind router runs those pieces as parallel model calls and merges them:
+  the owner's original torrent of thought, running for real underneath the society.
+- Every council is logged: who sat in it, how it split or branched, which branch won, and what it cost in mind calls.
+
+### Measuring it
+- Web shape over time (threads, clusters, bridges between groups), councils held, split and branch counts, and
+  whether councils beat lone agents on the same kind of problem.
+
 ## 9. Rendering contract
 
 - The simulation runs in a **Web Worker** on a fixed tick, independent of frame rate. It can pause, run at 10x, or run
@@ -143,7 +198,7 @@ the answers. So the system is designed as an eval from the start, and an evolvin
 ### 11.1 Three kinds of eval
 1. **Build evals: does the software work?** Run on every pull request: every seed loads (no hang), frames are not
    black or empty, warm-up frame times stay inside a budget, the same seed gives an identical world, the simulation
-   replays identically from its event log.
+   replays identically from its event log, with minds enabled (replay reads recorded mind answers, see 5.5).
 2. **Society evals: how far did they get?** Measured on every run (section 11.3).
 3. **Leak evals: is the discovery real?** Minds' outputs are scanned for concepts their society has not earned: an
    Earth name for something nobody has named yet, a reaction used before it was observed, an element property stated
@@ -177,16 +232,19 @@ a goal of this project (owner decision 7).
 
 ## 12. Build order
 
-- **Now: build evals.** The harness from 11.1, run on every pull request.
+- **Build evals (done, v0.3.0 onward).** The harness from 11.1, run on every pull request.
 - **2a: simulation core.** Worker with a fixed clock, world state, event log, replay from seed. Renderer reads state.
   Replay determinism joins the build evals.
 - **2b: bodies.** Agents with needs, traits, life cycle and the verb set, driven by simple scripted behaviour (no AI
   model). Survival, death, reproduction and inheritance working and visible.
+- **2e: minds, light. Proposed by Claude to move here, ahead of chemistry; owner to confirm.** A handful of agents
+  get a mind through the router (5.5), senses-only, budgeted. Leak evals ship with it, not after. If not confirmed,
+  2e returns to its place after 2d.
 - **2c: chemistry v1.** The seeded chemistry generator (six elements per world), materials, reactions, strike and
   combine giving real results.
 - **2d: building and exposure.** Build layer, support rules, weather and the exposure check. Shelters can now be found.
-- **2e: minds.** The AI model tier, with the senses-only view and a budget. Leak evals ship with it, not after.
-- **2f: knowledge.** Teaching, forgetting at death, records, the idea web.
+- **2f: knowledge.** Speaking, teaching, forgetting at death, records; the social web drawn live.
+- **2g: councils.** Shared problems, split, branch and merge; the compute web through the mind router.
 - Later: boats and other islands, rivals, the director, and the layer 4 gate.
 
 ## 13. Owner decisions (18 Oct 2026)
