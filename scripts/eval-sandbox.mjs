@@ -2,13 +2,13 @@
 // serves the pages, and checks what the owner sees and what the laws require.
 // Exits non-zero on any failure. Screenshots land in eval-results/sandbox/.
 import { spawn } from 'node:child_process';
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer } from 'vite';
 import { chromium } from 'playwright';
 
-const PORT = 8791, WEB = 5191, OUT = 'eval-results/sandbox';
+const PORT = Number(process.env.EVAL_SERVER_PORT ?? 8791), WEB = Number(process.env.EVAL_WEB_PORT ?? 5191), OUT = process.env.EVAL_OUT ?? 'eval-results/sandbox';
 mkdirSync(OUT, { recursive: true });
 const results = [];
 const check = (name, ok, detail = '') => { results.push({ name, ok, detail }); console.log(`${ok ? 'PASS' : 'FAIL'} ${name}${detail ? `: ${detail}` : ''}`); };
@@ -17,8 +17,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 // many seconds, so allow a long time and never fail the run over a picture.
 const shot = (pg, path) => pg.screenshot({ path, timeout: 120000 }).catch(e => console.log(`screenshot skipped: ${path} (${String(e.message).split('\n')[0]})`));
 
+const STATE_DIR = mkdtempSync(join(tmpdir(), 'sandbox-eval-'));
 const server = spawn('npx', ['vite-node', 'server/sandbox.ts'], { stdio: ['ignore', 'pipe', 'pipe'], detached: true,
-  env: { ...process.env, SANDBOX_PORT: String(PORT), SANDBOX_FRESH: '1', MIND_MODE: 'scripted', SANDBOX_STATE_DIR: mkdtempSync(join(tmpdir(), 'sandbox-eval-')),
+  env: { ...process.env, SANDBOX_PORT: String(PORT), SANDBOX_FRESH: '1', MIND_MODE: 'scripted', SANDBOX_STATE_DIR: STATE_DIR,
     // The eval must never spend: both call caps are zero, whatever the mixer is set to.
     MAX_CALLS_PER_MIN: '0', COUNCIL_CALLS_PER_MIN: '0', SANDBOX_TEST: '1', SANDBOX_COUNCIL_DELAY_MS: '1500', SANDBOX_DAY_MS: '60000', SANDBOX_TEST_BAD_PART: '1', SANDBOX_DRAIN: String(1 / 150) } });
 let serverLog = ''; server.stdout.on('data', c => { serverLog += c; }); server.stderr.on('data', c => { serverLog += c; });
@@ -142,7 +143,7 @@ await page.mouse.move(cv.x + cv.width / 2 - 60, cv.y + cv.height / 2, { steps: 4
 check('dragging during a settled group follow takes the camera', (await info()).mode === 'free', (await info()).mode);
 await page.keyboard.press('Escape');
 // Let the glide back to the whole island finish before judging stillness.
-for (let i = 0, prev = null; i < 20; i++) { await sleep(1000); const c = (await info()).camera; if (prev && Math.hypot(c.tx - prev.tx, c.tz - prev.tz) < 1e-4 && Math.abs(c.distance - prev.distance) < 1e-4) break; prev = c; }
+for (let i = 0; i < 90; i++) { await sleep(1000); if (!(await info()).camera.gliding) break; }
 // The camera never moves by itself in island mode: a council must not pull it.
 const still0 = (await info()).camera;
 await page.click('.card >> nth=0');
@@ -154,7 +155,6 @@ check('the council card shows the parts', await page.evaluate(() => document.que
 check('a council opens, splits and merges', ['council_open', 'council_split', 'council_part', 'council_merge'].every(t => seen.types.has(t)), [...seen.types].filter(t => t.startsWith('council')).join(','));
 await sleep(30000);
 check('agents can set things down', seen.types.has('action') && seen.drops > 0, `${seen.drops} set down`);
-check('items are conserved: never duplicated or lost, councils included', !seen.types.has('ledger_mismatch'), seen.ledger ?? 'ledger matched throughout');
 check('the carry law holds (six or fewer)', seen.maxCarry <= 6, `max carried ${seen.maxCarry} over ${seen.states} states`);
 check('knowledge passes between agents', seen.types.has('learn'));
 check('materials are real-world things', seen.realItems > 0, `${seen.realItems} gathers of real materials`);
@@ -202,7 +202,10 @@ for (let k = 0; k < 8 && seen.councilOpens === opensBefore; k++) { await api('/a
 await api('/api/control', { cmd: 'pause' });
 for (let i = 0; i < 20 && !seen.adjourned; i++) await sleep(500);
 check('Pause adjourns a council in progress', seen.adjourned, seen.adjourned ? 'adjourned' : 'no adjournment seen');
-await api('/api/control', { cmd: 'start' });
+await api('/api/control', { cmd: 'start' }); await sleep(3000);
+// Conservation is judged last, after councils (one with a deliberately malformed part) and a cancellation.
+check('a malformed council part was really injected', seen.types.has('test_bad_part'));
+check('items are conserved: never duplicated or lost, councils included', !seen.types.has('ledger_mismatch'), seen.ledger ?? 'ledger matched throughout');
 const spent = await (await api('/api/usage')).json();
 check('the eval spent nothing (zero model calls)', spent.island.calls === 0, `${spent.island.calls} calls`);
 // Pause stops everything: no new actions while paused.
@@ -228,6 +231,31 @@ await web.evaluate(() => window.__WEB__.selectFact(0)); await sleep(800);
 const iso = await web.evaluate(() => ({ lit: window.__WEB__.litLinks, knowers: window.__WEB__.knowers }));
 check('selecting a fact shows only its links', iso.knowers > 0 && iso.lit === iso.knowers, `${iso.lit} links for ${iso.knowers} knowers`);
 await shot(web, `${OUT}/web.png`);
+
+// Restart: a collapsed agent must wake on the restored island clock, not hours later.
+await api('/api/control', { cmd: 'act', agent: 7, decision: { action: 'rest' } });
+await sleep(1000);
+try { process.kill(-server.pid, 'SIGTERM'); } catch { server.kill('SIGTERM'); }
+await sleep(3000);
+const saved = JSON.parse(readFileSync(join(STATE_DIR, 'sandbox-seed-1.json'), 'utf8'));
+saved.agents[7].collapsedUntil = (saved.simMs ?? 0) + 5000; saved.agents[7].energy = 0;
+writeFileSync(join(STATE_DIR, 'sandbox-seed-1.json'), JSON.stringify(saved));
+const again = spawn('npx', ['vite-node', 'server/sandbox.ts'], { stdio: ['ignore', 'pipe', 'pipe'], detached: true,
+  env: { ...process.env, SANDBOX_PORT: String(PORT), MIND_MODE: 'scripted', SANDBOX_STATE_DIR: STATE_DIR, MAX_CALLS_PER_MIN: '0', COUNCIL_CALLS_PER_MIN: '0', SANDBOX_TEST: '1' } });
+let againLog = ''; again.stdout.on('data', c => { againLog += c; }); again.stderr.on('data', c => { againLog += c; });
+for (let i = 0; i < 60 && !againLog.includes('sandbox server on'); i++) await sleep(1000);
+check('the island resumes after a restart', /resumed/.test(againLog), againLog.split('\n')[0]);
+const watcher = await fetch(`http://localhost:${PORT}/api/events`); const wr = watcher.body.getReader();
+await api('/api/control', { cmd: 'start' });
+let woke = false; const until = Date.now() + 40000; let wbuf = '';
+while (!woke && Date.now() < until) {
+  const { value } = await Promise.race([wr.read(), sleep(2000).then(() => ({ value: undefined }))]);
+  if (value) wbuf += new TextDecoder().decode(value);
+  if (/wakes on the south shore/.test(wbuf)) woke = true;
+}
+check('a collapsed agent wakes on time after a restart', woke, woke ? 'woke' : 'still collapsed after 40 s');
+wr.cancel().catch(() => {});
+try { process.kill(-again.pid, 'SIGTERM'); } catch { again.kill('SIGTERM'); }
 
 await browser.close(); await vite.close();
 // npx starts the server as a child: end the whole process group so no old server outlives the run.

@@ -28,6 +28,12 @@ describe('hypothesis marking', () => {
     expect(mark('nothing will happen', null)).toBe('correct');
     expect(mark('cord and sparks', 'cord')).toBe('missing');
   });
+  it('rejects any prediction naming more than one outcome (fourth audit)', () => {
+    expect(mark('cord: not fire', 'cord')).toBe('missing');
+    expect(mark('cord (not fire)', 'cord')).toBe('missing');
+    expect(mark('cord not fire', 'cord')).toBe('missing');
+    expect(mark('cord - fire', 'cord')).toBe('missing');
+  });
   it('marks plain predictions', () => {
     expect(mark('sparks', 'sparks')).toBe('correct');
     expect(mark('a spark', 'sparks')).toBe('correct');

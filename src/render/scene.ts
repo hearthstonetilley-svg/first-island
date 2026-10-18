@@ -197,7 +197,7 @@ export interface IslandScene {
   move(forward: number, right: number): void;
   turn(radians: number): void;
   zoom(factor: number): void;
-  cameraInfo(): { y: number; ground: number; tx: number; tz: number; yaw: number; pitch: number; distance: number };
+  cameraInfo(): { y: number; ground: number; tx: number; tz: number; yaw: number; pitch: number; distance: number; gliding: boolean };
   /** Stop any follow or glide: the camera stays exactly where it is. */
   cancelAutomaticCamera(): void;
   /** The full camera pose, to carry across a graphics recovery. */
@@ -604,7 +604,7 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
     },
     turn: (radians) => { cancelAutomatic(); orbitYaw += radians; updateCamera(); },
     zoom: (factor) => { cancelAutomatic(); distance *= factor; updateCamera(); },
-    cameraInfo: () => ({ y: camera.position.y, ground: Math.max(0, sampleHeight(world, camera.position.x, camera.position.z)), tx: target.x, tz: target.z, yaw: orbitYaw, pitch: orbitPitch, distance }),
+    cameraInfo: () => ({ y: camera.position.y, ground: Math.max(0, sampleHeight(world, camera.position.x, camera.position.z)), tx: target.x, tz: target.z, yaw: orbitYaw, pitch: orbitPitch, distance, gliding: !!glide || followed !== undefined }),
     cancelAutomaticCamera: () => cancelAutomatic(),
     getPose: () => ({ tx: target.x, ty: target.y, tz: target.z, yaw: orbitYaw, pitch: orbitPitch, distance }),
     setPose: (pose) => { cancelAutomatic(); target.set(pose.tx, pose.ty, pose.tz); orbitYaw = pose.yaw; orbitPitch = pose.pitch; distance = pose.distance; updateCamera(); },

@@ -28,7 +28,7 @@ const STRIP = /\b(i (think|expect|predict|guess)|i'd (say|guess)|it (will|might|
 export function readPrediction(raw: unknown, names: string[]): Prediction {
   if (typeof raw !== 'string') return { kind: 'missing' };
   // Punctuation is read before it is cleaned away: "cord, not fire" is two claims.
-  if (/[,;/]/.test(raw)) return { kind: 'missing' };
+  if (/[,;/:()|\-]/.test(raw)) return { kind: 'missing' };
   let t = clean(raw);
   if (!t) return { kind: 'missing' };
   // "Nothing" in any of its forms is checked first, before "no" is read as negation.
@@ -47,9 +47,16 @@ export function readPrediction(raw: unknown, names: string[]): Prediction {
   if (!t || VAGUE.test(t)) return { kind: 'missing' };
   // Whole-word matches only, longest first: "fireproof" is not "fire", "wet clay" beats "clay".
   const candidates = [...names.map(n => [n, n] as const), ...Object.entries(ALIASES)].sort((x, y) => y[0].length - x[0].length);
+  // Find every outcome the sentence names (longest words first, each span used once).
+  // More than one distinct outcome is not one testable claim: reject it.
+  const found = new Set<string>();
+  let rest = ` ${t} `;
   for (const [word, name] of candidates) {
-    if (new RegExp(`(^| )${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}( |$)`).test(t)) return negated ? { kind: 'not', name } : { kind: 'thing', name };
+    const re = new RegExp(` ${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} `);
+    while (re.test(rest)) { found.add(name); rest = rest.replace(re, ' | '); }
   }
+  if (found.size > 1) return { kind: 'missing' };
+  if (found.size === 1) { const name = [...found][0]; return negated ? { kind: 'not', name } : { kind: 'thing', name }; }
   return negated ? { kind: 'missing' } : { kind: 'other', text: t.slice(0, 60) };
 }
 

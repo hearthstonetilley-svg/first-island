@@ -147,7 +147,7 @@ const skills = new Map<string, Skill>();
 const STEP_ACTIONS = ['walk', 'gather', 'combine', 'strike', 'build', 'drop'];
 function cleanSteps(raw: unknown): Step[] {
   return (Array.isArray(raw) ? raw : []).slice(0, 8).filter(x => x && typeof x === 'object').map(x => x as Record<string, unknown>)
-    .map(x => ({ action: String(x.action ?? '').toLowerCase(), target: x.target === undefined ? undefined : scrub(String(x.target)).toLowerCase().slice(0, 40), with: x.with === undefined ? undefined : scrub(String(x.with)).toLowerCase().slice(0, 40), expect: typeof x.expect === 'string' ? scrub(x.expect).slice(0, 60) : undefined }))
+    .map(x => ({ action: txt(x.action, 20).toLowerCase(), target: txt(x.target, 40) ? scrub(txt(x.target, 40)).toLowerCase() : undefined, with: txt(x.with, 40) ? scrub(txt(x.with, 40)).toLowerCase() : undefined, expect: txt(x.expect, 60) ? scrub(txt(x.expect, 60)) : undefined }))
     .filter(x => STEP_ACTIONS.includes(x.action));
 }
 const skillLine = (k: Skill) => `"${k.name}": ${k.steps.map(st => [st.action, st.target, st.with ? `+ ${st.with}` : ''].filter(Boolean).join(' ')).join(' → ')} (used ${k.uses}, worked ${k.successes})`;
@@ -243,6 +243,9 @@ function judge(a: SandboxAgent, expect: unknown, tried: string, made: string | u
   const said = prediction.kind === 'thing' ? prediction.name : prediction.kind === 'not' ? `not ${prediction.name}` : prediction.kind === 'something' ? 'something' : 'nothing';
   emit('hypothesis', `${mark === 'correct' ? 'RIGHT' : 'WRONG'}: expected ${said} from ${tried}, got ${made ?? 'nothing'}`, a.id, undefined, { right: mark === 'correct', expect: said, actual: made ?? null, tried });
 }
+
+// Plain text from an untrusted value: strings and numbers only; anything else is empty.
+const txt = (v: unknown, n = 200) => (typeof v === 'string' ? v.slice(0, n) : typeof v === 'number' && Number.isFinite(v) ? String(v) : '');
 
 // Model replies are untrusted: every field is coerced to the shape the world expects
 // before anything acts on it, so a malformed answer can only fall back, never crash.
@@ -504,9 +507,9 @@ async function council(chair: SandboxAgent, problem: string, observer = false) {
       'Decide how to work: "split" the problem into different parts for different members, "branch" into competing plans tried side by side, or "none" if one person can do it.',
       'Reply: {"mode": "split|branch|none", "parts": [{"agent": "<member name>", "task": "<short task>"}]}'].join('\n'), rec,
       () => ({ mode: 'branch', parts: members.map(m => ({ agent: m.name, task: 'try a pair nobody has tried' })) }));
-    rec.mode = ['split', 'branch', 'none'].includes(String(plan.mode)) ? String(plan.mode) : 'branch';
+    rec.mode = ['split', 'branch', 'none'].includes(txt(plan.mode, 10)) ? txt(plan.mode, 10) : 'branch';
     const parts = (Array.isArray(plan.parts) ? plan.parts : []).filter(p => p && typeof p === 'object').map(p => p as Record<string, unknown>)
-      .map(p => ({ agent: byName(String(p.agent ?? '')), task: scrub(String(p.task ?? '')).slice(0, 120) }))
+      .map(p => ({ agent: byName(txt(p.agent, 30)), task: scrub(txt(p.task, 120)) }))
       .filter(p => p.agent && rec.members.includes(p.agent.id)).slice(0, 6) as Array<{ agent: SandboxAgent; task: string }>;
     if (rec.mode === 'none' || parts.length === 0) parts.splice(0, parts.length, { agent: chair, task: rec.problem });
     if (pauseEpoch !== epoch || !running) throw new Error('adjourned');
@@ -528,12 +531,14 @@ async function council(chair: SandboxAgent, problem: string, observer = false) {
     const settled = await Promise.allSettled(parts.map(async (p, i) => {
       const dealt = hands[i];
       const mine = dealt.map(d => d.item);
-      const answer = mine.length < 2 ? { finding: 'too few items to try anything', try: {} } : await councilCall(COUNCIL_SYSTEM, [`You are ${p.agent.name} in a council chaired by ${chair.name}. Problem: ${rec.problem}`,
+      // Test hook: every second council's first part answers with a malformed reply, items in hand or not.
+      const injected = process.env.SANDBOX_TEST_BAD_PART === '1' && i === 0 && rec.id % 2 === 0;
+      if (injected) emit('test_bad_part', `council ${rec.id}: malformed part injected`);
+      const answer = injected ? { finding: { evil: true }, try: { a: { toString: 0 }, b: 'wood' }, expect: { x: 1 } } as Record<string, unknown> : mine.length < 2 ? { finding: 'too few items to try anything', try: {} } : await councilCall(COUNCIL_SYSTEM, [`You are ${p.agent.name} in a council chaired by ${chair.name}. Problem: ${rec.problem}`,
         `Your part (${rec.mode}): ${p.task}`, `Items dealt to you for this part: ${mine.join(', ') || 'none'}.`, `Facts the council knows: ${factList(pooled)}.`,
         mine.length >= 2 ? 'Pick one pair from your items to combine for your part, avoiding pairs already known to make nothing.' : 'You have too few items to combine; report what the council should do next.',
         'Reply: {"finding": "<one short line>", "try": {"a": "<item>", "b": "<item>"}, "expect": "<what you predict it makes, or nothing>"}'].join('\n'), rec,
-        () => (process.env.SANDBOX_TEST_BAD_PART === '1' && i === 0 && rec.id % 3 === 0 ? { finding: { evil: true }, try: { a: { toString: 0 }, b: 'wood' }, expect: { x: 1 } } as Record<string, unknown>
-          : { finding: 'trying a pair', try: { a: mine[0] ?? '', b: mine[1] ?? '' }, expect: 'nothing' }), p.agent);
+        () => ({ finding: 'trying a pair', try: { a: mine[0] ?? '', b: mine[1] ?? '' }, expect: 'nothing' }), p.agent);
       const t = (answer && typeof answer.try === 'object' && answer.try ? answer.try : {}) as Record<string, unknown>;
       // Only plain strings count as item names; anything else is treated as no choice.
       const word = (v: unknown) => (typeof v === 'string' ? v.toLowerCase().slice(0, 40) : '');
@@ -546,7 +551,7 @@ async function council(chair: SandboxAgent, problem: string, observer = false) {
       for (const d of dealt) { const k = left.indexOf(d.item); if (k >= 0) { left.splice(k, 1); d.owner.inventory.push(d.item); } d.home = true; }
       p.agent.inventory.push(...left);
       rec.parts[i] = { ...rec.parts[i], finding: typeof answer.finding === 'string' ? scrub(answer.finding).slice(0, 120) : '', result: r.text, made: r.made };
-      if (rec.closedAt) return { agent: p.agent, ...r };
+      if (rec.closedAt || !live()) return { agent: p.agent, ...r };
       emit('council_part', `${p.agent.name}: ${rec.parts[i].finding} (${r.text})`, p.agent.id, [chair.id], { council: rec.id, part: i, made: r.made ?? null });
       return { agent: p.agent, ...r };
     }));
@@ -559,9 +564,9 @@ async function council(chair: SandboxAgent, problem: string, observer = false) {
       'Merge: say which member\'s result best answers the problem (or none) and summarise what the council learned in one line.',
       'Reply: {"winner": "<member name or none>", "summary": "<one line>"}'].join('\n'), rec,
       () => { const w = results.find(r => r.made); return { winner: w ? w.agent.name : 'none', summary: w ? `${w.agent.name} made ${w.made}.` : 'Nothing new this time.' }; });
-    const winner = byName(String(merged.winner ?? ''));
+    const winner = byName(txt(merged.winner, 30));
     rec.winner = winner && rec.members.includes(winner.id) ? winner.id : null;
-    rec.summary = scrub(String(merged.summary ?? '')).slice(0, 180);
+    rec.summary = scrub(txt(merged.summary, 180));
     if (!live()) throw new Error('adjourned');
     for (const r of results) if (r.fact !== undefined) teach(r.agent, r.fact, members, 'council');
     rec.closedAt = Date.now();
@@ -590,7 +595,7 @@ async function council(chair: SandboxAgent, problem: string, observer = false) {
 function save() {
   try {
     mkdirSync(STATE_DIR, { recursive: true });
-    const data = { version: 3, chemistry: CHEMISTRY, hypTotal, hypRight, hypMissing, hypUntested, ideas, seed: SEED, running, facts, seq, structures, mix, skills: [...skills.values()], events: events.slice(-400), councils: councils.slice(-100),
+    const data = { version: 3, simMs, chemistry: CHEMISTRY, hypTotal, hypRight, hypMissing, hypUntested, ideas, seed: SEED, running, facts, seq, structures, mix, skills: [...skills.values()], events: events.slice(-400), councils: councils.slice(-100),
       agents: agents.map(a => ({ ...a, path: [], thinking: false, council: null, running: null })) };
     writeFileSync(STATE_FILE + '.tmp', JSON.stringify(data)); renameSync(STATE_FILE + '.tmp', STATE_FILE);
   } catch (err) { console.error('save failed', (err as Error).message); }
@@ -599,11 +604,15 @@ function load() {
   try {
     const data = JSON.parse(readFileSync(STATE_FILE, 'utf8'));
     if (data.version !== 3 || data.seed !== SEED || data.chemistry !== CHEMISTRY) return;
+    // The island clock is saved with the island, so every saved deadline keeps its meaning.
+    // An older save without it gets a fresh clock, and any deadline far beyond it is reset.
+    simMs = typeof data.simMs === 'number' ? data.simMs : 0;
     hypTotal = data.hypTotal ?? 0; hypRight = data.hypRight ?? 0; hypMissing = data.hypMissing ?? 0; hypUntested = data.hypUntested ?? 0; ideas.push(...(data.ideas ?? []));
     structures = data.structures ?? []; if (Array.isArray(data.mix)) mix = data.mix; if (typeof data.running === 'boolean') running = data.running;
     for (const k of data.skills ?? []) skills.set(k.name, k);
     facts.push(...data.facts); seq = data.seq; events = data.events; councils = data.councils ?? [];
-    agents = data.agents.map((a: SandboxAgent) => ({ ...a, nextThink: Date.now() + 1000 + a.id * 500, busyUntil: 0 }));
+    agents = data.agents.map((a: SandboxAgent) => ({ ...a, nextThink: Date.now() + 1000 + a.id * 500, busyUntil: 0,
+      collapsedUntil: a.collapsedUntil && a.collapsedUntil > simMs + 60000 ? simMs + 20000 : a.collapsedUntil }));
     console.log(`resumed ${agents.length} agents, ${facts.length} facts, ${councils.length} councils`);
   } catch { /* fresh island */ }
 }
