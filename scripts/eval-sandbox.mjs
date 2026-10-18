@@ -169,8 +169,10 @@ check('the council card shows the parts', await page.evaluate(() => document.que
 check('a council opens, splits and merges', ['council_open', 'council_split', 'council_part', 'council_merge'].every(t => seen.types.has(t)), [...seen.types].filter(t => t.startsWith('council')).join(','));
 await sleep(30000);
 // Deterministic: tell an agent that is carrying something to set one thing down.
-const carrier = seen.last?.agents.find(a => a.inventory.length && a.council === null && !a.collapsed);
+// Hand the agent the item first: with tools and the boar, nobody may happen to be carrying anything.
+const carrier = seen.last?.agents.find(a => a.council === null && !a.collapsed);
 seen.droppedBy = null;
+if (carrier) { await api('/api/control', { cmd: 'hold', agent: carrier.id, items: ['shell'] }); carrier.inventory = ['shell']; }
 if (carrier) { seen.watchDrop = { agent: carrier.id, item: carrier.inventory[0] }; await api('/api/control', { cmd: 'act', agent: carrier.id, decision: { action: 'drop', target: carrier.inventory[0] } }); await sleep(1500); }
 check('the set-down action itself works', !!carrier && seen.droppedBy === carrier.id, carrier ? `${carrier.id} set down ${carrier.inventory[0]}: ${seen.droppedBy === carrier.id ? 'seen' : 'not seen'}` : 'nobody was carrying anything');
 check('the carry law holds (six or fewer)', seen.maxCarry <= 6, `max carried ${seen.maxCarry} over ${seen.states} states`);
