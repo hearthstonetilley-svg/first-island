@@ -1,4 +1,4 @@
-body { background: radial-gradient(circle at calc((100% - 312px) / 2) calc(50% + 26px), #10283a 0%, #0a141c 45%, #060b10 100%); }
+body { background: radial-gradient(circle at 42% calc(50% + 26px), #10283a 0%, #0a141c 45%, #060b10 100%); }
 canvas.nucleus { cursor: crosshair; }
 .top .legend { display: flex; gap: 12px; font-size: 11.5px; color: var(--muted); }
 .top .legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
@@ -13,3 +13,5 @@ canvas.nucleus { cursor: crosshair; }
 .top .fps { position: static; margin-left: auto; padding: 3px 8px; border: 1px solid var(--line); border-radius: 10px; background: none; box-shadow: none; font-size: 11.5px; color: var(--muted); opacity: 1; }
 .top .fps.slow { color: #ffb347; border-color: #ffb347; }
 .top .fps + .web-link { margin-left: 12px; }
+@media (max-width: 900px) { .web-inspector { display: none; } .top .legend { display: none; } }
+body { background-position: center; }

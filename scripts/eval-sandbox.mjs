@@ -148,6 +148,17 @@ check('the carry law holds (six or fewer)', seen.maxCarry <= 6, `max carried ${s
 check('knowledge passes between agents', seen.types.has('learn'));
 check('agents write and run skills', seen.types.has('skill_written') && seen.types.has('skill_run'), [...seen.types].filter(t => t.startsWith('skill') || t === 'learn_skill').join(','));
 check('no page errors', errors.length === 0, errors.slice(0, 2).join(' | '));
+// Layout: at every width the camera and panel controls stay whole and on screen.
+const clipped = [];
+for (const width of [1400, 1200, 900]) {
+  await page.setViewportSize({ width, height: 820 }); await sleep(1500);
+  const bad = await page.evaluate(() => [...document.querySelectorAll('.top .cam button, .top .run, .top .toggle-left, .top .toggle-right')]
+    .filter(b => { const r = b.getBoundingClientRect(); return r.width < 20 || r.right > innerWidth || b.scrollWidth > b.clientWidth + 1; }).map(b => b.textContent));
+  if (bad.length) clipped.push(`${width}: ${bad.join(', ')}`);
+  await shot(page, `${OUT}/layout-${width}.png`);
+}
+await page.setViewportSize({ width: 1400, height: 820 }); await sleep(1000);
+check('primary controls are whole at 1400, 1200 and 900 px', clipped.length === 0, clipped.join(' | '));
 const spent = await (await api('/api/usage')).json();
 check('the eval spent nothing (zero model calls)', spent.island.calls === 0, `${spent.island.calls} calls`);
 // Pause stops everything: no new actions while paused.

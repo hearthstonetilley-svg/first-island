@@ -47,10 +47,11 @@ const KIND_COLOUR: Record<string, string> = { inert: '#7c8a94', made: GOLD, plac
 async function refreshFacts() { if (fetching) return; fetching = true; try { facts = await factTexts(); } finally { fetching = false; } }
 
 // ---------- layout ----------
-const RIGHT = 312;
-const centre = () => ({ x: (innerWidth - RIGHT) / 2, y: innerHeight / 2 + 26 });
-const coreRadius = () => Math.min(innerWidth - RIGHT, innerHeight - 60) * 0.2;
-const orbitRadius = () => Math.min(innerWidth - RIGHT, innerHeight - 60) * 0.4;
+// Reserve room for the inspector only while it is on screen.
+const inspectorWidth = () => { const el = document.querySelector('.web-inspector'); return el && getComputedStyle(el).display !== 'none' ? 312 : 0; };
+const centre = () => ({ x: (innerWidth - inspectorWidth()) / 2, y: innerHeight / 2 + 26 });
+const coreRadius = () => Math.min(innerWidth - inspectorWidth(), innerHeight - 60) * 0.2;
+const orbitRadius = () => Math.min(innerWidth - inspectorWidth(), innerHeight - 60) * 0.4;
 function factPos(i: number) {
   // Golden-angle packing keeps the core even however many facts there are.
   // A fixed capacity keeps every fact where it is as new ones arrive.

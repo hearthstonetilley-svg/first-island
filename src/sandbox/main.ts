@@ -14,7 +14,6 @@ import { COLOURS, connect, control, FeedEvent, GOLD, LEARN, LiveState, MIND_COLO
 // current action, its last outcome and its latest thought, which flies in from
 // the agent. Centre, the island framed on the agents. Right, real usage meters,
 // the live council and the discoveries so far.
-const LEFT = 316, RIGHT = 312;
 const app = document.querySelector<HTMLDivElement>('#app')!;
 // Hidden chrome until the island is ready: the toolbar must not appear, vanish, then reappear.
 app.classList.add('is-loading');
@@ -76,7 +75,17 @@ function setMode(next: typeof mode) {
     : next === 'free' ? 'Free camera · W A S D move · Q E turn · R F zoom · Esc for the whole island' : next === 'island' ? 'Whole island · W A S D to fly' : 'Following the agents as they move';
 }
 // The camera only moves on its own in "Follow agents" or when following one agent.
-const insets = () => ({ left: showLeft ? LEFT : 0, right: showRight ? RIGHT : 0 });
+// The camera keeps clear of whatever panels are actually on screen, measured, not assumed:
+// a panel hidden by the toggle or by a narrow window reserves no space.
+// Measured on resize and panel toggles, never per frame (measuring forces a layout).
+let frameInsets = { left: 0, right: 0 };
+const insets = () => {
+  const visible = (el: Element) => { const r = el.getBoundingClientRect(); return getComputedStyle(el).display !== 'none' && r.width > 0 ? r : undefined; };
+  const l = visible($('.rail.left')), r = visible($('.rail.right'));
+  const sideBySide = (rect?: DOMRect) => rect && rect.height > innerHeight * 0.5;
+  frameInsets = { left: sideBySide(l) ? Math.round(l!.right + 8) : 0, right: sideBySide(r) ? Math.round(innerWidth - r!.left + 8) : 0 };
+  return frameInsets;
+};
 function wholeIsland() {
  
   const { left, right } = insets(), free = Math.max(0.35, (innerWidth - left - right) / innerWidth);
@@ -261,7 +270,7 @@ async function refreshMeters() {
         bar('Claude 5-hour', u.claude.fiveHourPercent, `${u.claude.fiveHourResetsAt ? `resets ${fmtTime(u.claude.fiveHourResetsAt)} · ` : ''}as of ${fmtAgo(u.claude.asOf)}`),
         bar('Claude weekly', u.claude.sevenDayPercent, `${u.claude.sevenDayResetsAt ? `resets ${fmtTime(u.claude.sevenDayResetsAt)} · ` : ''}as of ${fmtAgo(u.claude.asOf)}`),
       ] : [bar('Claude plan', undefined, 'not connected: needs the status line hook')]),
-      bar('This island', (u.island.perMinute / u.island.cap) * 100, `${u.island.calls} calls · Claude $${u.island.costUsd.toFixed(3)}, ${(u.island.inputTokens / 1000).toFixed(0)}k in / ${(u.island.outputTokens / 1000).toFixed(1)}k out${(u.island.byBackend.luna ?? 0) + (u.island.byBackend.sol ?? 0) ? ` · Codex ${(u.island.byBackend.luna ?? 0) + (u.island.byBackend.sol ?? 0)} calls, cost not measured` : ''} · ${u.island.perMinute}/${u.island.cap} per min`),
+      bar(u.island.cap ? 'This island' : 'This island (model calls off)', u.island.cap ? (u.island.perMinute / u.island.cap) * 100 : undefined, `${u.island.calls} calls · Claude $${u.island.costUsd.toFixed(3)}, ${(u.island.inputTokens / 1000).toFixed(0)}k in / ${(u.island.outputTokens / 1000).toFixed(1)}k out${(u.island.byBackend.luna ?? 0) + (u.island.byBackend.sol ?? 0) ? ` · Codex ${(u.island.byBackend.luna ?? 0) + (u.island.byBackend.sol ?? 0)} calls, cost not measured` : ''} · ${u.island.perMinute}/${u.island.cap} per min`),
     ].join('');
   } catch { /* server down */ }
 }
@@ -355,7 +364,7 @@ function draw(positions: Map<number, { x: number; y: number; visible: boolean }>
     let t = tagEls.get(a.id);
     if (!t) { t = document.createElement('div'); t.className = 'tag'; t.style.setProperty('--c', COLOURS[a.id]); t.onclick = () => select(a.id); t.ondblclick = () => follow(a.id); tags.append(t); tagEls.set(a.id, t); }
     const p = positions.get(a.id);
-    t.hidden = !p?.visible || p.x < insets().left || p.x > innerWidth - insets().right; if (t.hidden || !p) continue;
+    t.hidden = !p?.visible || p.x < frameInsets.left || p.x > innerWidth - frameInsets.right; if (t.hidden || !p) continue;
     // Only touch the DOM when something changed, and measure a tag once: reading sizes
     // every frame forces a layout per tag.
     if (t.textContent !== a.name) { t.textContent = a.name; t.dataset.w = ''; }
@@ -473,7 +482,7 @@ async function runIsland(scene: IslandScene) {
     if (diagnostics) { diagnostics.report.loading.enteredAtMs = performance.now(); diagnostics.report.loading.entry = loading?.element.dataset.state === 'limited' ? 'manual' : 'automatic'; }
     void loading?.finish().then(() => { if (active()) { quality.reset(); playing = true; } });
   };
-  addEventListener('resize', () => { if (active()) { scene.resize(); quality.reset(); readiness.reset(); if (mode === 'island') wholeIsland(); } });
+  addEventListener('resize', () => { if (active()) { scene.resize(); const { left, right } = insets(); scene.setInsets(left, right); quality.reset(); readiness.reset(); if (mode === 'island') wholeIsland(); } });
   if (everEntered) {
     // Recovering after the owner was already in: no second gate, quality adapts at once.
     entered = true; playing = true; app.classList.remove('is-loading', 'is-measuring');

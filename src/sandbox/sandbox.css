@@ -94,3 +94,10 @@ canvas.overlay, .tags { pointer-events: none; }
 #app.is-loading > .top, #app.is-loading > .rail, #app.is-loading > .mode, #app.is-loading > .tags, #app.is-loading > canvas.overlay { opacity: 0; pointer-events: none; }
 .top, .rail, .mode { transition: opacity .4s ease; }
 @media (prefers-reduced-motion: reduce) { .top, .rail, .mode { transition: none; } }
+/* Primary controls never shrink or clip; secondary readouts give way first. */
+.top > .title, .top > .run, .top > .cam, .top > .mixer, .top > .toggle-left, .top > .toggle-right { flex: none; }
+.top .cam button { white-space: nowrap; }
+.top > .progress { flex: 1 1 0; min-width: 40px; }
+.top > .fps, .top > .web-link { flex: none; }
+@media (max-width: 1100px) { .top .mix-legend, .top > .history { display: none; } }
+@media (max-width: 900px) { .top > .progress { display: none; } }
