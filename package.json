@@ -10,7 +10,8 @@
     "eval": "node scripts/eval-simulation.mjs && node scripts/eval-sim-browser.mjs && node scripts/eval-build.mjs",
     "eval:simulation": "node scripts/eval-simulation.mjs",
     "eval:core": "node scripts/eval-sim.mjs",
-    "eval:portability": "node scripts/eval-sim-browser.mjs"
+    "eval:portability": "node scripts/eval-sim-browser.mjs",
+    "sandbox": "vite-node server/sandbox.ts"
   },
   "dependencies": {
     "three": "^0.180.0"
