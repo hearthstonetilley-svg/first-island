@@ -46,6 +46,7 @@ as much about how the world gets built as about the world itself.
 | v0.3.2 | Round 10, accepted: the loader measures real play frames and quality steps back up; owner confirmed on real WebGPU hardware ([review](docs/reviews/v0.3.2.md)) |
 | v0.4.0 | Round 11, accepted: stage 3a, the simulation clock in a worker with an event log and exact replay; deterministic across processes ([review](docs/reviews/v0.4.0.md)) |
 | v0.4.1 | Round 12, rejected: the first agents (bodies, traits, display) pass the builder's 90-minute eval but every seed goes extinct on a long run ([review](docs/reviews/v0.4.1.md)) |
+| v0.4.2 | Round 13, changes requested: extinction fixed with a measured cause, exact replay across processes and browser, pace at one generation; but only the cap limits the population ([review](docs/reviews/v0.4.2.md)) |
 
 ## Run it
 

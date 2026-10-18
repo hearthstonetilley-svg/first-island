@@ -2,6 +2,7 @@
 export class Random {
   private state: number;
   constructor(seed: number) { this.state = seed | 0; }
+  snapshot(): number { return this.state; }
   next(): number {
     let value = (this.state += 0x6d2b79f5);
     value = Math.imul(value ^ (value >>> 15), value | 1);

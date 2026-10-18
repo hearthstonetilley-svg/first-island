@@ -1,3 +1,5 @@
+import type { TreeData } from '../world/generate';
+
 export interface Dials {
   generationSeconds: number;
   foodRegrowth: number;
@@ -10,7 +12,9 @@ export const DEFAULT_DIALS: Readonly<Dials> = Object.freeze({
   startingPopulation: 20, populationCap: 200,
 });
 export type Speed = 0 | 1 | 10 | 100;
-export type Intervention = { speed: Speed } | { dials: Partial<Dials> };
+// World-changing commands only. Playback is worker scheduling metadata.
+export type Intervention = { dials: Partial<Dials> };
+export interface Tree extends TreeData { id: number; foodId: number | null }
 export interface SimEvent {
   seq: number;
   tick: number;
@@ -26,15 +30,18 @@ export interface Snapshot {
   eventCount: number;
   agents: Agent[];
   plants: Plant[];
+  trees: Tree[];
   environment: Environment;
   stats: PopulationStats;
 }
 export interface RunRecord {
-  version: 1;
+  version: 2;
   seed: number;
   initialDials: Dials;
   ticks: number;
   events: SimEvent[];
+  /** Verification oracle only; replay must rebuild it, never load it. */
+  finalState: Record<string, unknown>;
 }
 export function resolveDials(patch: Partial<Dials> = {}): Dials {
   const dials = { ...DEFAULT_DIALS, ...patch };

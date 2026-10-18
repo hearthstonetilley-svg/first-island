@@ -1,6 +1,6 @@
 import { WorldData, WorldProgress } from '../world/generate';
 import { Request, Response } from './protocol';
-import { Dials, Intervention, RunRecord, Snapshot } from './types';
+import { Dials, Intervention, RunRecord, Snapshot, Speed } from './types';
 
 export class SimulationClient {
   private readonly worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
@@ -27,6 +27,7 @@ export class SimulationClient {
     });
   }
   running(value: boolean): void { this.send({ type: 'running', value }); }
+  setSpeed(value: Speed): void { this.send({ type: 'speed', value }); }
   intervene(change: Intervention): void { this.send({ type: 'intervene', change }); }
   record(): Promise<RunRecord> {
     return new Promise((resolve, reject) => {

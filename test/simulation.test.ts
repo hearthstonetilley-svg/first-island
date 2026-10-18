@@ -2,14 +2,19 @@ import { describe, expect, it } from 'vitest';
 import { Simulation, replay } from '../src/sim/core';
 
 describe('fixed simulation core', () => {
-  it('replays logged dial and speed interventions at the same tick', () => {
+  it('replays logged world interventions at the same tick', () => {
     const sim = new Simulation(7);
-    sim.step(100); sim.intervene({ speed: 100 }); sim.intervene({ dials: { generationSeconds: 60 } });
-    sim.step(300); sim.intervene({ speed: 0 });
+    sim.step(100); sim.intervene({ dials: { generationSeconds: 60 } });
+    sim.step(300);
     const restored = replay(sim.record());
     expect(restored.snapshot()).toEqual(sim.snapshot());
     expect(restored.record()).toEqual(sim.record());
     expect(() => replay({ ...sim.record(), events: sim.record().events.slice(1) })).toThrow('diverged');
+    const wrongState = sim.record(); wrongState.finalState.generationProgress = -1;
+    expect(() => replay(wrongState)).toThrow('state diverged');
+    const before = sim.record(); sim.snapshot(0); sim.snapshot(100);
+    expect(sim.record()).toEqual(before); // Playback metadata never enters world state or the log.
+    expect(() => sim.intervene({ speed: 100 } as never)).toThrow('Unknown world intervention');
   });
   it('is independent of stepping batches and returns detached snapshots and logs', () => {
     const a = new Simulation(42); const b = new Simulation(42);
@@ -19,6 +24,10 @@ describe('fixed simulation core', () => {
     expect(a.record().events[0].data.generation).toBe(1);
     const snapshot=a.snapshot();snapshot.dials.generationSeconds=1;
     expect(a.snapshot().dials.generationSeconds).toBe(1800);
+    snapshot.trees[0].x += 100;
+    snapshot.plants[0].quantity = -1;
+    expect(a.snapshot().trees[0].x).not.toBe(snapshot.trees[0].x);
+    expect(a.snapshot().plants[0].quantity).toBeGreaterThanOrEqual(0);
     expect(a.snapshot().generation).toBe(3);
     expect(new Simulation(99).record()).not.toEqual(new Simulation(42).record());
   });
