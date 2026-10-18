@@ -2,11 +2,11 @@
 export interface LiveAgent {
   id: number; name: string; x: number; y: number; z: number; activity: string;
   thought: string; said: string; saidAt: number; thinking: boolean; inventory: string[]; known: string[]; facts: number; knownIds: number[];
-  council: number | null; doing: string; outcome: string;
+  council: number | null; doing: string; outcome: string; skills: string[]; runningSkill: string;
 }
 export interface LiveState {
   tick: number; running: boolean; mindMode: string; mix: string[]; backends: string[]; calls: number; failed: number; perMin: number; cap: number;
-  progress: { elements: number; makeable: number; found: number; structures: number; built: number; councils: number };
+  progress: { elements: number; makeable: number; found: number; structures: number; built: number; councils: number; skills: number };
   agents: LiveAgent[]; councilCalls: number; facts: number; mindError: string;
   councils: Array<{ id: number; chair: number; members: number[]; problem: string; mode: string; open: boolean; winner: number | null }>;
 }
@@ -36,3 +36,4 @@ export const factTexts = (): Promise<string[]> => fetch('/api/facts').then(r => 
 export const MIND_LABELS: Record<string, string> = { scripted: 'Scripted', haiku: 'Haiku', sonnet: 'Sonnet', luna: 'Luna', sol: 'Sol' };
 export const MIND_COLOURS: Record<string, string> = { scripted: '#55636d', haiku: '#d9a066', sonnet: '#e0785a', luna: '#7cc4e8', sol: '#f2c14e' };
 export const MIND_PLAN: Record<string, string> = { scripted: 'no model', haiku: 'Claude', sonnet: 'Claude', luna: 'Codex', sol: 'Codex' };
+export const SKILL = '#c49bff';

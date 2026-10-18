@@ -114,6 +114,7 @@ await sleep(30000);
 check('agents can set things down', seen.types.has('action') && seen.drops > 0, `${seen.drops} set down`);
 check('the carry law holds (six or fewer)', seen.maxCarry <= 6, `max carried ${seen.maxCarry} over ${seen.states} states`);
 check('knowledge passes between agents', seen.types.has('learn'));
+check('agents write and run skills', seen.types.has('skill_written') && seen.types.has('skill_run'), [...seen.types].filter(t => t.startsWith('skill') || t === 'learn_skill').join(','));
 check('no page errors', errors.length === 0, errors.slice(0, 2).join(' | '));
 
 const web = await browser.newPage({ viewport: { width: 1200, height: 800 } });

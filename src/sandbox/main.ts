@@ -2,7 +2,7 @@ import './sandbox.css';
 import { generateWorldAsync } from '../world/generate';
 import { createIslandScene, IslandScene } from '../render/scene';
 import { Agent, DEFAULT_DIALS, Snapshot, Activity } from '../sim/types';
-import { COLOURS, connect, control, FeedEvent, GOLD, LEARN, LiveState, MIND_COLOURS, MIND_LABELS, MIND_PLAN, usage } from './stream';
+import { COLOURS, connect, control, FeedEvent, GOLD, LEARN, LiveState, MIND_COLOURS, MIND_LABELS, MIND_PLAN, SKILL, usage } from './stream';
 
 // The island page: an observation station. Left, the eight minds, each with its
 // current action, its last outcome and its latest thought, which flies in from
@@ -219,7 +219,7 @@ function renderInspector() {
     inspectorFor = selected;
     inspector.style.setProperty('--c', COLOURS[selected]);
     inspector.innerHTML = `<div class="ins-head"><b></b><button class="follow">Follow</button><button class="ask">Ask to call a council</button></div>
-      <dl><dt>Thinks</dt><dd class="t"></dd><dt>Said</dt><dd class="s"></dd><dt>Carries</dt><dd class="c"></dd><dt>Has made</dt><dd class="m"></dd><dt>Knows</dt><dd class="k"></dd></dl>
+      <dl><dt>Thinks</dt><dd class="t"></dd><dt>Said</dt><dd class="s"></dd><dt>Carries</dt><dd class="c"></dd><dt>Has made</dt><dd class="m"></dd><dt>Skills</dt><dd class="sk"></dd><dt>Knows</dt><dd class="k"></dd></dl>
       <h4>Recently</h4><ol class="ev"></ol>`;
     const id = selected;
     inspector.querySelector<HTMLButtonElement>('.follow')!.onclick = () => follow(id);
@@ -229,7 +229,7 @@ function renderInspector() {
   const a = state.agents[selected], l = latest.get(selected);
   const put = (q: string, text: string) => { const el = inspector.querySelector(q)!; if (el.textContent !== text) el.textContent = text; };
   put('b', a.name); put('.t', l?.thought || '…'); put('.s', l?.said ? `"${l.said}"` : '…');
-  put('.c', grouped(a.inventory)); put('.m', a.known.join(', ') || 'nothing yet'); put('.k', `${a.facts} facts`);
+  put('.c', grouped(a.inventory)); put('.m', a.known.join(', ') || 'nothing yet'); put('.sk', a.skills.length ? a.skills.join(', ') + (a.runningSkill ? ` · running ${a.runningSkill}` : '') : 'none yet'); put('.k', `${a.facts} facts`);
   const lines = (recent.get(selected) ?? []).slice(-6).reverse().map(e => e.text);
   const ol = inspector.querySelector('.ev')!;
   if (ol.textContent !== lines.join('')) { ol.innerHTML = ''; for (const t of lines) { const li = document.createElement('li'); li.textContent = t; ol.append(li); } }
@@ -275,7 +275,8 @@ function addFind(e: FeedEvent) {
   if (findSeen.has(e.seq)) return; findSeen.add(e.seq);
   const li = document.createElement('li');
   li.innerHTML = `<b style="color:${COLOURS[e.agent ?? 0]}"></b> <span></span>`;
-  li.querySelector('b')!.textContent = names[e.agent ?? 0]; li.querySelector('span')!.textContent = e.text.replace(/^DISCOVERS /, 'found ').replace(/^BUILDS /, 'built ');
+  li.querySelector('b')!.textContent = names[e.agent ?? 0]; li.querySelector('span')!.textContent = e.text.replace(/^DISCOVERS /, 'found ').replace(/^BUILDS /, 'built ').replace(/^writes a skill: /, 'wrote skill ');
+  if (e.type === 'skill_written') li.classList.add('skill');
   $('.find-list').prepend(li);
   while ($('.find-list').children.length > 10) $('.find-list').lastChild!.remove();
 }
@@ -301,7 +302,7 @@ function onEvent(e: FeedEvent, live = true) {
     if (e.type === 'council_merge') { council.merge = e.text; council.open = false; }
     renderCouncil();
   }
-  if (e.type === 'discovery' || e.type === 'built') addFind(e);
+  if (e.type === 'discovery' || e.type === 'built' || e.type === 'skill_written') addFind(e);
   if (e.type === 'built' && live) island?.addStructure(e.data?.structure as never);
   if (!live) { if (e.type === 'thought' || e.type === 'say') land(agent, e.type, e.text, e.t); return; }
   const now = performance.now();
@@ -313,6 +314,7 @@ function onEvent(e: FeedEvent, live = true) {
   }
   if (e.type === 'say') for (const to of e.to ?? []) packets.push({ from: agent, to, at: now, colour: COLOURS[agent], size: 3, ms: 1200 });
   if (e.type === 'learn') for (const to of e.to ?? []) packets.push({ from: agent, to, at: now, colour: LEARN, size: 5, ms: 1600 });
+  if (e.type === 'learn_skill') for (const to of e.to ?? []) packets.push({ from: agent, to, at: now, colour: SKILL, size: 7, ms: 1800 });
   if (e.type === 'council_split') ((e.data?.parts as Array<{ agent: number }>) ?? []).forEach((p, i) => { if (p.agent !== agent) packets.push({ from: agent, to: p.agent, at: now + i * 120, colour: GOLD, size: 7, ms: 1800 }); });
   if (e.type === 'council_part' && e.to?.[0] !== undefined && e.to[0] !== agent) packets.push({ from: agent, to: e.to[0], at: now, colour: e.data?.made ? GOLD : '#9aa8b2', size: e.data?.made ? 9 : 6, ms: 1600 });
 
@@ -415,7 +417,7 @@ connect({
     const p = s.progress;
     $('.progress').innerHTML = `<span class="slots">${Array.from({ length: p.makeable }, (_, i) => `<i class="${i < p.found ? 'on' : ''}"></i>`).join('')}</span>
       <span class="slots big">${Array.from({ length: p.structures }, (_, i) => `<i class="${i < p.built ? 'on' : ''}"></i>`).join('')}</span>
-      <span class="count">${p.found}/${p.makeable} made · ${p.built}/${p.structures} built · ${p.councils} councils</span>`;
+      <span class="count">${p.found}/${p.makeable} made · ${p.built}/${p.structures} built · ${p.skills} skills · ${p.councils} councils</span>`;
   },
   event: e => onEvent(e),
   down() { status.hidden = false; status.textContent = 'Lost the island server. Is it running?'; },

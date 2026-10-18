@@ -1,6 +1,6 @@
 import './sandbox.css';
 import './web.css';
-import { COLOURS, connect, factTexts, FeedEvent, GOLD, LEARN, LiveState } from './stream';
+import { COLOURS, connect, factTexts, FeedEvent, GOLD, LEARN, LiveState, SKILL } from './stream';
 
 // The web as a knowledge nucleus. At the core, every fact the island's minds hold,
 // brighter the more of them know it; gold where something was made. Around it, the
@@ -12,7 +12,7 @@ app.innerHTML = `
   <header class="top">
     <strong class="title">First Island · the web</strong>
     <span class="sep"></span>
-    <div class="legend"><span><i style="background:${LEARN}"></i>knowledge passed</span><span><i style="background:${GOLD}"></i>something made</span><span><i style="background:#7c8a94"></i>found to do nothing</span><span><i style="background:#5cd6ff"></i>where things are</span></div>
+    <div class="legend"><span><i style="background:${LEARN}"></i>knowledge passed</span><span><i style="background:${GOLD}"></i>something made</span><span><i style="background:#7c8a94"></i>found to do nothing</span><span><i style="background:#5cd6ff"></i>where things are</span><span><i style="background:${SKILL}"></i>skill taught</span></div>
     <a class="web-link" href="/sandbox.html">The island ↗</a>
   </header>
   <aside class="rail right web-inspector"><section class="panel"><h3>The web</h3><div class="summary"></div></section>
@@ -74,6 +74,8 @@ function onEvent(e: FeedEvent, live = true) {
     if (fact >= facts.length) void refreshFacts();
   }
   if (e.type === 'say') for (const to of e.to ?? []) { const k = [e.agent, to].sort().join('-'); speech.set(k, (speech.get(k) ?? 0) + 1); if (live) packets.push({ from: e.agent, to, at: now, ms: 1200, colour: 'rgba(230,238,242,.5)', size: 2 }); }
+  if (e.type === 'learn_skill' && live) for (const to of e.to ?? []) packets.push({ from: e.agent, to, at: now, ms: 1800, colour: SKILL, size: 6 });
+  if (e.type === 'skill_written' && live) pulses.push({ at: now, colour: SKILL, core: true });
   if (e.type === 'discovery') { discoveries++; if (live) pulses.push({ at: now, colour: GOLD, core: true }); }
   if (e.type === 'council_open') { councils++; if (live) openCouncil = { members: (e.data?.members as number[]) ?? [], until: Date.now() + 60000 }; }
   if (e.type === 'council_split' && live) ((e.data?.parts as Array<{ agent: number }>) ?? []).forEach((p, i) => { if (p.agent !== e.agent) packets.push({ from: e.agent!, to: p.agent, at: now + i * 120, ms: 1600, colour: GOLD, size: 6 }); });
@@ -200,7 +202,7 @@ function draw(now: number) {
     ctx.fillStyle = COLOURS[i]; ctx.globalAlpha *= 0.18; ctx.beginPath(); ctx.arc(q.x, q.y, 18, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = dim ? 0.35 : 1;
     ctx.fillStyle = COLOURS[i]; ctx.beginPath(); ctx.arc(q.x, q.y, a?.thinking ? 9 : 7, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#e6eef2'; ctx.font = '600 13px system-ui'; ctx.textAlign = 'center'; ctx.fillText(name, q.x, q.y - 26);
-    ctx.fillStyle = '#a5b4be'; ctx.font = '11px system-ui'; ctx.fillText(`${a?.knownIds.length ?? 0} facts`, q.x, q.y + 32);
+    ctx.fillStyle = '#a5b4be'; ctx.font = '11px system-ui'; ctx.fillText(`${a?.knownIds.length ?? 0} facts${a?.skills.length ? ` · ${a.skills.length} skills` : ''}`, q.x, q.y + 32);
     ctx.globalAlpha = 1;
   });
   requestAnimationFrame(draw);

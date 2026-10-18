@@ -90,3 +90,4 @@ canvas.overlay, .tags { pointer-events: none; }
 .progress { flex: 1 1 auto; min-width: 0; overflow: hidden; }
 .progress .count { overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 1250px) { .progress .count, .top .history { display: none; } }
+.find-list li.skill span { color: #c49bff; }
