@@ -55,9 +55,9 @@ const orbitRadius = () => Math.min(innerWidth - inspectorWidth(), innerHeight - 
 function factPos(i: number) {
   // Golden-angle packing keeps the core even however many facts there are.
   // A fixed capacity keeps every fact where it is as new ones arrive.
-  // Capacity doubles when full, so positions shift only on those rare occasions.
-  let cap = 160; while (cap < facts.length) cap *= 2;
-  const c = centre(), r = coreRadius() * Math.sqrt((i + 0.5) / cap);
+  // Fixed spacing: a fact's place depends only on its own number, never on how many there are,
+  // so nothing moves when new facts arrive (past 160 the core simply grows outward).
+  const c = centre(), r = coreRadius() * Math.sqrt((i + 0.5) / 160);
   const a = i * 2.39996323;
   return { x: c.x + Math.cos(a) * r, y: c.y + Math.sin(a) * r };
 }

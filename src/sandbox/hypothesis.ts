@@ -23,17 +23,22 @@ const ALIASES: Record<string, string> = {
 const VAGUE = /^(a |an |some )?(tool|thing|something|weapon|item|object|material|stuff|anything|result|reaction|new thing|useful thing)s?$/;
 
 const clean = (t: string) => t.toLowerCase().replace(/[^a-z' ]/g, ' ').replace(/\s+/g, ' ').trim();
-const STRIP = /\b(i (think|expect|predict|guess)|it (will|might|may|should|could) (make|become|produce|give|be)|maybe|probably|perhaps|makes?|produces?|gives?|becomes?|will|the|a|an|some)\b/g;
+const STRIP = /\b(i (think|expect|predict|guess)|i'd (say|guess)|it (will|might|may|should|could)|maybe|probably|perhaps|make|makes|produce|produces|give|gives|become|becomes|create|creates|result in|will|would|the|a|an|some|it|this|that|be)\b/g;
 
 export function readPrediction(raw: unknown, names: string[]): Prediction {
   if (typeof raw !== 'string') return { kind: 'missing' };
   let t = clean(raw);
   if (!t) return { kind: 'missing' };
+  // "Nothing" in any of its forms is checked first, before "no" is read as negation.
+  if (/^(nothing|none|no change|no reaction|nothing happens|nothing will happen|it will do nothing)$/.test(t.replace(STRIP, ' ').replace(/\s+/g, ' ').trim()) || /^(no change|no reaction)$/.test(t)) return { kind: 'nothing' };
+  // A hedge between outcomes is not one testable claim.
+  if (/\b(or|either)\b/.test(t)) return { kind: 'missing' };
+  // Negation can sit anywhere before the outcome: "not cord", "I expect not cord", "it will not make fire".
   let negated = false;
-  const neg = t.match(/^(not|no|never|won't make|will not make|does not make|doesn't make)\b\s*(.*)$/);
-  if (neg) { negated = true; t = neg[2]; }
+  const neg = /\b(not|no|never|won't|wont|cannot|can't|doesn't|does not|will not)\b/;
+  if (neg.test(t)) { negated = true; t = t.replace(new RegExp(neg.source, 'g'), ' '); }
   t = t.replace(STRIP, ' ').replace(/\s+/g, ' ').trim();
-  if (/^(nothing|none|no change|no reaction|nothing happens)$/.test(t) || (!t && negated)) return negated ? { kind: 'something' } : { kind: 'nothing' };
+  if (/^(nothing|none)$/.test(t) || (!t && negated)) return negated ? { kind: 'something' } : { kind: 'nothing' };
   if (!t || VAGUE.test(t)) return { kind: 'missing' };
   // Whole-word matches only, longest first: "fireproof" is not "fire", "wet clay" beats "clay".
   const candidates = [...names.map(n => [n, n] as const), ...Object.entries(ALIASES)].sort((x, y) => y[0].length - x[0].length);

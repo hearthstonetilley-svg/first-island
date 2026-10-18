@@ -207,6 +207,8 @@ export interface IslandScene {
   frameAgents(ids?: number[]): void;
   /** Keep the scene's centre clear of a panel this many pixels wide on the left (and right). */
   setInsets(left: number, right: number): void;
+  /** 1 is full day, 0 is deep night; storm darkens and greys the light. */
+  setDaylight(daylight: number, storm?: boolean): void;
   /** The quality actually being drawn, which can lag a request while a path compiles. */
   appliedQuality(): string;
   waitForGPU(): Promise<void>;
@@ -384,7 +386,8 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
   disposables.push(figures);
   const ocean = addOcean(scene, world);
   disposables.push(ocean.heightTexture);
-  scene.add(new HemisphereLight('#c5defc', '#73654b', 3));
+  const sky = new HemisphereLight('#c5defc', '#73654b', 3);
+  scene.add(sky);
   const sun = new DirectionalLight('#ffe1a6', 3.2);
   sun.position.copy(SUN_DIRECTION).multiplyScalar(100);
   sun.castShadow = true;
@@ -571,6 +574,14 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
   const limit = world.size / 2;
   return { renderer, label, render, resize, setQuality, dispose,
     appliedQuality: () => applied,
+    setDaylight: (daylight, storm) => {
+      const d = Math.max(0, Math.min(1, daylight)), gloom = storm ? 0.55 : 1;
+      sun.intensity = 3.2 * (0.08 + 0.92 * d) * gloom;
+      sky.intensity = 3 * (0.18 + 0.82 * d) * gloom;
+      sun.color.set(d < 0.35 ? '#9fb4ff' : storm ? '#c8ccd0' : '#ffe1a6');
+      renderer.toneMappingExposure = 0.55 + 0.45 * d;
+      if (scene.fog instanceof FogExp2) { scene.fog.color.set(storm ? '#5d6a72' : d < 0.35 ? '#1a2740' : '#9bc5d9'); scene.fog.density = storm ? 0.006 : 0.0018; }
+    },
     addStructure: (structure) => structures.add(structure),
     frameAgents: (ids) => {
       const list = figures.update(performance.now(), 0).filter(a => !ids || ids.includes(a.id));

@@ -32,6 +32,7 @@ app.innerHTML = `
     <label class="history" title="Show every connection so far, not just live ones"><input type="checkbox"> History</label>
     <span class="sep"></span>
     <div class="progress" title="Things made and structures built"></div>
+    <span class="sky" title="Time of day and weather on the island"></span>
     <span class="fps" title="Frame rate, frame time and the quality the island has settled on">… fps</span>
     <a class="web-link" href="/web.html" target="_blank">The web ↗</a>
   </header>
@@ -154,7 +155,7 @@ function ensureCards() {
     if (cardEls[i]) return;
     const c = document.createElement('div');
     c.className = 'card'; c.style.setProperty('--c', COLOURS[i]);
-    c.innerHTML = `<div class="head"><span class="dot"></span><b></b><span class="model"></span><span class="hit" title="Predictions that agreed with the island, out of those scored; +N? are tries made without a prediction"></span><span class="doing"></span></div><div class="outcome"></div><div class="thought"></div><div class="said"></div>`;
+    c.innerHTML = `<div class="head"><span class="dot"></span><b></b><span class="model"></span><span class="hit" title="Predictions that agreed with the island, out of those scored; +N? are tries made without a prediction"></span><span class="doing"></span></div><div class="energy"><i></i></div><div class="outcome"></div><div class="thought"></div><div class="said"></div>`;
     c.querySelector('b')!.textContent = name;
     c.onclick = () => select(selected === i ? undefined : i);
     c.ondblclick = () => follow(i);
@@ -181,7 +182,10 @@ function updateCards(s: LiveState) {
     const said = l && Date.now() - l.saidAt < 10000 ? `"${l.said}"` : '';
     c.querySelector('.said')!.textContent = said;
     c.classList.toggle('in-council', a.council !== null);
-    const hit = c.querySelector<HTMLElement>('.hit')!, hitText = a.hyp.tried ? `${a.hyp.right}/${a.hyp.tried}${a.hyp.missing ? ` +${a.hyp.missing}?` : ''}` : '';
+    c.classList.toggle('collapsed', a.collapsed); c.classList.toggle('sheltered', a.sheltered);
+    const bar = c.querySelector<HTMLElement>('.energy i')!, width = `${Math.round(a.energy * 100)}%`;
+    if (bar.style.width !== width) { bar.style.width = width; bar.style.background = a.energy < 0.25 ? '#ff6b5c' : a.energy < 0.5 ? '#ffb347' : '#5cffc1'; c.querySelector<HTMLElement>('.energy')!.title = `strength ${width}${a.sheltered ? ', sheltered' : ''}`; }
+    const hit = c.querySelector<HTMLElement>('.hit')!, hitText = a.hyp.tried || a.hyp.missing ? `${a.hyp.right}/${a.hyp.tried}${a.hyp.missing ? ` +${a.hyp.missing}?` : ''}` : '';
     if (hit.textContent !== hitText) hit.textContent = hitText;
     const m = s.mix[a.id] ?? 'scripted', chip = c.querySelector<HTMLElement>('.model')!;
     if (chip.textContent !== MIND_LABELS[m]) { chip.textContent = MIND_LABELS[m] ?? m; chip.style.background = MIND_COLOURS[m] ?? '#555'; }
@@ -557,6 +561,10 @@ connect({
     updateCards(s);
     if (selected !== undefined) renderInspector();
     run.textContent = s.running ? 'Pause' : 'Run';
+    island?.setDaylight(s.world.daylight, s.world.storm);
+    const sky = $('.sky'), weak = s.agents.filter(a => a.energy < 0.3).length;
+    const skyText = `${s.world.storm ? 'Storm' : s.world.night ? 'Night' : s.world.daylight < 0.55 ? 'Dusk' : 'Day'}${weak ? ` · ${weak} weak` : ''}`;
+    if (sky.textContent !== skyText) { sky.textContent = skyText; sky.classList.toggle('storm', s.world.storm); sky.classList.toggle('night', s.world.night); }
     mixOptions = s.backends;
     if (!dragging && !mixDraft) drawMixer(countsOf(s.mix, mixOptions));
     const p = s.progress;

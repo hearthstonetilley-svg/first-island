@@ -20,7 +20,7 @@ const shot = (pg, path) => pg.screenshot({ path, timeout: 120000 }).catch(e => c
 const server = spawn('npx', ['vite-node', 'server/sandbox.ts'], { stdio: ['ignore', 'pipe', 'pipe'], detached: true,
   env: { ...process.env, SANDBOX_PORT: String(PORT), SANDBOX_FRESH: '1', MIND_MODE: 'scripted', SANDBOX_STATE_DIR: mkdtempSync(join(tmpdir(), 'sandbox-eval-')),
     // The eval must never spend: both call caps are zero, whatever the mixer is set to.
-    MAX_CALLS_PER_MIN: '0', COUNCIL_CALLS_PER_MIN: '0', SANDBOX_TEST: '1', SANDBOX_COUNCIL_DELAY_MS: '1500' } });
+    MAX_CALLS_PER_MIN: '0', COUNCIL_CALLS_PER_MIN: '0', SANDBOX_TEST: '1', SANDBOX_COUNCIL_DELAY_MS: '1500', SANDBOX_DAY_MS: '60000', SANDBOX_DRAIN: String(1 / 150) } });
 let serverLog = ''; server.stdout.on('data', c => { serverLog += c; }); server.stderr.on('data', c => { serverLog += c; });
 process.env.SANDBOX_PORT = String(PORT);
 const vite = await createServer({ server: { port: WEB, strictPort: true }, logLevel: 'silent' });
@@ -32,7 +32,7 @@ if (!serverLog.includes('sandbox server on')) { console.log(serverLog); try { pr
 await api('/api/control', { cmd: 'start' });
 
 // Watch the stream for the whole run: the carry law must hold at every state.
-const seen = { types: new Set(), maxCarry: 0, states: 0, agents: 0, drops: 0, actions: 0, realItems: 0, hyps: 0, adjourned: false };
+const seen = { types: new Set(), maxCarry: 0, states: 0, agents: 0, drops: 0, actions: 0, realItems: 0, hyps: 0, adjourned: false, minEnergy: 1, maxDay: 0, minDay: 1, eats: 0 };
 const stream = await fetch(`http://localhost:${PORT}/api/events`);
 const reader = stream.body.getReader();
 let buffer = '';
@@ -45,8 +45,8 @@ let buffer = '';
       const kind = block.match(/^event: (\w+)/)?.[1], data = block.match(/\ndata: (.*)$/s)?.[1];
       if (!data) continue;
       const d = JSON.parse(data);
-      if (kind === 'state') { seen.states++; seen.agents = d.agents.length; for (const a of d.agents) if (a.council === null) seen.maxCarry = Math.max(seen.maxCarry, a.inventory.length); }
-      if (kind === 'event') { seen.types.add(d.type); if (/^sets down /.test(d.text)) seen.drops++; if (['action', 'result', 'thought', 'say'].includes(d.type)) seen.actions++; if (/^gathers (sand|shell|seaweed|driftwood|water|wood|plant fibre|resin|fruit|clay|dry grass|red berries|flint|stone|pyrite)$/.test(d.text)) seen.realItems++; if (d.type === 'hypothesis') seen.hyps++; if (d.type === 'council_merge' && /^ADJOURNED/.test(d.text)) seen.adjourned = true; }
+      if (kind === 'state') { seen.states++; seen.agents = d.agents.length; seen.maxDay = Math.max(seen.maxDay, d.world.daylight); seen.minDay = Math.min(seen.minDay, d.world.daylight); for (const a of d.agents) seen.minEnergy = Math.min(seen.minEnergy, a.energy); for (const a of d.agents) if (a.council === null) seen.maxCarry = Math.max(seen.maxCarry, a.inventory.length); }
+      if (kind === 'event') { seen.types.add(d.type); if (/^sets down /.test(d.text)) seen.drops++; if (['action', 'result', 'thought', 'say'].includes(d.type)) seen.actions++; if (/^gathers (sand|shell|seaweed|driftwood|water|wood|plant fibre|resin|fruit|clay|dry grass|red berries|flint|stone|pyrite)$/.test(d.text)) seen.realItems++; if (d.type === 'hypothesis') seen.hyps++; if (/^(eats|tries to eat) /.test(d.text)) seen.eats++; if (d.type === 'council_merge' && /^ADJOURNED/.test(d.text)) seen.adjourned = true; }
     }
   }
 })().catch(() => {});
@@ -69,8 +69,8 @@ const perf = await page.evaluate(() => ({ text: document.querySelector('.top .fp
 // Some CI machines draw a frame every few seconds: wait for the page to be playing before judging quality.
 await page.waitForFunction(() => (window.__SANDBOX__?.qualitySamples ?? 0) > 0, null, { timeout: 180000 }).catch(() => {});
 const fpsNow = (await page.evaluate(() => window.__SANDBOX__?.fps)) ?? 0;
-const reached = fpsNow >= 15 ? true : await page.waitForFunction(() => window.__SANDBOX__?.requested === 'minimal', null, { timeout: 180000 }).then(() => true, () => false);
-check('quality steps down to the minimal tier on a slow renderer (requested)', reached, `${fpsNow.toFixed(1)} fps; ${await page.evaluate(() => document.querySelector('.top .fps')?.textContent ?? '')}`);
+const reached = fpsNow >= 15 ? true : await page.waitForFunction(() => window.__SANDBOX__?.quality === 'minimal', null, { timeout: 180000 }).then(() => true, () => false);
+check('quality steps down to the minimal tier on a slow renderer, and it is actually applied', reached, `${fpsNow.toFixed(1)} fps; ${await page.evaluate(() => document.querySelector('.top .fps')?.textContent ?? '')}`);
 const q0 = (await info()).qualitySamples; await sleep(3000);
 await page.waitForFunction(q => (window.__SANDBOX__?.qualitySamples ?? 0) > q, q0, { timeout: 60000 }).catch(() => {});
 const q1 = (await info()).qualitySamples;
@@ -161,6 +161,9 @@ check('predictions are judged against the world', seen.types.has('hypothesis'), 
 await api('/api/control', { cmd: 'act', agent: 5, decision: { action: 'write_skill', skill_name: 'make sparks', steps: [{ action: 'gather', target: 'flint' }, { action: 'gather', target: 'pyrite' }, { action: 'combine', target: 'flint', with: 'pyrite', expect: 'sparks' }] } });
 await api('/api/control', { cmd: 'act', agent: 5, decision: { action: 'use_skill', target: 'make sparks' } });
 for (let i = 0; i < 30 && !seen.types.has('skill_done'); i++) await sleep(500);
+await api('/api/control', { cmd: 'act', agent: 6, decision: { action: 'eat', target: 'flint' } });
+check('strength drains and agents try to eat', seen.minEnergy < 0.9 && seen.eats > 0, `lowest strength ${seen.minEnergy.toFixed(2)}, ${seen.eats} meals tried`);
+check('day turns to night', seen.maxDay > 0.8 && seen.minDay < 0.3, `daylight ${seen.minDay.toFixed(2)} to ${seen.maxDay.toFixed(2)}`);
 check('agents write and run skills', seen.types.has('skill_written') && seen.types.has('skill_run'), [...seen.types].filter(t => t.startsWith('skill') || t === 'learn_skill').join(','));
 check('no page errors', errors.length === 0, errors.slice(0, 2).join(' | '));
 // Layout: at every width the camera and panel controls stay whole and on screen.
@@ -170,10 +173,20 @@ for (const width of [1400, 1200, 900, 640]) {
   const bad = await page.evaluate(() => [...document.querySelectorAll('.top .cam button, .top .run, .top .toggle-left, .top .toggle-right')]
     .filter(b => { const r = b.getBoundingClientRect(); return r.width < 20 || r.right > innerWidth || b.scrollWidth > b.clientWidth + 1; }).map(b => b.textContent));
   if (bad.length) clipped.push(`${width}: ${bad.join(', ')}`);
+  // The whole page, not only the buttons: nothing runs off the side.
+  const overflow = await page.evaluate(() => {
+    const out = [];
+    if (document.documentElement.scrollWidth > innerWidth + 1) out.push('page scrolls sideways');
+    for (const el of document.querySelectorAll('.top, .rail.left, .rail.right, .mode')) {
+      const r = el.getBoundingClientRect(); if (getComputedStyle(el).display !== 'none' && r.width > 0 && (r.left < -1 || r.right > innerWidth + 1)) out.push(el.className);
+    }
+    return out;
+  });
+  if (overflow.length) clipped.push(`${width}: ${overflow.join(', ')}`);
   await shot(page, `${OUT}/layout-${width}.png`);
 }
 await page.setViewportSize({ width: 1400, height: 820 }); await sleep(1000);
-check('primary controls are whole at 1400, 1200, 900 and 640 px', clipped.length === 0, clipped.join(' | '));
+check('the layout holds at 1400, 1200, 900 and 640 px', clipped.length === 0, clipped.join(' | '));
 // A malformed model reply must not crash anything: odd types everywhere, including the prediction.
 for (const decision of [{ action: 'combine', target: 'flint', with: 'pyrite', expect: { result: 'sparks' } }, { action: 42, expect: [1, 2] }, { thought: { x: 1 }, say: null, share: 'all', steps: 'x' }, null]) {
   await api('/api/control', { cmd: 'act', agent: 2, decision });

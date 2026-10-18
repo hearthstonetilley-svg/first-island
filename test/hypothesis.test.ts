@@ -13,6 +13,15 @@ describe('hypothesis marking', () => {
     expect(mark('rope', 'cord')).toBe('correct');
     expect(mark('not nothing', null)).toBe('incorrect');
   });
+  it('handles the confirmation audit cases', () => {
+    expect(mark('no change', null)).toBe('correct');
+    expect(mark('no reaction', null)).toBe('correct');
+    expect(mark('I expect not cord', 'cord')).toBe('incorrect');
+    expect(mark('it will not make fire', 'fire')).toBe('incorrect');
+    expect(mark('it will not make fire', null)).toBe('correct');
+    expect(mark('fire or cord', 'fire')).toBe('missing');
+    expect(mark('either sparks or nothing', null)).toBe('missing');
+  });
   it('marks plain predictions', () => {
     expect(mark('sparks', 'sparks')).toBe('correct');
     expect(mark('a spark', 'sparks')).toBe('correct');

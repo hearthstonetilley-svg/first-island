@@ -60,6 +60,7 @@ const LAWS = [
   'Two things you carry may be combined. Some pairs make something new; most do nothing. Some things change when struck alone.',
   'Some things you make can be set down and built where you stand; what is built stays.',
   'Words carry only a short distance; others hear you only if they are near.',
+  'Your strength drains over time, faster at night and in storms. Some things can be eaten to restore it; some cannot, and some sicken. Being near a hut or a wall you have built shelters you from night and storm. With no strength left you collapse and lose what you carry.',
 ];
 function combine(inventory: Item[], a: Item, b: Item): Item | 'nothing' | undefined {
   const i = inventory.indexOf(a); if (i < 0) return undefined;
@@ -83,6 +84,43 @@ interface SandboxAgent {
   lastResult: string; busyUntil: number; thinking: boolean; nextThink: number; council: number | null; doing?: string; outcome?: string;
   skills?: string[]; running?: { skill: string; step: number; startedAt: number; made: string[] } | null;
   hyp?: { tried: number; right: number; missing?: number; untested?: number };
+  energy?: number; sheltered?: boolean; collapsedUntil?: number;
+}
+
+// ---------- pressure: hunger, day and night, storms, shelter ----------
+// Strength drains all the time and faster at night or in a storm, unless the agent is near
+// a hut or wall it has built. Real food restores it; red berries sicken. At no strength an
+// agent collapses, loses what it carried and wakes on the shore: hard, but the cast stays.
+const DAY_MS = Number(process.env.SANDBOX_DAY_MS ?? 480000);
+const DRAIN_PER_S = Number(process.env.SANDBOX_DRAIN ?? 1 / 900);
+const clockStart = Date.now();
+const daylight = () => 0.5 + 0.5 * Math.cos(((Date.now() - clockStart) % DAY_MS) / DAY_MS * Math.PI * 2);
+const isNight = () => daylight() < 0.3;
+let storm: { until: number } | null = null, nextStorm = Date.now() + 300000 + Math.random() * 300000;
+const SHELTERING = ['hut', 'tower'];
+function updatePressure(dt: number) {
+  const now = Date.now();
+  if (!storm && now > nextStorm) { storm = { until: now + 60000 + Math.random() * 30000 }; emit('weather', 'A storm sweeps across the island.'); }
+  if (storm && now > storm.until) { storm = null; nextStorm = now + 360000 + Math.random() * 360000; emit('weather', 'The storm passes.'); }
+  for (const a of agents) {
+    a.energy ??= 1;
+    if (a.collapsedUntil) {
+      if (now < a.collapsedUntil) continue;
+      a.collapsedUntil = undefined; a.energy = 0.4;
+      const home = PLACES['south shore']; a.node = home; a.x = nodes[home].x; a.y = nodes[home].y; a.z = nodes[home].z; a.path = [];
+      a.lastResult = 'You collapsed from weakness, lost what you carried, and woke on the south shore. Find food.';
+      emit('result', 'wakes on the south shore, weak and empty-handed', a.id); continue;
+    }
+    a.sheltered = structures.some(b => SHELTERING.includes(b.kind) && Math.hypot(b.x - a.x, b.z - a.z) < 3);
+    let rate = DRAIN_PER_S * (a.activity === 'resting' ? 0.5 : 1);
+    if (!a.sheltered) rate *= (isNight() ? 1.8 : 1) * (storm ? 3 : 1);
+    if (a.council !== null) rate *= 0.5;
+    a.energy = Math.max(0, a.energy - rate * dt);
+    if (a.energy <= 0 && a.council === null) {
+      a.inventory = []; a.running = null; a.path = []; a.collapsedUntil = now + 20000;
+      emit('collapse', 'COLLAPSES from hunger and exposure', a.id);
+    }
+  }
 }
 
 // ---------- skills: named procedures an agent writes, runs as one action, and teaches ----------
@@ -94,7 +132,7 @@ interface Skill { name: string; steps: Step[]; author: number; uses: number; suc
 const skills = new Map<string, Skill>();
 const STEP_ACTIONS = ['walk', 'gather', 'combine', 'strike', 'build', 'drop'];
 function cleanSteps(raw: unknown): Step[] {
-  return (Array.isArray(raw) ? raw : []).slice(0, 8).map(x => x as Record<string, unknown>)
+  return (Array.isArray(raw) ? raw : []).slice(0, 8).filter(x => x && typeof x === 'object').map(x => x as Record<string, unknown>)
     .map(x => ({ action: String(x.action ?? '').toLowerCase(), target: x.target === undefined ? undefined : scrub(String(x.target)).toLowerCase().slice(0, 40), with: x.with === undefined ? undefined : scrub(String(x.with)).toLowerCase().slice(0, 40), expect: typeof x.expect === 'string' ? scrub(x.expect).slice(0, 60) : undefined }))
     .filter(x => STEP_ACTIONS.includes(x.action));
 }
@@ -221,7 +259,7 @@ function act(a: SandboxAgent, d: Decision) {
   }
   const action = String(d.action ?? 'wait').toLowerCase(), target = String(d.target ?? '').toLowerCase();
   a.doing = ({ walk: `walking to ${target || 'somewhere'}`, gather: `gathering ${target || 'what is here'}`, combine: `combining ${target} + ${String(d.with ?? '').toLowerCase()}`,
-    strike: `striking ${target}`, build: `building ${target}`, drop: `setting down ${target}`, rest: 'resting', council: 'calling a council' } as Record<string, string>)[action] ?? (d.say ? 'talking' : 'waiting');
+    strike: `striking ${target}`, build: `building ${target}`, drop: `setting down ${target}`, eat: `eating ${target}`, rest: 'resting', council: 'calling a council' } as Record<string, string>)[action] ?? (d.say ? 'talking' : 'waiting');
   const here = nodes[a.node];
   if (action === 'walk') {
     const friend = byName(target);
@@ -267,6 +305,17 @@ function act(a: SandboxAgent, d: Decision) {
       a.lastResult = `You built ${target} at ${nearestPlace(a.x, a.z)}. It stays there.`;
       emit('built', `BUILDS ${target} at ${nearestPlace(a.x, a.z)}`, a.id, undefined, { structure: b });
     }
+  } else if (action === 'eat') {
+    const i = a.inventory.indexOf(target), sub = substance(chem, target);
+    if (i < 0) a.lastResult = `You have no ${target}.`;
+    else if (sub?.food === undefined) { learn(a, factId(`${target} is not food`)); a.lastResult = `${target} is not food. You keep it.`; emit('result', `tries to eat ${target}: not food`, a.id); }
+    else {
+      a.inventory.splice(i, 1); a.energy = Math.max(0, Math.min(1, (a.energy ?? 1) + sub.food)); a.activity = 'eating'; a.busyUntil = Date.now() + 2500;
+      const good = sub.food > 0;
+      learn(a, factId(good ? `eating ${target} restores strength` : `eating ${target} makes you ill`));
+      a.lastResult = good ? `You ate ${target} and feel stronger.` : `You ate ${target} and feel ill.`;
+      emit(good ? 'action' : 'result', good ? `eats ${target} and feels stronger` : `eats ${target} and is sickened`, a.id);
+    }
   } else if (action === 'drop') {
     const i = a.inventory.indexOf(target);
     if (i < 0) a.lastResult = `You have no ${target}.`;
@@ -308,6 +357,8 @@ const waitForSlot = async (): Promise<boolean> => {
   return false;
 };
 const canSpend = () => running && viewers.size > 0;
+// Every pause starts a new epoch: a council that began before it can never act after it.
+let pauseEpoch = 0;
 const mindCalls: number[] = [], councilCalls: number[] = [];
 const within = (xs: number[], cap: number) => { const now = Date.now(); while (xs.length && now - xs[0] > 60000) xs.shift(); return xs.length < cap; };
 const pick = <T,>(xs: T[]) => xs[Math.floor(Math.random() * xs.length)];
@@ -318,7 +369,8 @@ function scriptedMind(a: SandboxAgent): Decision {
   const r = Math.random(), d: Decision = { thought: pick(SCRIPT_THOUGHTS) };
   if (a.known.length) d.share = [pick(a.known)];
   if (a.skills?.length && Math.random() < 0.2) d.teach_skill = [pick(a.skills)];
-  if (a.inventory.length >= 6 && Math.random() < 0.5) { d.action = 'drop'; d.target = pick(a.inventory); }
+  if ((a.energy ?? 1) < 0.45 && a.inventory.some(i => (substance(chem, i)?.food ?? 0) !== 0) && Math.random() < 0.6) { d.action = 'eat'; d.target = a.inventory.find(i => (substance(chem, i)?.food ?? 0) !== 0); }
+  else if (a.inventory.length >= 6 && Math.random() < 0.5) { d.action = 'drop'; d.target = pick(a.inventory); }
   else if (a.skills?.length && r < 0.12) { d.action = 'use_skill'; d.target = pick(a.skills); }
   else if ((!a.skills?.length ? Math.random() < 0.3 : r > 0.95) && a.known.some(f => / makes (?!nothing)/.test(facts[f]))) {
     const f = facts[a.known.filter(x => / makes (?!nothing)/.test(facts[x]))[0]], m = f.match(/^(.+?) \+ (.+?) makes (.+)$/);
@@ -339,14 +391,14 @@ const SYSTEM = `You are one inhabitant of a small island. You and seven others w
 Island laws: ${LAWS.join(' ')} Facts pass between minds only when spoken: share the numbers of facts you want nearby listeners to learn.
 A council: when a problem is too big for one mind, you may call the people near you into a council. The council may split the problem into parts, try competing plans side by side, and merge what worked.
 You control only yourself. Each turn reply with ONE JSON object and nothing else:
-{"thought": "<one short private thought>", "say": "<words spoken aloud, or empty>", "share": [<fact numbers to teach listeners>], "action": "walk|gather|combine|strike|build|drop|rest|wait|council", "target": "<place, person or thing>", "with": "<second thing for combine>", "expect": "<for combine or strike: what you predict it makes, or nothing>", "problem": "<for council: the problem>"}
+{"thought": "<one short private thought>", "say": "<words spoken aloud, or empty>", "share": [<fact numbers to teach listeners>], "action": "walk|gather|combine|strike|build|drop|eat|rest|wait|council", "target": "<place, person or thing>", "with": "<second thing for combine>", "expect": "<for combine or strike: what you predict it makes, or nothing>", "problem": "<for council: the problem>"}
 Places: ${Object.keys(PLACES).join(', ')}. ${CHEMISTRY === 'real' ? 'The materials here are ordinary real-world things and behave as they do in the real world. Whenever you combine or strike, first predict the result in "expect": the world will show whether your hypothesis was right. If you think something real could be made that nobody has tried, say what and from what.' : 'Nothing here is like anything you remember: the materials have their own names and ways, and you must learn them by trying.'}
 Skills: when you know a way of doing something in several steps, write it down as a skill and give it a name of your own: {"action": "write_skill", "skill_name": "<your name for it>", "steps": [{"action": "gather", "target": "<thing>"}, {"action": "combine", "target": "<thing>", "with": "<thing>", "expect": "<what it makes>"}, ...]}. Steps may be walk, gather, combine, strike, build, drop. Run a skill you know with {"action": "use_skill", "target": "<skill name>"}: it carries out every step for you. Teach a skill to people near you by adding "teach_skill": ["<skill name>"].
 Be curious, share what you learn, turn what works into skills, and call a council when working together would help. Keep words short.`;
 
 const factList = (ids: number[]) => ids.slice(-24).map(f => `[${f}] ${facts[f]}`).join('; ') || 'none';
 function prompt(a: SandboxAgent): string {
-  return [`You are ${a.name}. You are near ${nearestPlace(a.x, a.z)}.`, `Last result: ${a.lastResult}`,
+  return [`You are ${a.name}. You are near ${nearestPlace(a.x, a.z)}.`, `Your strength: ${Math.round((a.energy ?? 1) * 100)}%. It is ${isNight() ? 'night' : daylight() < 0.55 ? 'dusk or dawn' : 'day'}${storm ? ', and a storm is raging' : ''}. You are ${a.sheltered ? 'sheltered' : 'exposed'}.`, `Last result: ${a.lastResult}`,
     `The ground here is ${soilOf(nodes[a.node])}. Here you could gather: ${gatherable(nodes[a.node]).map(describeItem).join(', ') || 'nothing'}.`,
     `You carry: ${a.inventory.map(describeItem).join(', ') || 'nothing'}.`,
     `Facts you know: ${factList(a.known)}.`,
@@ -392,7 +444,7 @@ function scheduleMinds() {
   if (!running || viewers.size === 0) return;
   stepSkills();
   const now = Date.now();
-  const ready = agents.filter(a => !a.thinking && !a.running && a.council === null && !a.path.length && now >= a.busyUntil && now >= a.nextThink)
+  const ready = agents.filter(a => !a.thinking && !a.running && !a.collapsedUntil && a.council === null && !a.path.length && now >= a.busyUntil && now >= a.nextThink)
     .sort((x, y) => x.nextThink - y.nextThink);
   for (const a of ready) { if (mindOf(a) !== 'scripted' && inFlight >= MAX_IN_FLIGHT) continue; void think(a); }
 }
@@ -416,6 +468,8 @@ const COUNCIL_SYSTEM = `You are inhabitants of a small island holding a council.
 The materials have their own names; use them exactly. Reply with ONE JSON object and nothing else.`;
 
 async function council(chair: SandboxAgent, problem: string, observer = false) {
+  const epoch = pauseEpoch;
+  let dealtPot: Array<{ item: Item; owner: SandboxAgent; home: boolean }> = [];
   const members = [chair, ...near(chair).filter(o => o.council === null)].slice(0, 6);
   if (members.length < 2) { chair.lastResult = 'Nobody is near enough to hold a council.'; emit('result', 'calls a council but nobody is near', chair.id); return; }
   const rec: CouncilRecord = { id: councils.length + 1, chair: chair.id, members: members.map(m => m.id), problem: scrub(problem).slice(0, 160), mode: '',
@@ -433,8 +487,8 @@ async function council(chair: SandboxAgent, problem: string, observer = false) {
       'Reply: {"mode": "split|branch|none", "parts": [{"agent": "<member name>", "task": "<short task>"}]}'].join('\n'), rec,
       () => ({ mode: 'branch', parts: members.map(m => ({ agent: m.name, task: 'try a pair nobody has tried' })) }));
     rec.mode = ['split', 'branch', 'none'].includes(String(plan.mode)) ? String(plan.mode) : 'branch';
-    const parts = (Array.isArray(plan.parts) ? plan.parts as Array<Record<string, string>> : [])
-      .map(p => ({ agent: byName(p.agent), task: scrub(String(p.task ?? '')).slice(0, 120) }))
+    const parts = (Array.isArray(plan.parts) ? plan.parts : []).filter(p => p && typeof p === 'object').map(p => p as Record<string, unknown>)
+      .map(p => ({ agent: byName(String(p.agent ?? '')), task: scrub(String(p.task ?? '')).slice(0, 120) }))
       .filter(p => p.agent && rec.members.includes(p.agent.id)).slice(0, 6) as Array<{ agent: SandboxAgent; task: string }>;
     if (rec.mode === 'none' || parts.length === 0) parts.splice(0, parts.length, { agent: chair, task: rec.problem });
     rec.parts = parts.map(p => ({ agent: p.agent.id, task: p.task }));
@@ -445,8 +499,10 @@ async function council(chair: SandboxAgent, problem: string, observer = false) {
     // Each dealt item remembers its owner, and goes back to them unless it was used.
     // Test hook: a slow council, so the eval can pause one part-way through.
     if (process.env.SANDBOX_TEST === '1' && Number(process.env.SANDBOX_COUNCIL_DELAY_MS ?? 0) > 0) await new Promise(r => setTimeout(r, Number(process.env.SANDBOX_COUNCIL_DELAY_MS)));
-    if (!running) throw new Error('adjourned');
-    const pot = members.flatMap(m => m.inventory.splice(0).map(item => ({ item, owner: m })));
+    const live = () => running && pauseEpoch === epoch;
+    if (!live()) throw new Error('adjourned');
+    const pot = members.flatMap(m => m.inventory.splice(0).map(item => ({ item, owner: m, home: false })));
+    dealtPot = pot;
     const hands: Array<typeof pot> = parts.map(() => []);
     pot.forEach((entry, i) => hands[i % parts.length].push(entry));
     const results = await Promise.all(parts.map(async (p, i) => {
@@ -456,20 +512,21 @@ async function council(chair: SandboxAgent, problem: string, observer = false) {
         `Your part (${rec.mode}): ${p.task}`, `Items dealt to you for this part: ${mine.join(', ') || 'none'}.`, `Facts the council knows: ${factList(pooled)}.`,
         mine.length >= 2 ? 'Pick one pair from your items to combine for your part, avoiding pairs already known to make nothing.' : 'You have too few items to combine; report what the council should do next.',
         'Reply: {"finding": "<one short line>", "try": {"a": "<item>", "b": "<item>"}, "expect": "<what you predict it makes, or nothing>"}'].join('\n'), rec,
-        () => ({ finding: 'trying a pair', try: { a: mine[0] ?? '', b: mine[1] ?? '' } }), p.agent);
-      const t = (answer.try ?? {}) as Record<string, string>;
+        () => ({ finding: 'trying a pair', try: { a: mine[0] ?? '', b: mine[1] ?? '' }, expect: 'nothing' }), p.agent);
+      const t = (answer && typeof answer.try === 'object' && answer.try ? answer.try : {}) as Record<string, unknown>;
       const x = String(t.a ?? '').toLowerCase(), y = String(t.b ?? '').toLowerCase();
       let r: { text: string; made?: string; fact?: number } = { text: mine.length >= 2 ? `has no ${x} and ${y} in hand` : 'too few items to try' };
       // Paused while this part was thinking: nothing is tried, and the dealt items go home below.
-      if (mine.length >= 2 && running) { r = tryCombine(p.agent, x, y, { inventory: mine } as SandboxAgent); if (!/^lacks /.test(r.text)) judge(p.agent, answer.expect, `${x} + ${y}`, r.made); }
+      if (mine.length >= 2 && live()) { r = tryCombine(p.agent, x, y, { inventory: mine } as SandboxAgent); if (!/^lacks /.test(r.text)) judge(p.agent, answer.expect, `${x} + ${y}`, r.made); }
       // Return what is left: unused items to their owners, anything new to the one who made it.
       const left = [...mine];
-      for (const d of dealt) { const k = left.indexOf(d.item); if (k >= 0) { left.splice(k, 1); d.owner.inventory.push(d.item); } }
+      for (const d of dealt) { const k = left.indexOf(d.item); if (k >= 0) { left.splice(k, 1); d.owner.inventory.push(d.item); } d.home = true; }
       p.agent.inventory.push(...left);
       rec.parts[i] = { ...rec.parts[i], finding: scrub(String(answer.finding ?? '')).slice(0, 120), result: r.text, made: r.made };
       emit('council_part', `${p.agent.name}: ${rec.parts[i].finding} (${r.text})`, p.agent.id, [chair.id], { council: rec.id, part: i, made: r.made ?? null });
       return { agent: p.agent, ...r };
     }));
+    if (!live()) throw new Error('adjourned');
     // 3. Merge: the chair keeps what worked and every member learns it.
     const merged = await councilCall(COUNCIL_SYSTEM, [`You chair the council (${chair.name}). Problem: ${rec.problem}. Mode: ${rec.mode}.`,
       `Results: ${results.map(r => `${r.agent.name}: ${r.text}`).join('; ')}.`,
@@ -479,7 +536,8 @@ async function council(chair: SandboxAgent, problem: string, observer = false) {
     const winner = byName(String(merged.winner ?? ''));
     rec.winner = winner && rec.members.includes(winner.id) ? winner.id : null;
     rec.summary = scrub(String(merged.summary ?? '')).slice(0, 180);
-    if (running) for (const r of results) if (r.fact !== undefined) teach(r.agent, r.fact, members, 'council');
+    if (!live()) throw new Error('adjourned');
+    for (const r of results) if (r.fact !== undefined) teach(r.agent, r.fact, members, 'council');
     rec.closedAt = Date.now();
     emit('council_merge', `MERGE: ${rec.summary}${rec.winner !== null ? ` (best: ${agents[rec.winner].name})` : ''} · ${rec.calls} calls`, chair.id, rec.members.filter(i => i !== chair.id),
       { council: rec.id, winner: rec.winner, calls: rec.calls });
@@ -492,6 +550,8 @@ async function council(chair: SandboxAgent, problem: string, observer = false) {
     if ((err as Error).message !== 'adjourned') console.error('council failed', (err as Error).message);
   } finally {
     rec.closedAt ??= Date.now();
+    // Whatever happened, every dealt item that has not gone home goes back to its owner.
+    for (const d of dealtPot) if (!d.home) { d.owner.inventory.push(d.item); d.home = true; }
     // The carry law holds the moment the council ends: anything over six is set down at once.
     for (const m of members) {
       if (m.inventory.length > 6) { const dropped = m.inventory.splice(6); emit('result', `sets down ${dropped.join(', ')}: hands full after the council`, m.id); }
@@ -533,7 +593,7 @@ let tick = 0, last = Date.now();
 const CARRY = 6;
 setInterval(() => {
   const now = Date.now(), dt = (now - last) / 1000; last = now;
-  if (running) stepAgents(dt);
+  if (running) { stepAgents(dt); updatePressure(dt); }
   // The carry law holds between every step: anything over six is set down.
   for (const a of agents) if (a.council === null && a.inventory.length > CARRY) {
     const dropped = a.inventory.splice(CARRY);
@@ -543,15 +603,15 @@ setInterval(() => {
 }, 100);
 setInterval(() => {
   tick++;
-  send('state', { tick, running, mindMode, mix, backends: ['scripted', ...available()], calls: stats.total, failed: stats.failed, mindError: stats.lastError, perMin: perMinute(), cap: MIND_CAP + COUNCIL_CAP,
+  send('state', { tick, running, mindMode, mix, world: { daylight: daylight(), night: isNight(), storm: !!storm }, backends: ['scripted', ...available()], calls: stats.total, failed: stats.failed, mindError: stats.lastError, perMin: perMinute(), cap: MIND_CAP + COUNCIL_CAP,
     councilCalls: stats.byPurpose.council ?? 0, facts: facts.length,
     progress: { elements: chem.substances.filter(x => x.tier === 0).length, makeable: chem.substances.filter(x => x.tier > 0).length, found: new Set(agents.flatMap(a => a.made)).size,
       structures: chem.substances.filter(x => x.structure).length, built: new Set(structures.map(b => b.name)).size, councils: councils.length, skills: skills.size, hypotheses: hypTotal, hypothesesRight: hypRight, hypothesesMissing: hypMissing, ideas: ideas.length, chemistry: CHEMISTRY },
     councils: councils.filter(c => !c.closedAt || Date.now() - c.closedAt < 6000).map(c => ({ id: c.id, chair: c.chair, members: c.members, problem: c.problem, mode: c.mode, open: !c.closedAt, winner: c.winner })),
     agents: agents.map(a => ({ id: a.id, name: a.name, x: a.x, y: a.y, z: a.z, activity: a.activity, thought: a.thought,
       said: Date.now() - a.saidAt < 8000 ? a.said : '', saidAt: a.saidAt, thinking: a.thinking, inventory: a.inventory, known: a.made, facts: a.known.length, knownIds: a.known,
-      hyp: { tried: a.hyp?.tried ?? 0, right: a.hyp?.right ?? 0, missing: a.hyp?.missing ?? 0, untested: a.hyp?.untested ?? 0 }, skills: a.skills ?? [], runningSkill: a.running ? `${a.running.skill} (step ${a.running.step} of ${skills.get(a.running.skill)?.steps.length ?? 0})` : '',
-      council: a.council, doing: a.running ? `running skill ${a.running.skill}` : a.council !== null ? 'in council' : a.path.length ? a.doing ?? 'walking' : a.doing ?? 'waiting', outcome: a.outcome ?? '' })) });
+      energy: a.energy ?? 1, sheltered: !!a.sheltered, collapsed: !!a.collapsedUntil, hyp: { tried: a.hyp?.tried ?? 0, right: a.hyp?.right ?? 0, missing: a.hyp?.missing ?? 0, untested: a.hyp?.untested ?? 0 }, skills: a.skills ?? [], runningSkill: a.running ? `${a.running.skill} (step ${a.running.step} of ${skills.get(a.running.skill)?.steps.length ?? 0})` : '',
+      council: a.council, doing: a.collapsedUntil ? 'collapsed' : a.running ? `running skill ${a.running.skill}` : a.council !== null ? 'in council' : a.path.length ? a.doing ?? 'walking' : a.doing ?? 'waiting', outcome: a.outcome ?? '' })) });
 }, 250);
 
 // ---------- real usage meters ----------
@@ -624,7 +684,7 @@ createServer(async (req, res) => {
   if (req.url === '/api/control' && req.method === 'POST') {
     const b = await body(req);
     if (b.cmd === 'start') { running = true; emit('system', 'The island wakes.'); }
-    if (b.cmd === 'pause') { running = false; emit('system', 'Paused.'); }
+    if (b.cmd === 'pause') { running = false; pauseEpoch++; emit('system', 'Paused.'); }
     // Test hook (eval only): feed an agent an arbitrary, possibly malformed, decision.
     if (process.env.SANDBOX_TEST === '1' && b.cmd === 'act') { const ag = agents[Number(b.agent)]; if (ag) try { act(ag, cleanDecision(b.decision)); } catch (err) { console.error('act failed', (err as Error).message); } }
     if (b.cmd === 'council') {
