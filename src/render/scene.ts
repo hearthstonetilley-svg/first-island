@@ -18,6 +18,8 @@ import { createBroadleafParts, TreePart } from './broadleaf';
 import { FrameDiagnostics } from './diagnostics';
 import { QualityChange } from './quality';
 import { warmRenderer } from './warmup';
+import { Snapshot } from '../sim/types';
+import { AgentFigures } from './agents';
 import { LoadingProgress, paintLoading } from '../ui/loading';
 
 const SUN_DIRECTION = new Vector3(-0.82, 0.22, -0.53).normalize();
@@ -241,6 +243,8 @@ function addSky(scene: Scene): void {
 }
 
 interface SceneOptions {
+  snapshot?: Snapshot;
+  onSelect?: (id: number) => void;
   postEnabled?: boolean;
   diagnostics?: FrameDiagnostics;
   onProgress?: (progress: LoadingProgress) => Promise<void>;
@@ -255,6 +259,11 @@ export interface IslandScene {
   render(time: number): void;
   resize(): void;
   setQuality(change: QualityChange): void;
+  updateSnapshot(snapshot: Snapshot, timestamp: number): void;
+  selectAgent(id: number | undefined): void;
+  followAgent(id: number | undefined): void;
+  islandView(): void;
+  agentPositions(): ReturnType<AgentFigures['projected']>;
   waitForGPU(): Promise<void>;
   onLost(listener: () => void): () => void;
   dispose(): void;
@@ -371,6 +380,10 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
     const offset = point.sub(target);
     distance = Math.max(distance, offset.dot(toCamera) + Math.abs(offset.dot(right)) / (tanFov * camera.aspect * 0.62));
   }
+  const islandTarget = target.clone();
+  const islandDistance = distance;
+  let followed: number | undefined;
+  let downX = 0, downY = 0, moved = false;
   let dragging = false;
   let lastX = 0;
   let lastY = 0;
@@ -384,19 +397,24 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
   updateCamera();
   canvas.addEventListener('pointerdown', (event) => {
     dragging = true;
+    downX = event.clientX; downY = event.clientY; moved = false;
     lastX = event.clientX;
     lastY = event.clientY;
     canvas.setPointerCapture(event.pointerId);
   }, { signal: events.signal });
   canvas.addEventListener('pointermove', (event) => {
     if (!dragging) return;
+    moved ||= Math.hypot(event.clientX - downX, event.clientY - downY) > 4;
     orbitYaw -= (event.clientX - lastX) * 0.008;
     orbitPitch += (event.clientY - lastY) * 0.006;
     lastX = event.clientX;
     lastY = event.clientY;
     updateCamera();
   }, { signal: events.signal });
-  canvas.addEventListener('pointerup', () => { dragging = false; }, { signal: events.signal });
+  canvas.addEventListener('pointerup', (event) => {
+    dragging = false;
+    if (!moved) { const id = figures.pick(event.clientX, event.clientY, canvas, camera); if (id !== undefined) options.onSelect?.(id); }
+  }, { signal: events.signal });
   canvas.addEventListener('pointercancel', () => { dragging = false; }, { signal: events.signal });
   canvas.addEventListener('wheel', (event) => {
     event.preventDefault();
@@ -411,6 +429,8 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
   const treeTime = uniform(0);
   for (const kind of ['pine', 'broadleaf', 'palm'] as const) addTreeKind(scene, world.trees, kind, treeTime);
   await progress({ stage: 'water', message: 'Preparing the ocean', percent: 56 });
+  const figures = new AgentFigures(scene, options.snapshot);
+  disposables.push(figures);
   const ocean = addOcean(scene, world);
   disposables.push(ocean.heightTexture);
   scene.add(new HemisphereLight('#c5defc', '#73654b', 3));
@@ -545,10 +565,21 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
   };
   const render = (time: number) => {
     watch.assert();
+    const agents = figures.update(performance.now(), time * 0.001);
+    if (followed !== undefined) {
+      const agent = agents.find(a => a.id === followed);
+      if (agent) { target.lerp(new Vector3(agent.x, agent.y + 0.45, agent.z), 0.3); updateCamera(); }
+      else followed = undefined;
+    }
     treeTime.value = time * 0.001;
     ocean.time.value = time * 0.001;
     draw();
   };
   return { renderer, label, render, resize, setQuality, dispose,
+    updateSnapshot: (snapshot, timestamp) => figures.receive(snapshot, timestamp),
+    selectAgent: (id) => { figures.selected = id; },
+    followAgent: (id) => { followed = id; if (id !== undefined) { distance = 15; orbitPitch = 0.45; } },
+    islandView: () => { followed = undefined; target.copy(islandTarget); distance = islandDistance; orbitYaw = 0.58; orbitPitch = 0.13; updateCamera(); },
+    agentPositions: () => figures.projected(camera),
     waitForGPU: () => watch.run(() => renderer.waitForGPU()), onLost: (listener) => watch.subscribe(listener) };
 }

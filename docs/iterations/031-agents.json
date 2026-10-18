@@ -1,0 +1,1431 @@
+{
+  "picked": "Agent 2",
+  "positions": [
+    {
+      "id": 1,
+      "x": 552.8257023446657,
+      "y": 360.1883224343246,
+      "visible": true
+    },
+    {
+      "id": 2,
+      "x": 636.3599548224231,
+      "y": 425.8330668912003,
+      "visible": true
+    },
+    {
+      "id": 3,
+      "x": 469.4348877545217,
+      "y": 381.50205410919625,
+      "visible": true
+    },
+    {
+      "id": 4,
+      "x": 596.110409816039,
+      "y": 389.8261033317919,
+      "visible": true
+    },
+    {
+      "id": 5,
+      "x": 561.4226931578019,
+      "y": 346.85925248652245,
+      "visible": true
+    },
+    {
+      "id": 6,
+      "x": 449.13769164334263,
+      "y": 394.8434239165998,
+      "visible": true
+    },
+    {
+      "id": 7,
+      "x": 449.2778771832437,
+      "y": 394.6470457414531,
+      "visible": true
+    },
+    {
+      "id": 8,
+      "x": 603.2036108132065,
+      "y": 368.70440346358237,
+      "visible": true
+    },
+    {
+      "id": 9,
+      "x": 462.3199591544743,
+      "y": 397.8677022570585,
+      "visible": true
+    },
+    {
+      "id": 10,
+      "x": 431.69978017509277,
+      "y": 394.79651228575295,
+      "visible": true
+    },
+    {
+      "id": 11,
+      "x": 712.5423538163859,
+      "y": 410.6075200441662,
+      "visible": true
+    },
+    {
+      "id": 12,
+      "x": 554.1556238524366,
+      "y": 416.6667903605406,
+      "visible": true
+    },
+    {
+      "id": 13,
+      "x": 461.2903259300715,
+      "y": 394.69326229572374,
+      "visible": true
+    },
+    {
+      "id": 14,
+      "x": 460.5659277137596,
+      "y": 385.89765782014354,
+      "visible": true
+    },
+    {
+      "id": 15,
+      "x": 520.3392489615943,
+      "y": 368.79662573718406,
+      "visible": true
+    },
+    {
+      "id": 16,
+      "x": 672.7832749487824,
+      "y": 402.1577755139737,
+      "visible": true
+    },
+    {
+      "id": 17,
+      "x": 707.1901629375897,
+      "y": 407.953570610067,
+      "visible": true
+    },
+    {
+      "id": 18,
+      "x": 575.3688436926603,
+      "y": 379.78686613773624,
+      "visible": true
+    },
+    {
+      "id": 19,
+      "x": 421.98954612806,
+      "y": 399.43487332899304,
+      "visible": true
+    },
+    {
+      "id": 20,
+      "x": 606.5828337126824,
+      "y": 389.47013202116756,
+      "visible": true
+    }
+  ],
+  "before": {
+    "version": 1,
+    "seed": 42,
+    "initialDials": {
+      "generationSeconds": 1800,
+      "foodRegrowth": 1,
+      "mutationRate": 0.04,
+      "startingPopulation": 20,
+      "populationCap": 200
+    },
+    "ticks": 1,
+    "events": [
+      {
+        "seq": 0,
+        "tick": 0,
+        "type": "generation",
+        "data": {
+          "generation": 1,
+          "seed": 42
+        }
+      },
+      {
+        "seq": 1,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 1,
+          "parents": [],
+          "family": 1,
+          "generation": 1,
+          "traits": {
+            "speed": 0.886497352924198,
+            "strength": 1.0904571409337223,
+            "perception": 8.727672655135393,
+            "curiosity": 0.23566230025608093,
+            "sociability": 0.38669961104169487,
+            "fertility": 1.0096900768578054,
+            "lifespan": 1.755563273280859
+          }
+        }
+      },
+      {
+        "seq": 2,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 2,
+          "parents": [],
+          "family": 2,
+          "generation": 1,
+          "traits": {
+            "speed": 0.8545698054134846,
+            "strength": 0.8472495879977942,
+            "perception": 5.351840754970908,
+            "curiosity": 0.4256676746532321,
+            "sociability": 0.7319674775004387,
+            "fertility": 1.0653684554621579,
+            "lifespan": 1.6612108995206654
+          }
+        }
+      },
+      {
+        "seq": 3,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 3,
+          "parents": [],
+          "family": 3,
+          "generation": 1,
+          "traits": {
+            "speed": 0.8603475528769196,
+            "strength": 0.9559460083022714,
+            "perception": 5.346167043782771,
+            "curiosity": 0.3715027733705938,
+            "sociability": 0.4722984041087329,
+            "fertility": 0.818801986053586,
+            "lifespan": 1.5200221140868961
+          }
+        }
+      },
+      {
+        "seq": 4,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 4,
+          "parents": [],
+          "family": 4,
+          "generation": 1,
+          "traits": {
+            "speed": 0.8524498268961906,
+            "strength": 1.1815630390308798,
+            "perception": 8.415257882326841,
+            "curiosity": 0.4719839986646548,
+            "sociability": 0.8332682737614958,
+            "fertility": 0.8216173990629614,
+            "lifespan": 1.8011867943219841
+          }
+        }
+      },
+      {
+        "seq": 5,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 5,
+          "parents": [],
+          "family": 5,
+          "generation": 1,
+          "traits": {
+            "speed": 1.1546109937131406,
+            "strength": 0.9074476454406977,
+            "perception": 7.031333353370428,
+            "curiosity": 0.6262701779371127,
+            "sociability": 0.37116116015240547,
+            "fertility": 1.1733452609740198,
+            "lifespan": 1.8464468996971846
+          }
+        }
+      },
+      {
+        "seq": 6,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 6,
+          "parents": [],
+          "family": 6,
+          "generation": 1,
+          "traits": {
+            "speed": 1.0294928223825992,
+            "strength": 1.1930406474508346,
+            "perception": 6.346117646433413,
+            "curiosity": 0.25641967402771115,
+            "sociability": 0.748596860608086,
+            "fertility": 0.8875284023582936,
+            "lifespan": 1.7741233414039015
+          }
+        }
+      },
+      {
+        "seq": 7,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 7,
+          "parents": [],
+          "family": 7,
+          "generation": 1,
+          "traits": {
+            "speed": 0.8484710997901858,
+            "strength": 0.9402756384573877,
+            "perception": 6.802459958009422,
+            "curiosity": 0.23326483056880534,
+            "sociability": 0.4640519375447184,
+            "fertility": 1.0391702180728317,
+            "lifespan": 1.6782700281590224
+          }
+        }
+      },
+      {
+        "seq": 8,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 8,
+          "parents": [],
+          "family": 8,
+          "generation": 1,
+          "traits": {
+            "speed": 1.0755789037793875,
+            "strength": 0.9201204621233047,
+            "perception": 6.034897644072771,
+            "curiosity": 0.2662498822901398,
+            "sociability": 0.7585246379021555,
+            "fertility": 1.1529659147374334,
+            "lifespan": 1.8313190423883499
+          }
+        }
+      },
+      {
+        "seq": 9,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 9,
+          "parents": [],
+          "family": 9,
+          "generation": 1,
+          "traits": {
+            "speed": 1.1575179500505328,
+            "strength": 1.0127074093557895,
+            "perception": 5.321597563102841,
+            "curiosity": 0.627940252283588,
+            "sociability": 0.3461978458799422,
+            "fertility": 0.8988636591471733,
+            "lifespan": 1.5235689172521234
+          }
+        }
+      },
+      {
+        "seq": 10,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 10,
+          "parents": [],
+          "family": 10,
+          "generation": 1,
+          "traits": {
+            "speed": 0.8489487950690091,
+            "strength": 1.140696086548269,
+            "perception": 6.452302526682615,
+            "curiosity": 0.40414860397577285,
+            "sociability": 0.49244551830925043,
+            "fertility": 0.8243729012086988,
+            "lifespan": 1.764784043096006
+          }
+        }
+      },
+      {
+        "seq": 11,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 11,
+          "parents": [],
+          "family": 11,
+          "generation": 1,
+          "traits": {
+            "speed": 1.1719711286947132,
+            "strength": 0.8458818492479623,
+            "perception": 7.254866203293204,
+            "curiosity": 0.4956780170323327,
+            "sociability": 0.8905868293717503,
+            "fertility": 0.8769753633067012,
+            "lifespan": 1.6195164423435926
+          }
+        }
+      },
+      {
+        "seq": 12,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 12,
+          "parents": [],
+          "family": 12,
+          "generation": 1,
+          "traits": {
+            "speed": 1.1410259183496239,
+            "strength": 1.0494543585926295,
+            "perception": 8.348545136861503,
+            "curiosity": 0.56075048383791,
+            "sociability": 0.6817124160937964,
+            "fertility": 1.1623523402959108,
+            "lifespan": 1.750374634191394
+          }
+        }
+      },
+      {
+        "seq": 13,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 13,
+          "parents": [],
+          "family": 13,
+          "generation": 1,
+          "traits": {
+            "speed": 0.8521003155037761,
+            "strength": 1.159708725847304,
+            "perception": 8.445090977475047,
+            "curiosity": 0.48109625864308325,
+            "sociability": 0.8501500542741269,
+            "fertility": 0.8458708566613495,
+            "lifespan": 1.5472970261238514
+          }
+        }
+      },
+      {
+        "seq": 14,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 14,
+          "parents": [],
+          "family": 14,
+          "generation": 1,
+          "traits": {
+            "speed": 1.0360505979508163,
+            "strength": 0.9860226373188198,
+            "perception": 5.335730693303049,
+            "curiosity": 0.5630604962119832,
+            "sociability": 0.5320507919881492,
+            "fertility": 0.9438592223450541,
+            "lifespan": 1.6413309525698423
+          }
+        }
+      },
+      {
+        "seq": 15,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 15,
+          "parents": [],
+          "family": 15,
+          "generation": 1,
+          "traits": {
+            "speed": 1.0667397435754538,
+            "strength": 1.0053281906060876,
+            "perception": 7.36892260145396,
+            "curiosity": 0.6062839300371706,
+            "sociability": 0.39973229784518477,
+            "fertility": 0.8854287090711296,
+            "lifespan": 1.5705710095353425
+          }
+        }
+      },
+      {
+        "seq": 16,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 16,
+          "parents": [],
+          "family": 16,
+          "generation": 1,
+          "traits": {
+            "speed": 1.0311030808836223,
+            "strength": 0.8238556560128928,
+            "perception": 5.940713024698198,
+            "curiosity": 0.23919929207768292,
+            "sociability": 0.8724493070505559,
+            "fertility": 0.8358844172209502,
+            "lifespan": 1.6110625340603293
+          }
+        }
+      },
+      {
+        "seq": 17,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 17,
+          "parents": [],
+          "family": 17,
+          "generation": 1,
+          "traits": {
+            "speed": 0.8764935892075301,
+            "strength": 0.8460972444154322,
+            "perception": 5.789827389642596,
+            "curiosity": 0.6382585745071991,
+            "sociability": 0.7594844992272556,
+            "fertility": 1.194925657566637,
+            "lifespan": 1.7532793995924294
+          }
+        }
+      },
+      {
+        "seq": 18,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 18,
+          "parents": [],
+          "family": 18,
+          "generation": 1,
+          "traits": {
+            "speed": 1.094578685425222,
+            "strength": 0.8715595791116357,
+            "perception": 5.559819607064128,
+            "curiosity": 0.3788792838342488,
+            "sociability": 0.7964900691993535,
+            "fertility": 0.8673370857723057,
+            "lifespan": 1.8798606305383145
+          }
+        }
+      },
+      {
+        "seq": 19,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 19,
+          "parents": [],
+          "family": 19,
+          "generation": 1,
+          "traits": {
+            "speed": 1.0921460145153106,
+            "strength": 0.897725903429091,
+            "perception": 6.072714816778898,
+            "curiosity": 0.4175164584303275,
+            "sociability": 0.339696190925315,
+            "fertility": 0.9913929739966989,
+            "lifespan": 1.5503495923243462
+          }
+        }
+      },
+      {
+        "seq": 20,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 20,
+          "parents": [],
+          "family": 20,
+          "generation": 1,
+          "traits": {
+            "speed": 0.8958836562931538,
+            "strength": 1.0072888173162937,
+            "perception": 5.322152513079345,
+            "curiosity": 0.35997974914498626,
+            "sociability": 0.865678303549066,
+            "fertility": 0.8860749009065331,
+            "lifespan": 1.8225555043667554
+          }
+        }
+      },
+      {
+        "seq": 21,
+        "tick": 1,
+        "type": "intervention",
+        "data": {
+          "speed": 0
+        }
+      }
+    ]
+  },
+  "after": {
+    "version": 1,
+    "seed": 42,
+    "initialDials": {
+      "generationSeconds": 1800,
+      "foodRegrowth": 1,
+      "mutationRate": 0.04,
+      "startingPopulation": 20,
+      "populationCap": 200
+    },
+    "ticks": 1,
+    "events": [
+      {
+        "seq": 0,
+        "tick": 0,
+        "type": "generation",
+        "data": {
+          "generation": 1,
+          "seed": 42
+        }
+      },
+      {
+        "seq": 1,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 1,
+          "parents": [],
+          "family": 1,
+          "generation": 1,
+          "traits": {
+            "speed": 0.886497352924198,
+            "strength": 1.0904571409337223,
+            "perception": 8.727672655135393,
+            "curiosity": 0.23566230025608093,
+            "sociability": 0.38669961104169487,
+            "fertility": 1.0096900768578054,
+            "lifespan": 1.755563273280859
+          }
+        }
+      },
+      {
+        "seq": 2,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 2,
+          "parents": [],
+          "family": 2,
+          "generation": 1,
+          "traits": {
+            "speed": 0.8545698054134846,
+            "strength": 0.8472495879977942,
+            "perception": 5.351840754970908,
+            "curiosity": 0.4256676746532321,
+            "sociability": 0.7319674775004387,
+            "fertility": 1.0653684554621579,
+            "lifespan": 1.6612108995206654
+          }
+        }
+      },
+      {
+        "seq": 3,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 3,
+          "parents": [],
+          "family": 3,
+          "generation": 1,
+          "traits": {
+            "speed": 0.8603475528769196,
+            "strength": 0.9559460083022714,
+            "perception": 5.346167043782771,
+            "curiosity": 0.3715027733705938,
+            "sociability": 0.4722984041087329,
+            "fertility": 0.818801986053586,
+            "lifespan": 1.5200221140868961
+          }
+        }
+      },
+      {
+        "seq": 4,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 4,
+          "parents": [],
+          "family": 4,
+          "generation": 1,
+          "traits": {
+            "speed": 0.8524498268961906,
+            "strength": 1.1815630390308798,
+            "perception": 8.415257882326841,
+            "curiosity": 0.4719839986646548,
+            "sociability": 0.8332682737614958,
+            "fertility": 0.8216173990629614,
+            "lifespan": 1.8011867943219841
+          }
+        }
+      },
+      {
+        "seq": 5,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 5,
+          "parents": [],
+          "family": 5,
+          "generation": 1,
+          "traits": {
+            "speed": 1.1546109937131406,
+            "strength": 0.9074476454406977,
+            "perception": 7.031333353370428,
+            "curiosity": 0.6262701779371127,
+            "sociability": 0.37116116015240547,
+            "fertility": 1.1733452609740198,
+            "lifespan": 1.8464468996971846
+          }
+        }
+      },
+      {
+        "seq": 6,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 6,
+          "parents": [],
+          "family": 6,
+          "generation": 1,
+          "traits": {
+            "speed": 1.0294928223825992,
+            "strength": 1.1930406474508346,
+            "perception": 6.346117646433413,
+            "curiosity": 0.25641967402771115,
+            "sociability": 0.748596860608086,
+            "fertility": 0.8875284023582936,
+            "lifespan": 1.7741233414039015
+          }
+        }
+      },
+      {
+        "seq": 7,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 7,
+          "parents": [],
+          "family": 7,
+          "generation": 1,
+          "traits": {
+            "speed": 0.8484710997901858,
+            "strength": 0.9402756384573877,
+            "perception": 6.802459958009422,
+            "curiosity": 0.23326483056880534,
+            "sociability": 0.4640519375447184,
+            "fertility": 1.0391702180728317,
+            "lifespan": 1.6782700281590224
+          }
+        }
+      },
+      {
+        "seq": 8,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 8,
+          "parents": [],
+          "family": 8,
+          "generation": 1,
+          "traits": {
+            "speed": 1.0755789037793875,
+            "strength": 0.9201204621233047,
+            "perception": 6.034897644072771,
+            "curiosity": 0.2662498822901398,
+            "sociability": 0.7585246379021555,
+            "fertility": 1.1529659147374334,
+            "lifespan": 1.8313190423883499
+          }
+        }
+      },
+      {
+        "seq": 9,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 9,
+          "parents": [],
+          "family": 9,
+          "generation": 1,
+          "traits": {
+            "speed": 1.1575179500505328,
+            "strength": 1.0127074093557895,
+            "perception": 5.321597563102841,
+            "curiosity": 0.627940252283588,
+            "sociability": 0.3461978458799422,
+            "fertility": 0.8988636591471733,
+            "lifespan": 1.5235689172521234
+          }
+        }
+      },
+      {
+        "seq": 10,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 10,
+          "parents": [],
+          "family": 10,
+          "generation": 1,
+          "traits": {
+            "speed": 0.8489487950690091,
+            "strength": 1.140696086548269,
+            "perception": 6.452302526682615,
+            "curiosity": 0.40414860397577285,
+            "sociability": 0.49244551830925043,
+            "fertility": 0.8243729012086988,
+            "lifespan": 1.764784043096006
+          }
+        }
+      },
+      {
+        "seq": 11,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 11,
+          "parents": [],
+          "family": 11,
+          "generation": 1,
+          "traits": {
+            "speed": 1.1719711286947132,
+            "strength": 0.8458818492479623,
+            "perception": 7.254866203293204,
+            "curiosity": 0.4956780170323327,
+            "sociability": 0.8905868293717503,
+            "fertility": 0.8769753633067012,
+            "lifespan": 1.6195164423435926
+          }
+        }
+      },
+      {
+        "seq": 12,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 12,
+          "parents": [],
+          "family": 12,
+          "generation": 1,
+          "traits": {
+            "speed": 1.1410259183496239,
+            "strength": 1.0494543585926295,
+            "perception": 8.348545136861503,
+            "curiosity": 0.56075048383791,
+            "sociability": 0.6817124160937964,
+            "fertility": 1.1623523402959108,
+            "lifespan": 1.750374634191394
+          }
+        }
+      },
+      {
+        "seq": 13,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 13,
+          "parents": [],
+          "family": 13,
+          "generation": 1,
+          "traits": {
+            "speed": 0.8521003155037761,
+            "strength": 1.159708725847304,
+            "perception": 8.445090977475047,
+            "curiosity": 0.48109625864308325,
+            "sociability": 0.8501500542741269,
+            "fertility": 0.8458708566613495,
+            "lifespan": 1.5472970261238514
+          }
+        }
+      },
+      {
+        "seq": 14,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 14,
+          "parents": [],
+          "family": 14,
+          "generation": 1,
+          "traits": {
+            "speed": 1.0360505979508163,
+            "strength": 0.9860226373188198,
+            "perception": 5.335730693303049,
+            "curiosity": 0.5630604962119832,
+            "sociability": 0.5320507919881492,
+            "fertility": 0.9438592223450541,
+            "lifespan": 1.6413309525698423
+          }
+        }
+      },
+      {
+        "seq": 15,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 15,
+          "parents": [],
+          "family": 15,
+          "generation": 1,
+          "traits": {
+            "speed": 1.0667397435754538,
+            "strength": 1.0053281906060876,
+            "perception": 7.36892260145396,
+            "curiosity": 0.6062839300371706,
+            "sociability": 0.39973229784518477,
+            "fertility": 0.8854287090711296,
+            "lifespan": 1.5705710095353425
+          }
+        }
+      },
+      {
+        "seq": 16,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 16,
+          "parents": [],
+          "family": 16,
+          "generation": 1,
+          "traits": {
+            "speed": 1.0311030808836223,
+            "strength": 0.8238556560128928,
+            "perception": 5.940713024698198,
+            "curiosity": 0.23919929207768292,
+            "sociability": 0.8724493070505559,
+            "fertility": 0.8358844172209502,
+            "lifespan": 1.6110625340603293
+          }
+        }
+      },
+      {
+        "seq": 17,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 17,
+          "parents": [],
+          "family": 17,
+          "generation": 1,
+          "traits": {
+            "speed": 0.8764935892075301,
+            "strength": 0.8460972444154322,
+            "perception": 5.789827389642596,
+            "curiosity": 0.6382585745071991,
+            "sociability": 0.7594844992272556,
+            "fertility": 1.194925657566637,
+            "lifespan": 1.7532793995924294
+          }
+        }
+      },
+      {
+        "seq": 18,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 18,
+          "parents": [],
+          "family": 18,
+          "generation": 1,
+          "traits": {
+            "speed": 1.094578685425222,
+            "strength": 0.8715595791116357,
+            "perception": 5.559819607064128,
+            "curiosity": 0.3788792838342488,
+            "sociability": 0.7964900691993535,
+            "fertility": 0.8673370857723057,
+            "lifespan": 1.8798606305383145
+          }
+        }
+      },
+      {
+        "seq": 19,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 19,
+          "parents": [],
+          "family": 19,
+          "generation": 1,
+          "traits": {
+            "speed": 1.0921460145153106,
+            "strength": 0.897725903429091,
+            "perception": 6.072714816778898,
+            "curiosity": 0.4175164584303275,
+            "sociability": 0.339696190925315,
+            "fertility": 0.9913929739966989,
+            "lifespan": 1.5503495923243462
+          }
+        }
+      },
+      {
+        "seq": 20,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 20,
+          "parents": [],
+          "family": 20,
+          "generation": 1,
+          "traits": {
+            "speed": 0.8958836562931538,
+            "strength": 1.0072888173162937,
+            "perception": 5.322152513079345,
+            "curiosity": 0.35997974914498626,
+            "sociability": 0.865678303549066,
+            "fertility": 0.8860749009065331,
+            "lifespan": 1.8225555043667554
+          }
+        }
+      },
+      {
+        "seq": 21,
+        "tick": 1,
+        "type": "intervention",
+        "data": {
+          "speed": 0
+        }
+      }
+    ]
+  },
+  "changed": {
+    "version": 1,
+    "seed": 42,
+    "initialDials": {
+      "generationSeconds": 1800,
+      "foodRegrowth": 1,
+      "mutationRate": 0.04,
+      "startingPopulation": 20,
+      "populationCap": 200
+    },
+    "ticks": 1,
+    "events": [
+      {
+        "seq": 0,
+        "tick": 0,
+        "type": "generation",
+        "data": {
+          "generation": 1,
+          "seed": 42
+        }
+      },
+      {
+        "seq": 1,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 1,
+          "parents": [],
+          "family": 1,
+          "generation": 1,
+          "traits": {
+            "speed": 0.886497352924198,
+            "strength": 1.0904571409337223,
+            "perception": 8.727672655135393,
+            "curiosity": 0.23566230025608093,
+            "sociability": 0.38669961104169487,
+            "fertility": 1.0096900768578054,
+            "lifespan": 1.755563273280859
+          }
+        }
+      },
+      {
+        "seq": 2,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 2,
+          "parents": [],
+          "family": 2,
+          "generation": 1,
+          "traits": {
+            "speed": 0.8545698054134846,
+            "strength": 0.8472495879977942,
+            "perception": 5.351840754970908,
+            "curiosity": 0.4256676746532321,
+            "sociability": 0.7319674775004387,
+            "fertility": 1.0653684554621579,
+            "lifespan": 1.6612108995206654
+          }
+        }
+      },
+      {
+        "seq": 3,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 3,
+          "parents": [],
+          "family": 3,
+          "generation": 1,
+          "traits": {
+            "speed": 0.8603475528769196,
+            "strength": 0.9559460083022714,
+            "perception": 5.346167043782771,
+            "curiosity": 0.3715027733705938,
+            "sociability": 0.4722984041087329,
+            "fertility": 0.818801986053586,
+            "lifespan": 1.5200221140868961
+          }
+        }
+      },
+      {
+        "seq": 4,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 4,
+          "parents": [],
+          "family": 4,
+          "generation": 1,
+          "traits": {
+            "speed": 0.8524498268961906,
+            "strength": 1.1815630390308798,
+            "perception": 8.415257882326841,
+            "curiosity": 0.4719839986646548,
+            "sociability": 0.8332682737614958,
+            "fertility": 0.8216173990629614,
+            "lifespan": 1.8011867943219841
+          }
+        }
+      },
+      {
+        "seq": 5,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 5,
+          "parents": [],
+          "family": 5,
+          "generation": 1,
+          "traits": {
+            "speed": 1.1546109937131406,
+            "strength": 0.9074476454406977,
+            "perception": 7.031333353370428,
+            "curiosity": 0.6262701779371127,
+            "sociability": 0.37116116015240547,
+            "fertility": 1.1733452609740198,
+            "lifespan": 1.8464468996971846
+          }
+        }
+      },
+      {
+        "seq": 6,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 6,
+          "parents": [],
+          "family": 6,
+          "generation": 1,
+          "traits": {
+            "speed": 1.0294928223825992,
+            "strength": 1.1930406474508346,
+            "perception": 6.346117646433413,
+            "curiosity": 0.25641967402771115,
+            "sociability": 0.748596860608086,
+            "fertility": 0.8875284023582936,
+            "lifespan": 1.7741233414039015
+          }
+        }
+      },
+      {
+        "seq": 7,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 7,
+          "parents": [],
+          "family": 7,
+          "generation": 1,
+          "traits": {
+            "speed": 0.8484710997901858,
+            "strength": 0.9402756384573877,
+            "perception": 6.802459958009422,
+            "curiosity": 0.23326483056880534,
+            "sociability": 0.4640519375447184,
+            "fertility": 1.0391702180728317,
+            "lifespan": 1.6782700281590224
+          }
+        }
+      },
+      {
+        "seq": 8,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 8,
+          "parents": [],
+          "family": 8,
+          "generation": 1,
+          "traits": {
+            "speed": 1.0755789037793875,
+            "strength": 0.9201204621233047,
+            "perception": 6.034897644072771,
+            "curiosity": 0.2662498822901398,
+            "sociability": 0.7585246379021555,
+            "fertility": 1.1529659147374334,
+            "lifespan": 1.8313190423883499
+          }
+        }
+      },
+      {
+        "seq": 9,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 9,
+          "parents": [],
+          "family": 9,
+          "generation": 1,
+          "traits": {
+            "speed": 1.1575179500505328,
+            "strength": 1.0127074093557895,
+            "perception": 5.321597563102841,
+            "curiosity": 0.627940252283588,
+            "sociability": 0.3461978458799422,
+            "fertility": 0.8988636591471733,
+            "lifespan": 1.5235689172521234
+          }
+        }
+      },
+      {
+        "seq": 10,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 10,
+          "parents": [],
+          "family": 10,
+          "generation": 1,
+          "traits": {
+            "speed": 0.8489487950690091,
+            "strength": 1.140696086548269,
+            "perception": 6.452302526682615,
+            "curiosity": 0.40414860397577285,
+            "sociability": 0.49244551830925043,
+            "fertility": 0.8243729012086988,
+            "lifespan": 1.764784043096006
+          }
+        }
+      },
+      {
+        "seq": 11,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 11,
+          "parents": [],
+          "family": 11,
+          "generation": 1,
+          "traits": {
+            "speed": 1.1719711286947132,
+            "strength": 0.8458818492479623,
+            "perception": 7.254866203293204,
+            "curiosity": 0.4956780170323327,
+            "sociability": 0.8905868293717503,
+            "fertility": 0.8769753633067012,
+            "lifespan": 1.6195164423435926
+          }
+        }
+      },
+      {
+        "seq": 12,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 12,
+          "parents": [],
+          "family": 12,
+          "generation": 1,
+          "traits": {
+            "speed": 1.1410259183496239,
+            "strength": 1.0494543585926295,
+            "perception": 8.348545136861503,
+            "curiosity": 0.56075048383791,
+            "sociability": 0.6817124160937964,
+            "fertility": 1.1623523402959108,
+            "lifespan": 1.750374634191394
+          }
+        }
+      },
+      {
+        "seq": 13,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 13,
+          "parents": [],
+          "family": 13,
+          "generation": 1,
+          "traits": {
+            "speed": 0.8521003155037761,
+            "strength": 1.159708725847304,
+            "perception": 8.445090977475047,
+            "curiosity": 0.48109625864308325,
+            "sociability": 0.8501500542741269,
+            "fertility": 0.8458708566613495,
+            "lifespan": 1.5472970261238514
+          }
+        }
+      },
+      {
+        "seq": 14,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 14,
+          "parents": [],
+          "family": 14,
+          "generation": 1,
+          "traits": {
+            "speed": 1.0360505979508163,
+            "strength": 0.9860226373188198,
+            "perception": 5.335730693303049,
+            "curiosity": 0.5630604962119832,
+            "sociability": 0.5320507919881492,
+            "fertility": 0.9438592223450541,
+            "lifespan": 1.6413309525698423
+          }
+        }
+      },
+      {
+        "seq": 15,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 15,
+          "parents": [],
+          "family": 15,
+          "generation": 1,
+          "traits": {
+            "speed": 1.0667397435754538,
+            "strength": 1.0053281906060876,
+            "perception": 7.36892260145396,
+            "curiosity": 0.6062839300371706,
+            "sociability": 0.39973229784518477,
+            "fertility": 0.8854287090711296,
+            "lifespan": 1.5705710095353425
+          }
+        }
+      },
+      {
+        "seq": 16,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 16,
+          "parents": [],
+          "family": 16,
+          "generation": 1,
+          "traits": {
+            "speed": 1.0311030808836223,
+            "strength": 0.8238556560128928,
+            "perception": 5.940713024698198,
+            "curiosity": 0.23919929207768292,
+            "sociability": 0.8724493070505559,
+            "fertility": 0.8358844172209502,
+            "lifespan": 1.6110625340603293
+          }
+        }
+      },
+      {
+        "seq": 17,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 17,
+          "parents": [],
+          "family": 17,
+          "generation": 1,
+          "traits": {
+            "speed": 0.8764935892075301,
+            "strength": 0.8460972444154322,
+            "perception": 5.789827389642596,
+            "curiosity": 0.6382585745071991,
+            "sociability": 0.7594844992272556,
+            "fertility": 1.194925657566637,
+            "lifespan": 1.7532793995924294
+          }
+        }
+      },
+      {
+        "seq": 18,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 18,
+          "parents": [],
+          "family": 18,
+          "generation": 1,
+          "traits": {
+            "speed": 1.094578685425222,
+            "strength": 0.8715595791116357,
+            "perception": 5.559819607064128,
+            "curiosity": 0.3788792838342488,
+            "sociability": 0.7964900691993535,
+            "fertility": 0.8673370857723057,
+            "lifespan": 1.8798606305383145
+          }
+        }
+      },
+      {
+        "seq": 19,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 19,
+          "parents": [],
+          "family": 19,
+          "generation": 1,
+          "traits": {
+            "speed": 1.0921460145153106,
+            "strength": 0.897725903429091,
+            "perception": 6.072714816778898,
+            "curiosity": 0.4175164584303275,
+            "sociability": 0.339696190925315,
+            "fertility": 0.9913929739966989,
+            "lifespan": 1.5503495923243462
+          }
+        }
+      },
+      {
+        "seq": 20,
+        "tick": 0,
+        "type": "birth",
+        "data": {
+          "id": 20,
+          "parents": [],
+          "family": 20,
+          "generation": 1,
+          "traits": {
+            "speed": 0.8958836562931538,
+            "strength": 1.0072888173162937,
+            "perception": 5.322152513079345,
+            "curiosity": 0.35997974914498626,
+            "sociability": 0.865678303549066,
+            "fertility": 0.8860749009065331,
+            "lifespan": 1.8225555043667554
+          }
+        }
+      },
+      {
+        "seq": 21,
+        "tick": 1,
+        "type": "intervention",
+        "data": {
+          "speed": 0
+        }
+      },
+      {
+        "seq": 22,
+        "tick": 1,
+        "type": "intervention",
+        "data": {
+          "dials": {
+            "generationSeconds": 1800,
+            "foodRegrowth": 1.2,
+            "mutationRate": 0.02
+          }
+        }
+      }
+    ]
+  },
+  "errors": []
+}
