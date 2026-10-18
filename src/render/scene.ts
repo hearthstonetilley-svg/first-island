@@ -13,6 +13,7 @@ import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
 import { sampleSlope, TreeData, TreeKind, WorldData } from '../world/generate';
 import { initializeRenderer } from './startup';
+import { DeviceWatch } from './device';
 import { createBroadleafParts, TreePart } from './broadleaf';
 import { FrameDiagnostics } from './diagnostics';
 import { QualityChange } from './quality';
@@ -167,7 +168,7 @@ function addTreeParts(scene: Scene, selected: TreeData[], parts: TreePart[], mat
   }
 }
 
-function addOcean(scene: Scene, world: WorldData): { time: ReturnType<typeof uniform>; mesh: Mesh } {
+function addOcean(scene: Scene, world: WorldData): { time: ReturnType<typeof uniform>; mesh: Mesh; heightTexture: DataTexture } {
   const geometry = new PlaneGeometry(2, 2, 224, 224);
   geometry.rotateX(-Math.PI / 2);
   const pos = geometry.attributes.position;
@@ -224,7 +225,7 @@ function addOcean(scene: Scene, world: WorldData): { time: ReturnType<typeof uni
   material.opacityNode = max(float(1).sub(exp(depth.mul(-2.5))), float(0.55)).add(foam).clamp(0, 1);
   const mesh = new Mesh(geometry, material);
   scene.add(mesh);
-  return { time, mesh };
+  return { time, mesh, heightTexture };
 }
 
 function addSky(scene: Scene): void {
@@ -245,32 +246,99 @@ interface SceneOptions {
   onProgress?: (progress: LoadingProgress) => Promise<void>;
   shadowMapSize?: number;
   pixelRatio?: number;
+  onFallback?: () => void;
 }
 
-export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldData, forceWebGL2 = false, options: SceneOptions = {}): Promise<{
+export interface IslandScene {
   renderer: WebGPURenderer;
   label: string;
-  render: (time: number) => void;
-  resize: () => void;
-  setQuality: (change: QualityChange) => void;
-}> {
-  // Keep pending WebGPU initialization off the displayed/fallback canvas. Its
-  // adapter request cannot be cancelled and may finish after the timeout.
+  render(time: number): void;
+  resize(): void;
+  setQuality(change: QualityChange): void;
+  waitForGPU(): Promise<void>;
+  onLost(listener: () => void): () => void;
+  dispose(): void;
+}
+
+export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldData, forceWebGL2 = false,
+  options: SceneOptions = {}): Promise<IslandScene> {
   await options.onProgress?.({ stage: 'renderer', message: 'Starting the renderer', percent: 40 });
   const rendererStarted = performance.now();
-  const placeholder = canvas;
-  const renderer = await initializeRenderer((forceWebGL) => new WebGPURenderer({
-    canvas: placeholder.cloneNode(false) as HTMLCanvasElement,
-    antialias: true,
-    forceWebGL,
-  }), forceWebGL2);
+  const candidate = await initializeRenderer((forceWebGL) => {
+    const renderer = new WebGPURenderer({ canvas: canvas.cloneNode(false) as HTMLCanvasElement,
+      antialias: true, forceWebGL });
+    const watch = new DeviceWatch();
+    let initialized: Promise<unknown> | undefined;
+    let disposed = false;
+    renderer.onDeviceLost = (info) => {
+      if (disposed) return;
+      watch.notify(info);
+      if (info.api === 'WebGPU') options.onFallback?.();
+    };
+    return { renderer, watch,
+      init: () => { initialized = renderer.init(); return watch.run(() => initialized!); },
+      dispose: () => {
+        if (disposed) return;
+        disposed = true;
+        watch.retire();
+        // Do not release a renderer while its own init is still allocating.
+        const release = () => { try { renderer.dispose(); } catch { /* Partially initialized backend. */ } };
+        void (initialized ?? Promise.resolve()).then(release, release);
+      },
+    };
+  }, forceWebGL2);
   options.diagnostics?.phase('rendererInit', performance.now() - rendererStarted);
+  let cleanup = () => candidate.dispose();
+  const building = buildIslandScene(canvas, world, candidate.renderer, candidate.watch, candidate.dispose,
+    (dispose) => { cleanup = dispose; }, options);
+  try { return await candidate.watch.run(() => building); }
+  catch (error) {
+    candidate.watch.retire();
+    // Any abandoned async continuation sees the retired watch before it can draw
+    // or publish progress into the replacement scene.
+    void building.then((scene) => scene.dispose(), () => cleanup());
+    throw error;
+  }
+}
+
+async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData, renderer: WebGPURenderer,
+  watch: DeviceWatch, releaseRenderer: () => void, setCleanup: (dispose: () => void) => void,
+  options: SceneOptions): Promise<IslandScene> {
+  const progress = async (step: LoadingProgress) => {
+    watch.assert();
+    await options.onProgress?.(step);
+    watch.assert();
+  };
   const buildStarted = performance.now();
-  canvas = renderer.domElement;
+  const canvas = renderer.domElement;
   canvas.style.visibility = 'hidden';
   placeholder.replaceWith(canvas);
-
   const scene = new Scene();
+  const disposables: Array<{ dispose(): void }> = [];
+  const events = new AbortController();
+  let disposed = false;
+  const dispose = () => {
+    if (disposed) return;
+    disposed = true;
+    events.abort();
+    watch.retire();
+    const geometries = new Set<PlaneGeometry>();
+    const materials = new Set<MeshBasicNodeMaterial>();
+    scene.traverse((object) => {
+      if (!(object instanceof Mesh)) return;
+      geometries.add(object.geometry as PlaneGeometry);
+      for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+        materials.add(material as MeshBasicNodeMaterial);
+      }
+    });
+    // A lost backend may reject resource destruction. Always finish releasing
+    // this scene; cleanup of a dead device must not block a fresh renderer.
+    for (const resource of [...geometries, ...materials, ...disposables]) {
+      try { resource.dispose(); } catch { /* The device no longer owns live resources. */ }
+    }
+    releaseRenderer();
+  };
+  setCleanup(dispose);
   scene.background = new ThreeColor('#a6cedf');
   scene.fog = new FogExp2('#9bc5d9', 0.0018);
   const camera = new PerspectiveCamera(46, innerWidth / innerHeight, 0.15, 1600);
@@ -319,7 +387,7 @@ export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldD
     lastX = event.clientX;
     lastY = event.clientY;
     canvas.setPointerCapture(event.pointerId);
-  });
+  }, { signal: events.signal });
   canvas.addEventListener('pointermove', (event) => {
     if (!dragging) return;
     orbitYaw -= (event.clientX - lastX) * 0.008;
@@ -327,23 +395,24 @@ export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldD
     lastX = event.clientX;
     lastY = event.clientY;
     updateCamera();
-  });
-  canvas.addEventListener('pointerup', () => { dragging = false; });
-  canvas.addEventListener('pointercancel', () => { dragging = false; });
+  }, { signal: events.signal });
+  canvas.addEventListener('pointerup', () => { dragging = false; }, { signal: events.signal });
+  canvas.addEventListener('pointercancel', () => { dragging = false; }, { signal: events.signal });
   canvas.addEventListener('wheel', (event) => {
     event.preventDefault();
     distance *= Math.exp(event.deltaY * 0.001);
     updateCamera();
-  }, { passive: false });
+  }, { passive: false, signal: events.signal });
 
-  await options.onProgress?.({ stage: 'terrain', message: 'Building terrain and coastlines', percent: 46 });
+  await progress({ stage: 'terrain', message: 'Building terrain and coastlines', percent: 46 });
   addSky(scene);
   addTerrain(scene, world);
-  await options.onProgress?.({ stage: 'trees', message: 'Building forest canopies', percent: 51 });
+  await progress({ stage: 'trees', message: 'Building forest canopies', percent: 51 });
   const treeTime = uniform(0);
   for (const kind of ['pine', 'broadleaf', 'palm'] as const) addTreeKind(scene, world.trees, kind, treeTime);
-  await options.onProgress?.({ stage: 'water', message: 'Preparing the ocean', percent: 56 });
+  await progress({ stage: 'water', message: 'Preparing the ocean', percent: 56 });
   const ocean = addOcean(scene, world);
+  disposables.push(ocean.heightTexture);
   scene.add(new HemisphereLight('#c5defc', '#73654b', 3));
   const sun = new DirectionalLight('#ffe1a6', 3.2);
   sun.position.copy(SUN_DIRECTION).multiplyScalar(100);
@@ -359,6 +428,7 @@ export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldD
   sun.shadow.camera.near = 1;
   sun.shadow.camera.far = 180;
   scene.add(sun);
+  disposables.push(sun.shadow);
 
   const label = (renderer.backend as { isWebGLBackend?: boolean }).isWebGLBackend ? 'WebGL2' : 'WebGPU';
   renderer.setPixelRatio(options.pixelRatio ?? Math.min(devicePixelRatio, 1.5));
@@ -389,6 +459,7 @@ export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldD
     const glow = bloom(sceneColor, 0.16, 0.4, 1.5);
     post.outputNode = shaded.add(glow);
     const withoutAO = new PostProcessing(renderer);
+    disposables.push(post, withoutAO, scenePass, occlusion, glow);
     // Share scene and bloom nodes; bypass GTAO entirely in the low quality graph.
     withoutAO.outputNode = sceneColor.add(glow);
     draw = () => post.render();
@@ -423,21 +494,21 @@ export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldD
     };
   }
   let warmupStarted = 0;
-  await warmRenderer({
+  await watch.run(() => warmRenderer({
     compile: async (isExpired) => {
-      await options.onProgress?.({ stage: 'water', message: 'Compiling water', percent: 63 });
+      await progress({ stage: 'water', message: 'Compiling water', percent: 63 });
       if (isExpired()) return;
       const waterCompileStarted = performance.now();
       await compileWater();
       if (isExpired()) return;
       options.diagnostics?.phase('waterCompile', performance.now() - waterCompileStarted);
-      await options.onProgress?.({ stage: 'post', message: 'Compiling terrain and lighting', percent: 70 });
+      await progress({ stage: 'post', message: 'Compiling terrain and lighting', percent: 70 });
       if (isExpired()) return;
       const compileStarted = performance.now();
       await compileScene();
       if (isExpired()) return;
       options.diagnostics?.phase('sceneCompile', performance.now() - compileStarted);
-      await options.onProgress?.({ stage: 'post', message: options.postEnabled !== false
+      await progress({ stage: 'post', message: options.postEnabled !== false
         ? 'Compiling post-processing' : 'Preparing the final image', percent: 78 });
       if (isExpired()) return;
       warmupStarted = performance.now();
@@ -447,16 +518,17 @@ export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldD
     // quality graphs, then fence the GPU before revealing the final high frame.
     draws: options.postEnabled !== false ? [drawWithoutAO, draw, draw] : [draw, draw],
     waitForGPU: async () => {
-      await renderer.waitForGPU();
-      await options.onProgress?.({ stage: 'warmup', message: 'Warming up the island', percent: 86 });
+      await watch.run(() => renderer.waitForGPU());
+      await progress({ stage: 'warmup', message: 'Warming up the island', percent: 86 });
     },
-    dispose: () => renderer.dispose(),
-  });
+    dispose,
+  }));
   options.diagnostics?.phase('renderWarmup', performance.now() - warmupStarted);
   canvas.style.visibility = 'visible';
   await paintLoading();
 
   const setQuality = (change: QualityChange) => {
+    watch.assert();
     renderer.setPixelRatio(change.pixelRatio);
     draw = change.aoEnabled ? draw : drawWithoutAO;
     if (options.diagnostics) Object.assign(options.diagnostics.report.scene, {
@@ -465,14 +537,17 @@ export async function createIslandScene(canvas: HTMLCanvasElement, world: WorldD
   };
 
   const resize = () => {
+    watch.assert();
     camera.aspect = innerWidth / innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(innerWidth, innerHeight);
   };
   const render = (time: number) => {
+    watch.assert();
     treeTime.value = time * 0.001;
     ocean.time.value = time * 0.001;
     draw();
   };
-  return { renderer, label, render, resize, setQuality };
+  return { renderer, label, render, resize, setQuality, dispose,
+    waitForGPU: () => watch.run(() => renderer.waitForGPU()), onLost: (listener) => watch.subscribe(listener) };
 }

@@ -1,0 +1,46 @@
+{
+  "bare": {
+    "events": [
+      {
+        "type": "probe error",
+        "text": "Error: page.evaluate: OperationError: A valid external Instance reference no longer exists."
+      }
+    ],
+    "trace": [
+      {
+        "event": "created",
+        "atMs": 61.900000005960464
+      },
+      {
+        "event": "lost",
+        "reason": "destroyed",
+        "message": "Device was destroyed.",
+        "atMs": 63.099999994039536
+      }
+    ]
+  },
+  "app": {
+    "events": [
+      {
+        "type": "error",
+        "text": "THREE.WebGPURenderer: WebGPU Device Lost:\n\nMessage: Device was destroyed.\nReason: destroyed"
+      },
+      {
+        "type": "error",
+        "text": "Island startup failed: OperationError: A valid external Instance reference no longer exists."
+      }
+    ],
+    "trace": [
+      {
+        "event": "created",
+        "atMs": 417.19999998807907
+      },
+      {
+        "event": "lost",
+        "reason": "destroyed",
+        "message": "Device was destroyed.",
+        "atMs": 1254.0999999940395
+      }
+    ]
+  }
+}

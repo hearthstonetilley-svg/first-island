@@ -1,0 +1,722 @@
+[
+ {
+  "mode": "auto",
+  "seed": 1,
+  "run": 1,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 13977,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 8,
+   "medianMs": 416.6,
+   "worstMs": 748.9,
+   "over50": 7
+  },
+  "pixels": {
+   "water": 0.88925,
+   "sky": 0.026875,
+   "land": 0.0678125,
+   "black": 0,
+   "flat": 0.101625,
+   "blue": 0.916125
+  }
+ },
+ {
+  "mode": "auto",
+  "seed": 1,
+  "run": 2,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 14373,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 7,
+   "medianMs": 416.7,
+   "worstMs": 850,
+   "over50": 7
+  },
+  "pixels": {
+   "water": 0.889375,
+   "sky": 0.02625,
+   "land": 0.0679375,
+   "black": 0,
+   "flat": 0.1024375,
+   "blue": 0.915625
+  }
+ },
+ {
+  "mode": "auto",
+  "seed": 1,
+  "run": 3,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 13330,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 8,
+   "medianMs": 433.2,
+   "worstMs": 883.3,
+   "over50": 7
+  },
+  "pixels": {
+   "water": 0.8888125,
+   "sky": 0.027,
+   "land": 0.068125,
+   "black": 0,
+   "flat": 0.10175,
+   "blue": 0.9158125
+  }
+ },
+ {
+  "mode": "auto",
+  "seed": 7,
+  "run": 1,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 13741,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 6,
+   "medianMs": 483.4,
+   "worstMs": 871,
+   "over50": 6
+  },
+  "pixels": {
+   "water": 0.8985,
+   "sky": 0.019625,
+   "land": 0.068625,
+   "black": 0,
+   "flat": 0.1059375,
+   "blue": 0.918125
+  }
+ },
+ {
+  "mode": "auto",
+  "seed": 7,
+  "run": 2,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 14022,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 6,
+   "medianMs": 483.3,
+   "worstMs": 949.9,
+   "over50": 6
+  },
+  "pixels": {
+   "water": 0.897875,
+   "sky": 0.019625,
+   "land": 0.0698125,
+   "black": 0,
+   "flat": 0.107125,
+   "blue": 0.9175
+  }
+ },
+ {
+  "mode": "auto",
+  "seed": 7,
+  "run": 3,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 14039,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 6,
+   "medianMs": 483.3,
+   "worstMs": 949.9,
+   "over50": 6
+  },
+  "pixels": {
+   "water": 0.8985,
+   "sky": 0.0196875,
+   "land": 0.0686875,
+   "black": 0,
+   "flat": 0.1059375,
+   "blue": 0.9181875
+  }
+ },
+ {
+  "mode": "auto",
+  "seed": 42,
+  "run": 1,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 13723,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 7,
+   "medianMs": 450,
+   "worstMs": 866.7,
+   "over50": 7
+  },
+  "pixels": {
+   "water": 0.8414375,
+   "sky": 0.0278125,
+   "land": 0.113125,
+   "black": 0,
+   "flat": 0.0879375,
+   "blue": 0.86925
+  }
+ },
+ {
+  "mode": "auto",
+  "seed": 42,
+  "run": 2,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 13798,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 7,
+   "medianMs": 466.6,
+   "worstMs": 916.7,
+   "over50": 6
+  },
+  "pixels": {
+   "water": 0.84075,
+   "sky": 0.02875,
+   "land": 0.113,
+   "black": 0,
+   "flat": 0.086375,
+   "blue": 0.8695
+  }
+ },
+ {
+  "mode": "auto",
+  "seed": 42,
+  "run": 3,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 13820,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 7,
+   "medianMs": 466.6,
+   "worstMs": 916.7,
+   "over50": 6
+  },
+  "pixels": {
+   "water": 0.8425625,
+   "sky": 0.026875,
+   "land": 0.113125,
+   "black": 0,
+   "flat": 0.0881875,
+   "blue": 0.8694375
+  }
+ },
+ {
+  "mode": "auto",
+  "seed": 99,
+  "run": 1,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 14036,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 7,
+   "medianMs": 450.1,
+   "worstMs": 796.5,
+   "over50": 6
+  },
+  "pixels": {
+   "water": 0.8893125,
+   "sky": 0.023875,
+   "land": 0.07625,
+   "black": 0,
+   "flat": 0.1050625,
+   "blue": 0.9131875
+  }
+ },
+ {
+  "mode": "auto",
+  "seed": 99,
+  "run": 2,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 14325,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 8,
+   "medianMs": 466.6,
+   "worstMs": 916.6,
+   "over50": 6
+  },
+  "pixels": {
+   "water": 0.8893125,
+   "sky": 0.023875,
+   "land": 0.07625,
+   "black": 0,
+   "flat": 0.1050625,
+   "blue": 0.9131875
+  }
+ },
+ {
+  "mode": "auto",
+  "seed": 99,
+  "run": 3,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 13869,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 7,
+   "medianMs": 466.6,
+   "worstMs": 933.3,
+   "over50": 7
+  },
+  "pixels": {
+   "water": 0.8901875,
+   "sky": 0.02375,
+   "land": 0.075125,
+   "black": 0,
+   "flat": 0.1088125,
+   "blue": 0.9139375
+  }
+ },
+ {
+  "mode": "auto",
+  "seed": 2026,
+  "run": 1,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 13831,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 7,
+   "medianMs": 466.7,
+   "worstMs": 916.6,
+   "over50": 7
+  },
+  "pixels": {
+   "water": 0.8145625,
+   "sky": 0.0323125,
+   "land": 0.1340625,
+   "black": 0,
+   "flat": 0.083375,
+   "blue": 0.846875
+  }
+ },
+ {
+  "mode": "auto",
+  "seed": 2026,
+  "run": 2,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 13881,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 8,
+   "medianMs": 450,
+   "worstMs": 916.6,
+   "over50": 6
+  },
+  "pixels": {
+   "water": 0.815,
+   "sky": 0.03325,
+   "land": 0.1333125,
+   "black": 0,
+   "flat": 0.0848125,
+   "blue": 0.84825
+  }
+ },
+ {
+  "mode": "auto",
+  "seed": 2026,
+  "run": 3,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 13981,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 7,
+   "medianMs": 466.5,
+   "worstMs": 702.5,
+   "over50": 6
+  },
+  "pixels": {
+   "water": 0.815375,
+   "sky": 0.033,
+   "land": 0.13325,
+   "black": 0,
+   "flat": 0.0846875,
+   "blue": 0.848375
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 1,
+  "run": 1,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 12727,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 5,
+   "medianMs": 883.3,
+   "worstMs": 900,
+   "over50": 4
+  },
+  "pixels": {
+   "water": 0.889625,
+   "sky": 0.0268125,
+   "land": 0.0671875,
+   "black": 0,
+   "flat": 0.10625,
+   "blue": 0.9164375
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 1,
+  "run": 2,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 12767,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 6,
+   "medianMs": 866.7,
+   "worstMs": 883.3,
+   "over50": 5
+  },
+  "pixels": {
+   "water": 0.890375,
+   "sky": 0.0250625,
+   "land": 0.067875,
+   "black": 0,
+   "flat": 0.106125,
+   "blue": 0.9154375
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 1,
+  "run": 3,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 13027,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 4,
+   "medianMs": 883.3,
+   "worstMs": 900,
+   "over50": 4
+  },
+  "pixels": {
+   "water": 0.8894375,
+   "sky": 0.025625,
+   "land": 0.0684375,
+   "black": 0,
+   "flat": 0.104375,
+   "blue": 0.9150625
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 7,
+  "run": 1,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 13251,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 5,
+   "medianMs": 983.4,
+   "worstMs": 1003.9,
+   "over50": 4
+  },
+  "pixels": {
+   "water": 0.89825,
+   "sky": 0.019125,
+   "land": 0.069375,
+   "black": 0,
+   "flat": 0.111125,
+   "blue": 0.917375
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 7,
+  "run": 2,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 13571,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 5,
+   "medianMs": 483.2,
+   "worstMs": 1450,
+   "over50": 4
+  },
+  "pixels": {
+   "water": 0.8989375,
+   "sky": 0.0189375,
+   "land": 0.0686875,
+   "black": 0,
+   "flat": 0.111625,
+   "blue": 0.917875
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 7,
+  "run": 3,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 13520,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 4,
+   "medianMs": 966.7,
+   "worstMs": 983.2,
+   "over50": 4
+  },
+  "pixels": {
+   "water": 0.898875,
+   "sky": 0.01925,
+   "land": 0.06875,
+   "black": 0,
+   "flat": 0.1121875,
+   "blue": 0.918125
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 42,
+  "run": 1,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 12725,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 5,
+   "medianMs": 883.2,
+   "worstMs": 933.3,
+   "over50": 4
+  },
+  "pixels": {
+   "water": 0.8424375,
+   "sky": 0.02825,
+   "land": 0.1115,
+   "black": 0,
+   "flat": 0.09575,
+   "blue": 0.8706875
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 42,
+  "run": 2,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 13300,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 6,
+   "medianMs": 899.9,
+   "worstMs": 949.9,
+   "over50": 5
+  },
+  "pixels": {
+   "water": 0.841375,
+   "sky": 0.028125,
+   "land": 0.113,
+   "black": 0,
+   "flat": 0.0936875,
+   "blue": 0.8695
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 42,
+  "run": 3,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 13557,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 5,
+   "medianMs": 900,
+   "worstMs": 1366.7,
+   "over50": 4
+  },
+  "pixels": {
+   "water": 0.8418125,
+   "sky": 0.028,
+   "land": 0.112625,
+   "black": 0,
+   "flat": 0.0946875,
+   "blue": 0.8698125
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 99,
+  "run": 1,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 13252,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 5,
+   "medianMs": 449.9,
+   "worstMs": 1383.3,
+   "over50": 4
+  },
+  "pixels": {
+   "water": 0.889625,
+   "sky": 0.0235625,
+   "land": 0.0760625,
+   "black": 0,
+   "flat": 0.10925,
+   "blue": 0.9131875
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 99,
+  "run": 2,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 13042,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 5,
+   "medianMs": 916.6,
+   "worstMs": 1399.9,
+   "over50": 4
+  },
+  "pixels": {
+   "water": 0.891125,
+   "sky": 0.0240625,
+   "land": 0.07425,
+   "black": 0,
+   "flat": 0.1076875,
+   "blue": 0.9151875
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 99,
+  "run": 3,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 13508,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 4,
+   "medianMs": 916.6,
+   "worstMs": 950,
+   "over50": 4
+  },
+  "pixels": {
+   "water": 0.8910625,
+   "sky": 0.024125,
+   "land": 0.07425,
+   "black": 0,
+   "flat": 0.1078125,
+   "blue": 0.9151875
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 2026,
+  "run": 1,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 13621,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 5,
+   "medianMs": 483.3,
+   "worstMs": 916.6,
+   "over50": 5
+  },
+  "pixels": {
+   "water": 0.81375,
+   "sky": 0.0321875,
+   "land": 0.1334375,
+   "black": 0,
+   "flat": 0.0914375,
+   "blue": 0.8459375
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 2026,
+  "run": 2,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 13313,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 5,
+   "medianMs": 453.9,
+   "worstMs": 1350,
+   "over50": 4
+  },
+  "pixels": {
+   "water": 0.8158125,
+   "sky": 0.0324375,
+   "land": 0.13325,
+   "black": 0,
+   "flat": 0.091375,
+   "blue": 0.84825
+  }
+ },
+ {
+  "mode": "webgl2",
+  "seed": 2026,
+  "run": 3,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 13523,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 4,
+   "medianMs": 933.4,
+   "worstMs": 1366.6,
+   "over50": 4
+  },
+  "pixels": {
+   "water": 0.8151875,
+   "sky": 0.0315625,
+   "land": 0.13425,
+   "black": 0,
+   "flat": 0.0904375,
+   "blue": 0.84675
+  }
+ }
+]

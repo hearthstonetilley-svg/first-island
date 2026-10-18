@@ -1,0 +1,36 @@
+[
+ {
+  "mode": "auto",
+  "seed": 1,
+  "run": 1,
+  "ok": false,
+  "failures": [
+   "start-up ended in state \"error\" within 30 s: FIRST ISLANDSEED 1 A WORLD FROM A SINGLE SEED Your island is taking shape. Coastlines, forests and an open horizon. The island could not sta",
+   "page errors: THREE.WebGPURenderer: WebGPU Device Lost: Message: Device was destroyed. Reason: destroyed | Island startup failed: OperationError: A valid external Instance reference no longer exists."
+  ]
+ },
+ {
+  "mode": "webgl2",
+  "seed": 1,
+  "run": 1,
+  "ok": true,
+  "failures": [],
+  "enteredManually": true,
+  "startMs": 13023,
+  "renderer": "WebGL2",
+  "frames": {
+   "count": 5,
+   "medianMs": 833.3,
+   "worstMs": 866.6,
+   "over50": 5
+  },
+  "pixels": {
+   "water": 0.889875,
+   "sky": 0.0258125,
+   "land": 0.0680625,
+   "black": 0,
+   "flat": 0.105375,
+   "blue": 0.9156875
+  }
+ }
+]
