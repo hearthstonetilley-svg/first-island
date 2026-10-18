@@ -78,6 +78,28 @@ The owner's reaction: "that's the design equivalent of the Matrix."
   where groups choose to split, branch and merge. Underneath, the mind router runs those pieces in parallel: the
   owner's original torrent of thought, running for real (design section 8a).
 
+
+## 18 Oct 2026, evening: the pivot to a live sandbox
+
+- The owner stopped the build: "i feel like were spending too much time on the wrong thing". Thirteen rounds had
+  gone into the world and a population model, and not one agent had thought anything yet. The owner restated the
+  point: "this is supposed to be a place for the agents to work and be visualised", and "I want to see this working
+  in real time".
+- The advisor's answer: build to that and nothing else, today. No more briefs.
+- Shipped (Sandbox v1, decision 38): 8 named agents on the seeded island. A server runs their minds (Haiku through an
+  isolated `claude -p` call, capped at 30 calls a minute, paused when nobody watches), applies simple laws (gather
+  where things exist, carry six, combine pairs to discover 9 hidden tools, words carry a short way) and streams
+  every event live. The island page shows thought and speech bubbles, a feed, follow on click and the web drawn
+  between the agents; the web page shows who has spoken to whom.
+- First sightings: within minutes the agents split the search between them, each announcing which pairs had failed
+  and choosing an untested one. Hammer, axe and cord were found that way.
+- A crash: after a restart the server could not find the `claude` command and one failed call stopped the whole
+  island. Now a failed call falls back to a scripted step and shows in the usage line, and the command is located
+  at startup.
+- Parked as known debt: ecology, population tuning, brief 3.5. Built things (fire, shelter) appear only in the feed so
+  far, and the island starts fresh on every server restart.
+
 ## Next
 
-Stage 2: the simulation clock and the first agents (bodies only, no AI minds yet). See docs/briefs/BRIEF-3-first-agents.md.
+Make the work visible and lasting: built things on the island, memory that survives a restart, then teaching (what
+one agent knows spreading to another) drawn as the web.

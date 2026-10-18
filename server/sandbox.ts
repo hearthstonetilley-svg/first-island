@@ -2,7 +2,7 @@
 // scripted or cheap model calls; the world applies the island's laws and
 // streams every thought, word and action to the browser over SSE.
 import { createServer, IncomingMessage, ServerResponse } from 'node:http';
-import { spawn } from 'node:child_process';
+import { spawn, execSync } from 'node:child_process';
 import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -15,7 +15,9 @@ const PORT = Number(process.env.SANDBOX_PORT ?? 8787);
 const SEED = Number(process.env.SANDBOX_SEED ?? 1);
 const MAX_CALLS_PER_MIN = Number(process.env.MAX_CALLS_PER_MIN ?? 30);
 const CONCURRENCY = Number(process.env.MIND_CONCURRENCY ?? 2);
-const CLAUDE_BIN = process.env.CLAUDE_BIN ?? 'claude';
+const CLAUDE_BIN = process.env.CLAUDE_BIN ?? (() => {
+  try { return execSync('command -v claude', { shell: '/bin/bash', encoding: 'utf8' }).trim() || 'claude'; } catch { return 'claude'; }
+})();
 const HEAR_RANGE = 9;
 const WALK_SPEED = 1.6;
 
@@ -207,10 +209,12 @@ function haikuMind(a: SandboxAgent): Promise<Decision> {
     let out = '';
     const timer = setTimeout(() => child.kill(), 45000);
     // A missing or broken model command must never stop the island.
-    child.on('error', err => { clearTimeout(timer); failedCalls++; lastMindError = String(err.message); resolve(scriptedMind(a)); });
+    let failed = false;
+    child.on('error', err => { failed = true; clearTimeout(timer); failedCalls++; lastMindError = String(err.message); resolve(scriptedMind(a)); });
     child.stdout.on('data', c => { out += c; });
     child.on('close', () => {
       clearTimeout(timer);
+      if (failed) return;
       const m = out.match(/\{[\s\S]*\}/);
       try { resolve(JSON.parse(m ? m[0] : '')); } catch { failedCalls++; resolve(scriptedMind(a)); }
     });
@@ -274,4 +278,4 @@ createServer(async (req, res) => {
     return;
   }
   res.writeHead(404); res.end();
-}).listen(PORT, () => console.log(`sandbox server on :${PORT} seed ${SEED} minds ${mindMode}`));
+}).listen(PORT, () => console.log(`sandbox server on :${PORT} seed ${SEED} minds ${mindMode} model command ${CLAUDE_BIN}`));
