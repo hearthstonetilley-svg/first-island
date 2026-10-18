@@ -60,8 +60,9 @@ await page.goto(`http://localhost:${WEB}/sandbox.html?renderer=webgl2&debug=1`);
 const loadState = await page.waitForFunction(() => ['complete', 'limited', 'error'].includes(document.querySelector('.loading-screen')?.dataset.state ?? '') || (window.__SANDBOX__?.entered ?? false),
   null, { timeout: 150000 }).then(() => page.evaluate(() => document.querySelector('.loading-screen')?.dataset.state ?? 'gone'), () => 'timeout');
 check('loading screen finishes', ['complete', 'limited', 'gone'].includes(loadState), loadState);
-if (loadState === 'limited') await page.click('.loading-action').catch(() => {});
-await page.waitForFunction(() => window.__SANDBOX__?.entered, null, { timeout: 30000 }).catch(() => {});
+// A CI machine can take seconds per frame, and Playwright's click waits for steady frames: press Enter through the DOM.
+if (loadState === 'limited') await page.evaluate(() => document.querySelector('.loading-action')?.click()).catch(() => {});
+await page.waitForFunction(() => window.__SANDBOX__?.entered, null, { timeout: 120000 }).catch(() => {});
 await sleep(2000);
 const info = () => page.evaluate(() => { const d = window.__SANDBOX__; return d && { camera: d.camera, tags: d.tags, mode: d.mode, entered: d.entered, qualitySamples: d.qualitySamples }; });
 check('island page renders', !!(await info()), errors[0] ?? '');
@@ -87,7 +88,9 @@ const hb = await handle.boundingBox().catch(() => null), bb = await page.locator
 const options = await page.evaluate(() => document.querySelectorAll('.mix-bar .seg').length);
 check('mixer offers the connected models', options >= 3, `${options} options`);
 if (hb && bb) { await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2); await page.mouse.down();
-await page.mouse.move(bb.x + bb.width * 0.5, hb.y + hb.height / 2, { steps: 6 }); await page.mouse.up(); await sleep(1500); }
+await page.mouse.move(bb.x + bb.width * 0.5, hb.y + hb.height / 2, { steps: 6 }); await page.mouse.up();
+// The new mix goes to the server and comes back on the stream: wait for it rather than a fixed pause.
+await page.waitForFunction(() => new Set([...document.querySelectorAll('.card .model')].map(m => m.textContent)).size >= 2, null, { timeout: 60000 }).catch(() => {}); }
 const mixNow = await page.evaluate(() => [...document.querySelectorAll('.card .model')].map(m => m.textContent));
 check('dragging the mixer reassigns minds', new Set(mixNow).size >= 2, mixNow.join(','));
 if (hb && bb) { await page.mouse.move(bb.x + 2, hb.y + hb.height / 2); await page.mouse.down(); await page.mouse.up(); }
@@ -173,6 +176,8 @@ check('predictions are judged against the world', seen.types.has('hypothesis'), 
 await api('/api/control', { cmd: 'act', agent: 5, decision: { action: 'write_skill', skill_name: 'make sparks', steps: [{ action: 'gather', target: 'flint' }, { action: 'gather', target: 'pyrite' }, { action: 'combine', target: 'flint', with: 'pyrite', expect: 'sparks' }] } });
 await api('/api/control', { cmd: 'act', agent: 5, decision: { action: 'use_skill', target: 'make sparks' } });
 for (let i = 0; i < 30 && !seen.types.has('skill_done'); i++) await sleep(500);
+// Agent 6 must hold flint to learn that it is not food.
+await api('/api/control', { cmd: 'hold', agent: 6, items: ['flint'] });
 await api('/api/control', { cmd: 'act', agent: 6, decision: { action: 'eat', target: 'flint' } });
 check('strength drains and agents try to eat', seen.minEnergy < 0.9 && seen.eats > 0, `lowest strength ${seen.minEnergy.toFixed(2)}, ${seen.eats} meals tried`);
 check('day turns to night', seen.maxDay > 0.8 && seen.minDay < 0.3, `daylight ${seen.minDay.toFixed(2)} to ${seen.maxDay.toFixed(2)}`);
@@ -224,8 +229,8 @@ check('first-try hits are counted per model (recitation)', !!seen.last?.progress
 // Survival is readable: strength as a number on every box, and a survival section in the inspector.
 await page.waitForFunction(() => [...document.querySelectorAll('.card .str')].filter(e => /^\d+%$/.test(e.textContent ?? '')).length === 8, null, { timeout: 5000 }).catch(() => {});
 check('every box shows strength as a number', await page.evaluate(() => [...document.querySelectorAll('.card .str')].filter(e => /^\d+%$/.test(e.textContent ?? '')).length === 8));
-await page.click('.card >> nth=6');
-await page.waitForFunction(() => /flint/.test(document.querySelector('.inspector .fd')?.textContent ?? ''), null, { timeout: 8000 }).catch(() => {});
+await selectCard(6);
+await page.waitForFunction(() => /flint/.test(document.querySelector('.inspector .fd')?.textContent ?? ''), null, { timeout: 30000 }).catch(() => {});
 const surv = await page.evaluate(() => ({ sv: document.querySelector('.inspector .sv')?.textContent ?? '', fd: document.querySelector('.inspector .fd')?.textContent ?? '', rules: document.querySelector('.inspector .rules')?.textContent ?? '' }));
 check('the inspector shows strength and shelter', /\d+%/.test(surv.sv) && /sheltered|exposed|collapsed/.test(surv.sv), surv.sv);
 check('the inspector shows what the agent has learned about food', /not food: .*flint/.test(surv.fd), surv.fd);
@@ -325,7 +330,7 @@ while (!woke && Date.now() < until) {
     const block = wbuf.slice(0, cut); wbuf = wbuf.slice(cut + 2);
     if (!block.startsWith('event: event')) continue;
     const ev = JSON.parse(block.slice(block.indexOf('data: ') + 6));
-    if (ev.agent === 7 && /wakes on the south shore/.test(ev.text)) woke = true;
+    if (ev.agent === 7 && /^wakes in .*empty-handed/.test(ev.text)) woke = true;
   }
 }
 check('a collapsed agent wakes on time after a restart', woke, woke ? 'woke' : 'still collapsed after 40 s');
