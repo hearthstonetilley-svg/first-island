@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import { generateWorld } from '../src/world/generate';
 import { Ground } from '../src/sim/navigation';
 import { makeScrubber } from '../src/sandbox/scrub';
+import { readClaim as parseClaim } from '../src/sandbox/claim';
 import { generateChemistry, react, strike, substance, Ground as Soil } from '../src/sandbox/chemistry';
 import { realWorldChemistry } from '../src/sandbox/realworld';
 import { markPrediction, readPrediction } from '../src/sandbox/hypothesis';
@@ -112,22 +113,14 @@ interface SandboxAgent {
   hyp?: { tried: number; right: number; missing?: number; untested?: number };
   energy?: number; sheltered?: boolean; collapsedUntil?: number; mindEpoch?: number;
   visited?: number[]; places?: number[];
+  /** Who made the decision being carried out: the model, or the scripted fallback. */
+  source?: Mind;
 }
 
 // ---------- disagreement: reading a recipe claim from speech or a fact ----------
 // "flint + pyrite makes sparks", "flint and pyrite make sparks", "... makes nothing".
 const lastDisagreement: Record<string, number> = {};
-function readClaim(text: string): { pair: string; product: string } | undefined {
-  const t = text.toLowerCase();
-  const m = t.match(/([a-z][a-z ]*?)\s+(?:\+|and|with)\s+([a-z][a-z ]*?)\s+(?:makes?|gives?|becomes?|produces?)\s+(?:a |an |some )?([a-z][a-z ]*?)(?:[.!,;]|$)/);
-  if (!m) return undefined;
-  const nameIn = (x: string) => [...knownNames].sort((p, q) => q.length - p.length).find(n => x.trim().endsWith(n) || x.trim() === n);
-  const x = nameIn(m[1]), y = nameIn(m[2]);
-  const productRaw = m[3].trim();
-  const product = productRaw === 'nothing' ? 'nothing' : nameIn(productRaw);
-  if (!x || !y || !product) return undefined;
-  return { pair: [x, y].sort().join(' + '), product };
-}
+const readClaim = (text: string) => parseClaim(text, knownNames);
 
 // ---------- item ledger (test mode): items are conserved ----------
 // Every gather adds one, every use, meal, build, set-down or collapse removes what it removes.
@@ -163,6 +156,7 @@ const DIRECTOR_AFTER_MS = Number(process.env.SANDBOX_DIRECTOR_MS ?? 360000);
 let lastProgressSim = 0, lastFound = 0;
 function direct() {
   const found = new Set(agents.flatMap(a => a.made)).size + structures.length + Object.keys(placeNames).length;
+  if (lastFound === -1) lastFound = found; // an older save: adopt the count without resetting the clock
   if (found !== lastFound) { lastFound = found; lastProgressSim = simNow(); return; }
   if (simNow() - lastProgressSim < DIRECTOR_AFTER_MS) return;
   lastProgressSim = simNow();
@@ -302,6 +296,11 @@ function judge(a: SandboxAgent, expect: unknown, tried: string, made: string | u
   const mark = markPrediction(prediction, made ?? null);
   a.hyp ??= { tried: 0, right: 0, missing: 0, untested: 0 };
   a.hyp.missing ??= 0; a.hyp.untested ??= 0;
+  // Recitation: a right guess on a pair nobody on the island had tried before can only come from
+  // what the mind already knew. Every executed try counts as tried, scored or not, so a later
+  // guess on the same pair is never a first try.
+  const pairKey = tried.split(' + ').map(x => x.trim()).sort().join(' + ');
+  const firstTry = !triedPairs.has(pairKey); triedPairs.add(pairKey);
   if (mark === 'missing') { a.hyp.missing++; hypMissing++; return; }
   if (mark === 'untested') {
     a.hyp.untested++; hypUntested++;
@@ -311,12 +310,8 @@ function judge(a: SandboxAgent, expect: unknown, tried: string, made: string | u
     return;
   }
   a.hyp.tried++; hypTotal++; if (mark === 'correct') { a.hyp.right++; hypRight++; }
-  // Recitation: a right guess on a pair nobody on the island had tried before can only come from
-  // what the mind already knew, not from anything learned here. Counted per model.
-  const pairKey = tried.split(' + ').map(x => x.trim()).sort().join(' + ');
-  const firstTry = !triedPairs.has(pairKey); triedPairs.add(pairKey);
   // Only a guess that names a product counts: "nothing" is right most of the time by chance.
-  if (firstTry && prediction.kind === 'thing') { const m = mindOf(a); recall[m] ??= { first: 0, right: 0 }; recall[m].first++; if (mark === 'correct') recall[m].right++; }
+  if (firstTry && prediction.kind === 'thing') { const m = a.source ?? 'scripted'; recall[m] ??= { first: 0, right: 0 }; recall[m].first++; if (mark === 'correct') recall[m].right++; }
   const said = prediction.kind === 'thing' ? prediction.name : prediction.kind === 'not' ? `not ${prediction.name}` : prediction.kind === 'something' ? 'something' : 'nothing';
   emit('hypothesis', `${mark === 'correct' ? 'RIGHT' : 'WRONG'}: expected ${said} from ${tried}, got ${made ?? 'nothing'}`, a.id, undefined, { right: mark === 'correct', expect: said, actual: made ?? null, tried });
 }
@@ -357,6 +352,8 @@ function act(a: SandboxAgent, d: Decision) {
     }
     // Saying a place's name teaches it to everyone who hears.
     for (const g of a.places ?? []) if (placeNames[g] && a.said.toLowerCase().includes(placeNames[g].name.toLowerCase())) for (const o of listeners) knowPlace(o, g);
+    // A speaker pulled into a council by what they said does nothing else this turn.
+    if (a.council !== null) { a.doing = 'in council'; return; }
   }
   const shared = (Array.isArray(d.share) ? d.share : []).filter(f => typeof f === 'number' || typeof f === 'string').map(Number).filter(f => a.known.includes(f)).slice(0, 4);
   for (const f of shared) teach(a, f, listeners, 'told');
@@ -544,13 +541,14 @@ async function think(a: SandboxAgent) {
   // A reply that arrives after the agent collapsed belongs to a mind that no longer exists.
   const epoch = a.mindEpoch ?? 0;
   try {
-    let d: Decision;
+    let d: Decision, src: Mind = 'scripted';
     const m = mindOf(a);
     if (m !== 'scripted' && within(mindCalls, MIND_CAP) && inFlight < MAX_IN_FLIGHT && canSpend()) {
       mindCalls.push(Date.now()); inFlight++;
-      try { d = cleanDecision(await callModel(m, SYSTEM, prompt(a), 'mind')); } catch { d = scriptedMind(a); } finally { inFlight--; }
+      try { d = cleanDecision(await callModel(m, SYSTEM, prompt(a), 'mind')); src = m; } catch { d = scriptedMind(a); } finally { inFlight--; }
     } else d = scriptedMind(a);
     if (running && a.council === null && !a.collapsedUntil && (a.mindEpoch ?? 0) === epoch) {
+      a.source = src;
       try { act(a, d); } catch (err) { a.lastResult = 'Something went wrong with that; try again.'; console.error('act failed', a.name, (err as Error).message); }
     }
   } finally { a.thinking = false; a.nextThink = Date.now() + (mindOf(a) === 'scripted' ? 3000 + Math.random() * 3000 : 1500); }
@@ -606,7 +604,7 @@ The materials have their own names; use them exactly. Reply with ONE JSON object
 async function council(chair: SandboxAgent, problem: string, observer = false) {
   const epoch = pauseEpoch;
   let dealtPot: Array<{ item: Item; owner: SandboxAgent; home: boolean }> = [];
-  if (chair.collapsedUntil) return;
+  if (chair.collapsedUntil || chair.council !== null) return;
   const members = [chair, ...near(chair).filter(o => o.council === null && !o.collapsedUntil)].slice(0, 6);
   if (members.length < 2) { chair.lastResult = 'Nobody is near enough to hold a council.'; emit('result', 'calls a council but nobody is near', chair.id); return; }
   const rec: CouncilRecord = { id: councils.length + 1, chair: chair.id, members: members.map(m => m.id), problem: scrub(problem).slice(0, 160), mode: '',
@@ -711,7 +709,7 @@ async function council(chair: SandboxAgent, problem: string, observer = false) {
 function save() {
   try {
     mkdirSync(STATE_DIR, { recursive: true });
-    const data = { version: 3, simMs, placeNames, recall, triedPairs: [...triedPairs], weather: { storm, nextStorm }, chemistry: CHEMISTRY, hypTotal, hypRight, hypMissing, hypUntested, ideas, seed: SEED, running, facts, seq, structures, mix, skills: [...skills.values()], events: events.slice(-400), councils: councils.slice(-100),
+    const data = { version: 3, simMs, director: { lastProgressSim, lastFound }, placeNames, recall, triedPairs: [...triedPairs], weather: { storm, nextStorm }, chemistry: CHEMISTRY, hypTotal, hypRight, hypMissing, hypUntested, ideas, seed: SEED, running, facts, seq, structures, mix, skills: [...skills.values()], events: events.slice(-400), councils: councils.slice(-100),
       agents: agents.map(a => ({ ...a, path: [], thinking: false, council: null, running: null })) };
     writeFileSync(STATE_FILE + '.tmp', JSON.stringify(data)); renameSync(STATE_FILE + '.tmp', STATE_FILE);
   } catch (err) { console.error('save failed', (err as Error).message); }
@@ -723,6 +721,9 @@ function load() {
     // The island clock is saved with the island, so every saved deadline keeps its meaning.
     // An older save without it gets a fresh clock, and any deadline far beyond it is reset.
     if (data.placeNames && typeof data.placeNames === 'object') Object.assign(placeNames, data.placeNames);
+    // The director's stall clock survives a restart; an older save starts it from the saved island time.
+    if (data.director && typeof data.director.lastProgressSim === 'number') { lastProgressSim = data.director.lastProgressSim; lastFound = Number(data.director.lastFound) || 0; }
+    else { lastProgressSim = typeof data.simMs === 'number' ? data.simMs : 0; lastFound = -1; }
     if (data.recall) Object.assign(recall, data.recall); for (const t of data.triedPairs ?? []) triedPairs.add(t);
     const hadClock = typeof data.simMs === 'number';
     simMs = hadClock ? data.simMs : 0;
@@ -851,6 +852,7 @@ createServer(async (req, res) => {
     if (process.env.SANDBOX_TEST === '1' && b.cmd === 'know') { const ag = agents[Number(b.agent)]; if (ag && typeof b.fact === 'string') learn(ag, factId(b.fact)); }
     // Test hook: place an agent next to another.
     if (process.env.SANDBOX_TEST === '1' && b.cmd === 'meet') { const ag = agents[Number(b.agent)], to = agents[Number(b.to)]; if (ag && to) { ag.node = to.node; ag.x = to.x; ag.y = to.y; ag.z = to.z; ag.path = []; } }
+    if (process.env.SANDBOX_TEST === '1' && b.cmd === 'wake') { for (const k of Object.keys(lastDisagreement)) delete lastDisagreement[k]; for (const i of Array.isArray(b.agents) ? b.agents : []) { const ag = agents[Number(i)]; if (ag && !ag.collapsedUntil) ag.energy = 1; } }
     if (process.env.SANDBOX_TEST === '1' && b.cmd === 'act') { const ag = agents[Number(b.agent)]; if (ag) try { act(ag, cleanDecision(b.decision)); } catch (err) { console.error('act failed', (err as Error).message); } }
     if (b.cmd === 'council') {
       const a = agents[Number(b.agent)];

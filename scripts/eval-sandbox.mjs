@@ -47,7 +47,7 @@ let buffer = '';
       if (!data) continue;
       const d = JSON.parse(data);
       if (kind === 'state') { seen.last = d; seen.states++; seen.agents = d.agents.length; seen.maxDay = Math.max(seen.maxDay, d.world.daylight); seen.minDay = Math.min(seen.minDay, d.world.daylight); for (const a of d.agents) seen.minEnergy = Math.min(seen.minEnergy, a.energy); for (const a of d.agents) if (a.council === null) seen.maxCarry = Math.max(seen.maxCarry, a.inventory.length); }
-      if (kind === 'event') { seen.types.add(d.type); if (/^sets down /.test(d.text)) { seen.drops++; if (seen.watchDrop && d.agent === seen.watchDrop.agent && d.text === `sets down ${seen.watchDrop.item}`) seen.droppedBy = d.agent; } if (['action', 'result', 'thought', 'say'].includes(d.type)) seen.actions++; if (/^gathers (sand|shell|seaweed|driftwood|water|wood|plant fibre|resin|fruit|clay|dry grass|red berries|flint|stone|pyrite)$/.test(d.text)) seen.realItems++; if (d.type === 'hypothesis') seen.hyps++; if (/^(eats|tries to eat) /.test(d.text)) seen.eats++; if (d.type === 'council_merge' && /^ADJOURNED/.test(d.text)) seen.adjourned = true; if (d.type === 'ledger_mismatch') seen.ledger = d.text; if (d.type === 'council_open') seen.councilOpens++; if (d.type === 'ledger_check') seen.ledgerChecks++; }
+      if (kind === 'event') { seen.types.add(d.type); if (/^sets down /.test(d.text)) { seen.drops++; if (seen.watchDrop && d.agent === seen.watchDrop.agent && d.text === `sets down ${seen.watchDrop.item}`) seen.droppedBy = d.agent; } if (['action', 'result', 'thought', 'say'].includes(d.type)) seen.actions++; if (/^gathers (sand|shell|seaweed|driftwood|water|wood|plant fibre|resin|fruit|clay|dry grass|red berries|flint|stone|pyrite)$/.test(d.text)) seen.realItems++; if (d.type === 'hypothesis') seen.hyps++; if (d.type === 'disagreement') (seen.disagreements ??= []).push(d); if (d.type === 'council_open') (seen.opens ??= []).push(d); if (/^(eats|tries to eat) /.test(d.text)) seen.eats++; if (d.type === 'council_merge' && /^ADJOURNED/.test(d.text)) seen.adjourned = true; if (d.type === 'ledger_mismatch') seen.ledger = d.text; if (d.type === 'council_open') seen.councilOpens++; if (d.type === 'ledger_check') seen.ledgerChecks++; }
     }
   }
 })().catch(() => {});
@@ -179,12 +179,19 @@ check('day turns to night', seen.maxDay > 0.8 && seen.minDay < 0.3, `daylight ${
 const placeInfo = await (await api('/api/places')).json();
 check('agents explore and name places themselves', seen.types.has('explored') && seen.types.has('named') && placeInfo.regions.some(r => r.name), `${placeInfo.regions.filter(r => r.explored).length}/${placeInfo.regions.length} explored, ${placeInfo.regions.filter(r => r.name).length} named`);
 check('the map panel shows their map', await page.evaluate(() => /explored/.test(document.querySelector('.map-score')?.textContent ?? '')));
-// Deterministic disagreement: Cassa knows flint + pyrite makes sparks; Brill, beside her, says it makes nothing.
-await api('/api/control', { cmd: 'know', agent: 2, fact: 'flint + pyrite makes sparks' });
-await api('/api/control', { cmd: 'meet', agent: 1, to: 2 });
-await api('/api/control', { cmd: 'act', agent: 1, decision: { action: 'wait', say: 'flint + pyrite makes nothing' } });
-for (let i = 0; i < 20 && !seen.types.has('disagreement'); i++) await sleep(300);
-check('a spoken claim that contradicts what a listener knows starts a council', seen.types.has('disagreement'), seen.types.has('disagreement') ? 'disagreement seen' : 'none seen');
+// Deterministic disagreement: pick two agents who are awake and outside any council, clear the
+// pair cooldown, teach the listener one result, and have the speaker contradict it beside them.
+const free = (seen.last?.agents ?? []).filter(a => a.council === null && !a.collapsed && !a.thinking).map(a => a.id);
+const [listener, speaker] = free;
+await api('/api/control', { cmd: 'wake', agents: [listener, speaker] });
+await api('/api/control', { cmd: 'know', agent: listener, fact: 'flint + pyrite makes sparks' });
+await api('/api/control', { cmd: 'meet', agent: speaker, to: listener });
+const dBefore = (seen.disagreements ?? []).length, oBefore = (seen.opens ?? []).length;
+await api('/api/control', { cmd: 'act', agent: speaker, decision: { action: 'wait', say: 'flint + pyrite makes nothing' } });
+const fresh = () => (seen.disagreements ?? []).slice(dBefore).find(d => d.agent === listener && d.data?.pair === 'flint + pyrite');
+const opened = () => (seen.opens ?? []).slice(oBefore).find(o => o.agent === listener);
+for (let i = 0; i < 20 && !(fresh() && opened()); i++) await sleep(300);
+check('a spoken claim that contradicts what a listener knows starts a council', !!fresh() && !!opened(), `listener ${listener}, speaker ${speaker}: ${fresh() ? 'disagreement' : 'no disagreement'}, ${opened() ? 'council opened' : 'no council'}`);
 check('the director steps in when nothing new is found, and says so', seen.types.has('director'));
 check('first-try hits are counted per model (recitation)', !!seen.last?.progress?.recall && Object.keys(seen.last.progress.recall).length > 0, JSON.stringify(seen.last?.progress?.recall ?? {}));
 check('agents write and run skills', seen.types.has('skill_written') && seen.types.has('skill_run'), [...seen.types].filter(t => t.startsWith('skill') || t === 'learn_skill').join(','));
