@@ -1,6 +1,7 @@
 import { sampleHeight, WorldData } from '../world/generate';
 import { Ground } from './navigation';
 import { Random } from './random';
+import { MATING_DISTANCE, reproductionBlockers, reproductionDiagnostics } from './reproduction';
 import { Activity, Agent, DeathCause, Dials, Environment, Plant, PopulationStats, SimEvent, Traits, Tree } from './types';
 interface Body extends Agent { node: number; path: number[]; goal: number; food: number; cooldown: number; decision: number }
 const clamp=(x:number,min=0,max=100)=>Math.max(min,Math.min(max,x));
@@ -53,7 +54,8 @@ export class Bodies {
     this.agents.push(body);this.stats.births++;this.stats.population++;
     this.emit('birth',{id:body.id,parents:body.parents,family,generation,traits:body.traits});return body;
   }
-  private eligible(a:Body):boolean{return a.biologicalAge>=0.3&&a.biologicalAge<a.traits.lifespan*0.88&&a.cooldown<=0&&a.health>75&&a.energy>70&&a.rest>45&&a.warmth>40;}
+  private eligible(a:Body):boolean{return reproductionBlockers(a)===0;}
+  reproductionDiagnostics(){return reproductionDiagnostics(this.agents);}
   private inherit(a:Traits,b:Traits,rate:number):Traits{
     const out={...a};
     const bounds:Record<keyof Traits,[number,number]>={speed:[0.5,2],strength:[0.5,2],perception:[2,15],curiosity:[0.05,1],sociability:[0.05,1],fertility:[0.3,2],lifespan:[0.9,2.5]};
@@ -133,11 +135,11 @@ export class Bodies {
       a.y=sampleHeight(this.world,a.x,a.z);
       if(a.activity==='seeking cover'&&a.path.length===0)a.activity='resting';
       if(this.eligible(a)&&this.stats.population<dials.populationCap){
-        const partner=this.agents.find(b=>b.id>a.id&&this.eligible(b)&&distance(a,b)<1.05);
+        const partner=this.agents.find(b=>b.id>a.id&&this.eligible(b)&&distance(a,b)<MATING_DISTANCE);
         if(partner&&this.random.next()<0.003*a.traits.fertility*partner.traits.fertility*rate){
           a.cooldown=partner.cooldown=0.22;a.energy-=12;partner.energy-=12;
           const child=this.birth(a.node,this.inherit(a.traits,partner.traits,dials.mutationRate),[a.id,partner.id],this.random.next()<0.5?a.family:partner.family,Math.max(a.generation,partner.generation)+1,tick);
-          this.emit('reproduction',{parents:[a.id,partner.id],child:child.id});
+          this.emit('reproduction',{parents:[a.id,partner.id],child:child.id,parentAges:[a.age,partner.age],parentBiologicalAges:[a.biologicalAge,partner.biologicalAge]});
         }
       }
     }

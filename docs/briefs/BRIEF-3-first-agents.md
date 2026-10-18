@@ -35,8 +35,9 @@ only: no AI minds, no chemistry, no building yet. Work on branch `stage-2`. Comm
 
 ## 3d. Evals (all required, added to npm test or npm run eval)
 - Determinism: same seed and dials, headless, N ticks gives an identical event-log hash; a different seed differs.
-- Viability: with default dials, headless, the population survives at least 3 generations in at least 4 of 5 seeds,
-  and does not explode past a cap. Report births, deaths by cause and population over time.
+- Viability: at default dials over 21,600 ticks, at least 4 of 5 seeds must have a third-generation birth
+  (a child of a child of a founder) and population above zero at the end, while respecting the cap. Trace parent IDs;
+  never use the 1,800-tick clock generation counter. Report each population curve and deaths by cause.
 - Simulation cost: 200 agents for 10,000 ticks headless within a stated time budget (measure it and set the budget).
 - The build eval must still pass in both modes, and its screenshots must show agents on the island.
 
@@ -44,14 +45,16 @@ Never push. Report what you measured, not what you hope.
 
 ## Reviewer additions (apply from iteration 034)
 
-1. New evals belong in separate scripts, for example `scripts/eval-sim.mjs`. Do not edit `scripts/eval-build.mjs`.
+1. New evals belong in separate scripts, for example `scripts/eval-sim.mjs`. The existing small agent-count addition
+   to `scripts/eval-build.mjs` is accepted; put all other new checks in the simulation eval script.
 2. The two determinism comparison runs must use separate Node processes. Replay must rebuild state from seed plus
    event log and compare the final state hash with the live run, not merely compare logs from seed.
 3. Every renderer message that changes simulation state is a logged event at its tick. Pause and speed changes are excluded.
 4. The simulation owns trees and food. The renderer reads trees from snapshots, with consumed fruit visible; food must
    remain replaceable by stage 2c chemistry.
-5. Stop and commit at the end of revised 3a as its own review point before further 3b work, and report that 3a is done.
+5. Superseded: 3a (029) was already reviewed and published separately. Continue fixes on top of 030–032;
+   there is no further stop-after-3a gate.
 
-Round 12's body rejection and replacement viability criteria remain pending for the next bodies iteration. Instrument
-all reproduction conditions for all five seeds before changing any threshold or dial. The revised 3a checkpoint must
-not claim that the existing three-generation observation establishes long-run viability.
+Owner clarification from iteration 035 pins viability to the ancestry birth plus final-survivor definition above.
+The Round 12 reproduction-condition diagnosis and biological pace/lifespan corrections still apply. Its earlier
+final-third population band is not part of the clarified viability predicate. Instrument before moving thresholds.

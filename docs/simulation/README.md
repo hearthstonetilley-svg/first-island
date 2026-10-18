@@ -1,6 +1,6 @@
 # First agents
 
-Current checkpoint: revised **3a**, iteration 034. Existing body/figure code from 030–033 stays working, but Round 12 rejected its long-run viability: all five seeds eventually go extinct. The earlier 5,400-tick observation is insufficient. No reproduction threshold or dial has been changed in this checkpoint. The next bodies work must start with the reviewer's reproduction-condition table before any tuning. No AI calls, chemistry or construction are present.
+Current checkpoint: iteration 035 measures the rejected body baseline before tuning. The stop-after-3a note is superseded: 029 was already reviewed and published, and the fixes apply on top of 030–032. All five baseline seeds have real grandchild births but eventually go extinct. The acceptance eval now fails that outcome. No reproduction threshold or dial is changed in this measurement iteration. No AI calls, chemistry or construction are present.
 
 ## Run and observe
 
@@ -48,7 +48,7 @@ npm run eval
 EVAL_PORT=4182 npm run eval
 # Revised 3a checkpoint, separate-process determinism and full-state replay:
 npm run eval:core
-# Includes historical body observations and cost (not Round 12 acceptance):
+# Full separate-process determinism, ancestry-based viability and cost:
 npm run eval:simulation
 ```
 
@@ -56,6 +56,10 @@ The new core eval is in `scripts/eval-sim.mjs`, with fresh Node invocations of `
 
 Unit tests additionally exercise the actual worker message handler: world changes log once at the current tick; pause, speed, entry gating and reads do not alter the exported world; a second init cannot replace it. Tree rendering tests consume subsequent snapshots to move/remove trees and shrink/remove/regrow fruit, and check actual agents consume the linked tree food.
 
-The previous body eval still reports its original bounded 5,400-tick observations and the 200-body/10,000-tick cost benchmark (5,000 ms budget, generation length 86,400 so all bodies remain alive). Those observations **do not establish viability**. Round 12 requires at least 21,600 ticks, a nonzero population at every sample, a third-generation birth, and final-third population between 0.5× and 1.5× the starting count in four of five seeds. Implementing and passing that stronger body acceptance follows the revised 3a review checkpoint.
+Viability runs default dials for 21,600 fixed ticks on seeds 1/7/42/99/2026. A seed is viable only if the birth log contains a child of a child of a founder and its final population is above zero. The evaluator traces parent IDs, ignores reported generation fields and clock-generation milestones, and checks the birth-admission cap separately. Four of five seeds must be viable. Population, births and deaths by cause are sampled every 300 ticks; the CLI prints every 1,800-tick population sample and final causes per seed. The owner clarification replaces the earlier final-third population band. This finite-horizon test is not a claim of indefinite equilibrium.
+
+`scripts/diagnose-reproduction.mjs --step NNN` observes the exact same admission gates as the body code and writes all seven independent failure counts at every sample for all five seeds. It separates lack of any neighbour from lack of an eligible mate, and reports own readiness, joint readiness and mean needs. It never draws random numbers or advances ticks. Reproduction events record both parent ages so biological pace can be measured directly.
+
+The cost benchmark remains 200 bodies/10,000 ticks within 5,000 ms, generation length 86,400 so all bodies remain alive.
 
 `scripts/eval-build.mjs` is unchanged in iteration 034. New simulation checks live in separate scripts. The core capture check independently verifies figures, pause invariance, ticked live dial changes, consumed tree food, and browser-export replay in a fresh Node process. Its screenshots and the owner's build-eval screenshots are inspected manually per AGENTS.md. Software browser FPS is reported, not treated as physical GPU performance.

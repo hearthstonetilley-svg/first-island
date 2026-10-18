@@ -48,6 +48,8 @@ export class Simulation {
     this.emit('intervention', change);
   }
 
+  reproductionDiagnostics(){return this.bodies.reproductionDiagnostics();}
+
   snapshot(speed: Speed = 1): Snapshot {
     return { tick: this.tick, seconds: this.tick, generation: this.generation,
       speed, dials: { ...this.dials }, eventCount: this.log.length, agents: this.bodies.snapshotAgents(),
