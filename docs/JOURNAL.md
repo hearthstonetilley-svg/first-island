@@ -187,16 +187,20 @@ The owner's reaction: "that's the design equivalent of the Matrix."
   an advisor review and closing the task list. Rivals and the awakening wait until after the play test.
 - Decision 60. Checks first, failing on v0.10.0: islet shallows 0.000 (now about 0.14), and open-sea glare already
   0.000 since the glint softening, so that check guards against the blots returning rather than proving the ripples.
-- The surface-detail check took three tries, and the record should say why. A neighbour-difference measure on a
+- The surface-detail check took four tries, and the record should say why. A neighbour-difference measure on a
   shrunken screenshot could not see patches 20 pixels wide (6.48 before, 6.03 and 6.50 after). A block-contrast
-  measure was swamped by hill shading (22.21 before, 22.55 after). The check that holds switches the detail off and
-  on in the same frame with the same camera and compares: zero without it by construction, 3.50 of 255 with it,
-  against a bar of 3 set before measuring. The first reading, 2.97, was met by making the meadow patches slightly
-  stronger, not by moving the bar.
-- Frame cost on this machine, v0.10.0 against v0.11.0 alternating three times on the main page (seeds 1 and 42):
+  measure was swamped by hill shading (22.21 before, 22.55 after). Switching the detail off and on read 3.50 against
+  a bar of 3, but Astra audit 17 showed the two captures also differed by tree sway and moving water. With motion
+  frozen and a control (two captures with the detail off), the control reads 0.00 and the true effect 2.47, then
+  2.71 after strengthening the grain within natural limits. The bar is now 2: the old bar of 3 was set on the
+  contaminated measure, which added about one unit.
+- Also from audit 17: the new materials reached the main (non-sandbox) island page, whose look was approved earlier.
+  They are now sandbox only; the main page's shaders are exactly as before.
+- Frame cost on this machine, measured before the materials were limited to the sandbox, so on the main page with
+  them on: v0.10.0 against v0.11.0 alternating three times (seeds 1 and 42):
   best medians 1316 ms and 850 ms per frame under software rendering. The machine is too noisy to call that faster;
   it shows no measurable added cost. Every load passed the build eval's look checks in both versions.
-- Local: 92/92 sandbox eval, zero model calls.
+- Local: 92/92 sandbox eval (the last run read 2.71 for the detail check), zero model calls.
 
 ## Next
 

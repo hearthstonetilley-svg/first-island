@@ -94,15 +94,17 @@ function addTerrain(scene: Scene, world: WorldData, detail?: ReturnType<typeof u
   const surface = mix(attribute('color', 'vec3'), weathered.mul(creviceShade), attribute('rockWeight', 'float'));
   // Sand and grass grain (decision 60): fine noise varies their colour as rock already varies, and sand at the
   // waterline is darker and glossier where the sea wets it.
-  // Two scales, as in a real meadow or beach: broad patches of lighter and darker growth, and fine grain.
-  const patches = mx_noise_float(positionWorld.mul(0.9)).mul(0.5).add(0.5);
-  const fine = mx_noise_float(positionWorld.mul(5.2)).mul(0.5).add(0.5);
-  const soft = mix(float(0.8), float(1.2), patches).mul(mix(float(0.9), float(1.1), fine))
-    .mul(float(1).sub(attribute('rockWeight', 'float'))).add(attribute('rockWeight', 'float'));
-  const wet = float(1).sub(smoothstep(0.05, 0.32, positionWorld.y)).mul(float(1).sub(attribute('rockWeight', 'float')));
-  const amount = detail ?? float(1);
-  material.colorNode = surface.mul(grain.mul(0.045).add(1)).mul(mix(float(1), soft, amount)).mul(mix(float(1), float(0.68), wet.mul(amount)));
-  material.roughnessNode = mix(float(0.95), float(0.45), wet.mul(amount));
+  if (detail) {
+    // Two scales, as in a real meadow or beach: broad patches of lighter and darker growth, and fine grain.
+    // Sand at the waterline is darker and glossier where the sea wets it. Not on rock.
+    const notRock = float(1).sub(attribute('rockWeight', 'float'));
+    const patches = mx_noise_float(positionWorld.mul(0.9)).mul(0.5).add(0.5);
+    const fine = mx_noise_float(positionWorld.mul(5.2)).mul(0.5).add(0.5);
+    const soft = mix(float(0.78), float(1.22), patches).mul(mix(float(0.86), float(1.14), fine)).mul(notRock).add(attribute('rockWeight', 'float'));
+    const wet = float(1).sub(smoothstep(0.05, 0.32, positionWorld.y)).mul(notRock);
+    material.colorNode = surface.mul(grain.mul(0.045).add(1)).mul(mix(float(1), soft, detail)).mul(mix(float(1), float(0.68), wet.mul(detail)));
+    material.roughnessNode = mix(float(0.95), float(0.45), wet.mul(detail));
+  } else material.colorNode = surface.mul(grain.mul(0.045).add(1));
   const mesh = new Mesh(geometry, material);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
@@ -115,7 +117,7 @@ function smooth(low: number, high: number, value: number): number {
   return t * t * (3 - 2 * t);
 }
 
-function addOcean(scene: Scene, world: WorldData, u: SkyUniforms, islet?: { world: WorldData; x: number; z: number }): { time: ReturnType<typeof uniform>; mesh: Mesh; heightTexture: DataTexture; isletTexture?: DataTexture } {
+function addOcean(scene: Scene, world: WorldData, u: SkyUniforms, islet?: { world: WorldData; x: number; z: number }, ripples = false): { time: ReturnType<typeof uniform>; mesh: Mesh; heightTexture: DataTexture; isletTexture?: DataTexture } {
   const geometry = new PlaneGeometry(2, 2, 224, 224);
   geometry.rotateX(-Math.PI / 2);
   const pos = geometry.attributes.position;
@@ -148,7 +150,7 @@ function addOcean(scene: Scene, world: WorldData, u: SkyUniforms, islet?: { worl
   }
   material.positionNode = positionLocal.add(vec3(0, displacement, 0));
   // Fine ripples in the fragment normal only: the sun's glitter breaks into sparkle instead of broad blots.
-  for (const r of [{ x: 9.3, z: -6.1, a: 0.0035, s: 3.3 }, { x: -7.7, z: -11.2, a: 0.0028, s: 3.9 }, { x: 14.9, z: 5.3, a: 0.0018, s: 4.6 }]) {
+  if (ripples) for (const r of [{ x: 9.3, z: -6.1, a: 0.0035, s: 3.3 }, { x: -7.7, z: -11.2, a: 0.0028, s: 3.9 }, { x: 14.9, z: 5.3, a: 0.0018, s: 4.6 }]) {
     const ph = positionWorld.x.mul(r.x).add(positionWorld.z.mul(r.z)).add(time.mul(r.s));
     dx = dx.add(cos(ph).mul(r.a * r.x)); dz = dz.add(cos(ph).mul(r.a * r.z));
   }
@@ -212,6 +214,8 @@ function addSky(scene: Scene, u: SkyUniforms): void {
 }
 
 interface SceneOptions {
+  /** The materials follow the light (decision 60): sandbox only; the main page keeps its approved look. */
+  photoreal?: boolean;
   /** The islet offshore (decision 59): its own small terrain, drawn at its place in the sea. */
   islet?: { world: WorldData; x: number; z: number; radius: number };
   snapshot?: Snapshot;
@@ -268,6 +272,8 @@ export interface IslandScene {
   isletDrawn(): boolean;
   /** Test only: 1 draws the surface detail, 0 leaves it out, with no shader rebuilt. */
   setDetail(amount: number): void;
+  /** Test only: hold trees and water still so two captures differ only in what a check changes. */
+  freezeMotion(on: boolean): void;
   /** Shader programs and render pipelines built so far, counted as they are created, for checking that the day turns without rebuilding one. */
   programCount(): number;
   /** The quality actually being drawn, which can lag a request while a path compiles. */
@@ -440,10 +446,11 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
 
   await progress({ stage: 'terrain', message: 'Building terrain and coastlines', percent: 46 });
   const sky0 = skyUniforms();
+  let frozen = false;
   let sunPhase = NaN, sunHeight = SUN_DIRECTION.y, sunAzimuth = NOON_AZIMUTH;
   addSky(scene, sky0);
-  addTerrain(scene, world, sky0.detail);
-  if (isle) addTerrain(scene, isle.world, sky0.detail).position.set(isle.x, 0, isle.z);
+  addTerrain(scene, world, options.photoreal ? sky0.detail : undefined);
+  if (isle) addTerrain(scene, isle.world, options.photoreal ? sky0.detail : undefined).position.set(isle.x, 0, isle.z);
   await progress({ stage: 'trees', message: 'Building forest canopies', percent: 51 });
   const treeTime = uniform(0);
   const trees = new TreeFigures(scene, treeTime, options.snapshot);
@@ -451,7 +458,7 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
   await progress({ stage: 'water', message: 'Preparing the ocean', percent: 56 });
   const figures = new AgentFigures(scene, options.snapshot);
   disposables.push(figures);
-  const ocean = addOcean(scene, world, sky0, options.islet);
+  const ocean = addOcean(scene, world, sky0, options.islet, !!options.photoreal);
   if (ocean.isletTexture) disposables.push(ocean.isletTexture);
   disposables.push(ocean.heightTexture);
   const sky = new HemisphereLight('#c5defc', '#73654b', 3);
@@ -639,8 +646,7 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
       if (agent) { target.lerp(new Vector3(agent.x, agent.y + 0.45, agent.z), 0.3); updateCamera(); }
       else followed = undefined;
     }
-    treeTime.value = time * 0.001;
-    ocean.time.value = time * 0.001;
+    if (!frozen) { treeTime.value = time * 0.001; ocean.time.value = time * 0.001; }
     draw();
   };
   const structures = new Structures(scene);
@@ -671,6 +677,7 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
     programCount: () => programsBuilt,
     isletDrawn: () => !!isle,
     setDetail: (amount) => { sky0.detail.value = amount; },
+    freezeMotion: (on) => { frozen = on; },
     addStructure: (structure) => structures.add(structure),
     removeStructure: (id) => structures.remove(id),
     structureKinds: () => structures.kinds(),
