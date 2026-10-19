@@ -146,6 +146,18 @@ The owner's reaction: "that's the design equivalent of the Matrix."
 - The preview rebuilt from main resumed its save running on eight Haiku minds, after the owner had asked for the
   island off. It was paused and set to scripted at once, and v0.8.1 makes every restart wait for Run (decision 57).
 
+## 19 Oct 2026, afternoon: v0.8.1, the held-out seeds, and the day cycle
+
+- v0.8.1 merged on green CI (68/68) after Astra audit 14 found no defects, and is tagged.
+- The held-out seeds completed for the first time: all five passed every check on v0.8.1 (340 of 340).
+- The owner set the working rule again: one thing at a time, progress reported in chat, tmux only for the Codex audit.
+- The day cycle (decision 58), the first photorealism step. The checks were written first and run on the checks-only
+  commit: five of the six new ones failed. The sixth (brightest at noon, darkest at night) passed even before the
+  build, because the old lighting already dimmed at night, so it guards against regressions rather than proving the
+  sun. The first run on the build failed three checks because the island's clock kept running while slow frames were
+  measured; the checks now pause the clock, as Pause does. A first look showed brown water at dawn, now a dim blue.
+  Local: 75/75, zero model calls. Screenshots: docs/iterations/058-day-*.png.
+
 ## Next
 
 The owner's Later list, one version at a time: photorealism (the day cycle first), boats and other islands, rival

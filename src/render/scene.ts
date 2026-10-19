@@ -37,10 +37,10 @@ function skyUniforms() {
 type SkyUniforms = ReturnType<typeof skyUniforms>;
 // Sky colours by the sine of the sun's height: day, golden hour, sunset, twilight, night.
 const SKY_KEYS: { at: number; zenith: string; horizon: string; glow: string; water: string }[] = [
-  { at: -0.3, zenith: '#02060f', horizon: '#0a1428', glow: '#ff8a50', water: '#18233a' },
-  { at: -0.14, zenith: '#0d1636', horizon: '#3a3f6a', glow: '#ff8a50', water: '#2c3552' },
-  { at: -0.02, zenith: '#2b3a6e', horizon: '#e0734a', glow: '#ff8a50', water: '#a8857a' },
-  { at: 0.08, zenith: '#3b5c9e', horizon: '#f2a65e', glow: '#ffb070', water: '#e6c3a2' },
+  { at: -0.3, zenith: '#02060f', horizon: '#0a1428', glow: '#ff8a50', water: '#1a2540' },
+  { at: -0.14, zenith: '#0d1636', horizon: '#3a3f6a', glow: '#ff8a50', water: '#3a4766' },
+  { at: -0.02, zenith: '#2b3a6e', horizon: '#e0734a', glow: '#ff8a50', water: '#8f97b5' },
+  { at: 0.08, zenith: '#3b5c9e', horizon: '#f2a65e', glow: '#ffb070', water: '#d9d4d6' },
   { at: 0.35, zenith: '#1054b9', horizon: '#83bddc', glow: '#ffdca2', water: '#ffffff' },
 ];
 const keyColour = (k: 'zenith' | 'horizon' | 'glow' | 'water', h: number, out: ThreeColor) => {

@@ -9,15 +9,16 @@ so every run can be reproduced exactly.
 
 ## Status
 
-v0.8: a living sandbox. Eight agents live on a seeded island, each driven by a small model mind (Haiku or Sonnet
+v0.9: a living sandbox. Eight agents live on a seeded island, each driven by a small model mind (Haiku or Sonnet
 through Claude, Luna or Sol through Codex; the owner sets the mix in the top bar). They gather, combine materials under
 real-world chemistry, need an edge to cut a living tree, eat, build shelter, defend against the night boar, name
 places, teach facts and skills, test predictions, and call councils when they disagree. Storms bring rain, and the sky
-panel shows the day. The page draws what they know as a nucleus.
+panel shows the day while the sun crosses the sky, with stars and a moon at night. The page draws what they know
+as a nucleus.
 
 Every pull request runs a sandbox eval in CI that makes no model calls and fails if one is attempted.
 
-Next: photorealism (the day cycle first), boats and other islands, rival societies, and the awakening, where agents
+Next: more photorealism (the day cycle is in), boats and other islands, rival societies, and the awakening, where agents
 earn the right to rewrite the island's laws.
 
 ## How it is built
@@ -60,6 +61,8 @@ as about the world itself.
 | v0.7.0 | The sandbox: councils, chemistry, skills, the minds mixer, usage meters, the knowledge nucleus, and the restored performance contract ([review](docs/reviews/v0.7.0.md)) |
 | v0.7.1 | Survival readable on the page: strength on every box, shelter and food knowledge in the inspector, the survival rules written out |
 | v0.8.0 | Places, councils on disagreement, the recitation score, the director, fading strands, tools that matter, the night boar, the sky panel and rain in storms ([audit](docs/reviews/astra-audit-13-2026-10-19.md)) |
+| v0.8.1 | A restarted island always waits for Run ([audit](docs/reviews/astra-audit-14-2026-10-19.md)) |
+| v0.9.0 | The day cycle: the sun crosses the sky on the island's clock, with sky, stars, moon, water and shadows following it |
 
 ## Run it
 

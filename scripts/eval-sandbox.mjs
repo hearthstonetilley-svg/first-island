@@ -284,12 +284,14 @@ const atPhase = async phase => {
   await page.waitForFunction(p => { const s = window.__SANDBOX__?.sun; return s && Math.abs(((s.phase - p + 1.5) % 1) - 0.5) < 0.03; }, phase, { timeout: 30000 }).catch(() => {});
   await sleep(2500);
   const s = await page.evaluate(() => ({ sun: window.__SANDBOX__?.sun ?? null, programs: window.__SANDBOX__?.programs ?? -1, now: document.querySelector('.skycard .now')?.textContent ?? '' }));
-  return { ...s, light: await brightness() };
+  const light = await brightness();
+  await shot(page, `${OUT}/day-${String(phase).replace('.', '_')}.png`);
+  return { ...s, light };
 };
-await api('/api/control', { minds: 'scripted' });
+// Pause holds the island's clock, so each reading is taken at the phase that was set, however slow the frames.
+await api('/api/control', { cmd: 'pause', minds: 'scripted' });
 const programs0 = await page.evaluate(() => window.__SANDBOX__?.programs ?? -1);
 const noon = await atPhase(0), dusk = await atPhase(0.25), night = await atPhase(0.5), dawn = await atPhase(0.75);
-await shot(page, `${OUT}/day-noon.png`);
 const el = d => d.sun?.elevation ?? NaN;
 check('the sun moves: high at noon, on the horizon at dusk and dawn, below it at night',
   el(noon) > 40 && Math.abs(el(dusk)) < 8 && Math.abs(el(dawn)) < 8 && el(night) < -30,
@@ -305,7 +307,6 @@ check('the day turns without rebuilding a shader', programs0 > 0 && [noon, dusk,
   `pipelines ${programs0} then ${[noon, dusk, night, dawn].map(d => d.programs).join(', ')}`);
 // No flash on reload: at night the page must already be at night when the loading screen lifts.
 await atPhase(0.5);
-await shot(page, `${OUT}/day-night.png`);
 await page.reload();
 await page.waitForFunction(() => window.__SANDBOX__?.entered || document.querySelector('.loading-screen')?.dataset.state === 'limited', null, { timeout: 180000 }).catch(() => {});
 await page.evaluate(() => document.querySelector('.loading-action')?.click()).catch(() => {});
@@ -313,6 +314,7 @@ await page.waitForFunction(() => window.__SANDBOX__?.entered, null, { timeout: 1
 const entry = await page.evaluate(() => window.__SANDBOX__?.sunAtEntry ?? null);
 check('a reload at night opens at night, with no daylight flash', !!entry && entry.elevation < 0, entry ? `sun at ${entry.elevation.toFixed(1)} degrees when the page opened` : 'no reading');
 await atPhase(0);
+await api('/api/control', { cmd: 'start' });
 check('no page errors after the day cycle', errors.length === 0, errors.slice(0, 2).join(' | '));
 
 // Layout: at every width the camera and panel controls stay whole and on screen.
