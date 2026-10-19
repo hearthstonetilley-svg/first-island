@@ -313,6 +313,7 @@ await page.waitForFunction(() => window.__SANDBOX__?.entered, null, { timeout: 1
 const entry = await page.evaluate(() => window.__SANDBOX__?.sunAtEntry ?? null);
 check('a reload at night opens at night, with no daylight flash', !!entry && entry.elevation < 0, entry ? `sun at ${entry.elevation.toFixed(1)} degrees when the page opened` : 'no reading');
 await atPhase(0);
+check('no page errors after the day cycle', errors.length === 0, errors.slice(0, 2).join(' | '));
 
 // Layout: at every width the camera and panel controls stay whole and on screen.
 const clipped = [];
