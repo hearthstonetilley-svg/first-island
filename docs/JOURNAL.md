@@ -142,6 +142,9 @@ The owner's reaction: "that's the design equivalent of the Matrix."
 - Local evals after the fixes: v0.8 58/58, tools 63/63, sky 67/67, all with zero model calls.
 - The owner asked to keep the island off while fixes are made, so no live minds run until the preview is rebuilt from
   main.
+- Merged in order on green CI: #25 (v0.8, with #24 included), #26 (tools), #27 (sky); v0.8.0 is tagged on the merge.
+- The preview rebuilt from main resumed its save running on eight Haiku minds, after the owner had asked for the
+  island off. It was paused and set to scripted at once, and v0.8.1 makes every restart wait for Run (decision 57).
 
 ## Next
 
