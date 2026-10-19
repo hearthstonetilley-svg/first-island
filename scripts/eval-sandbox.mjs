@@ -169,8 +169,10 @@ check('the council card shows the parts', await page.evaluate(() => document.que
 check('a council opens, splits and merges', ['council_open', 'council_split', 'council_part', 'council_merge'].every(t => seen.types.has(t)), [...seen.types].filter(t => t.startsWith('council')).join(','));
 await sleep(30000);
 // Deterministic: tell an agent that is carrying something to set one thing down.
-const carrier = seen.last?.agents.find(a => a.inventory.length && a.council === null && !a.collapsed);
+// Hand the agent the item first: with tools and the boar, nobody may happen to be carrying anything.
+const carrier = seen.last?.agents.find(a => a.council === null && !a.collapsed);
 seen.droppedBy = null;
+if (carrier) { await api('/api/control', { cmd: 'hold', agent: carrier.id, items: ['shell'] }); carrier.inventory = ['shell']; }
 if (carrier) { seen.watchDrop = { agent: carrier.id, item: carrier.inventory[0] }; await api('/api/control', { cmd: 'act', agent: carrier.id, decision: { action: 'drop', target: carrier.inventory[0] } }); await sleep(1500); }
 check('the set-down action itself works', !!carrier && seen.droppedBy === carrier.id, carrier ? `${carrier.id} set down ${carrier.inventory[0]}: ${seen.droppedBy === carrier.id ? 'seen' : 'not seen'}` : 'nobody was carrying anything');
 check('the carry law holds (six or fewer)', seen.maxCarry <= 6, `max carried ${seen.maxCarry} over ${seen.states} states`);
@@ -185,6 +187,11 @@ await api('/api/control', { cmd: 'hold', agent: 6, items: ['flint'] });
 await api('/api/control', { cmd: 'act', agent: 6, decision: { action: 'eat', target: 'flint' } });
 check('strength drains and agents try to eat', seen.minEnergy < 0.9 && seen.eats > 0, `lowest strength ${seen.minEnergy.toFixed(2)}, ${seen.eats} meals tried`);
 check('day turns to night', seen.maxDay > 0.8 && seen.minDay < 0.3, `daylight ${seen.minDay.toFixed(2)} to ${seen.maxDay.toFixed(2)}`);
+// The sky panel: the day, what comes next and when, and the weather, readable at a glance.
+const skyc = await page.evaluate(() => ({ now: document.querySelector('.skycard .now')?.textContent ?? '', when: document.querySelector('.skycard .when')?.textContent ?? '', storm: document.querySelector('.skycard .storm')?.textContent ?? '', dial: !!document.querySelector('.skycard svg .mark') }));
+check('the sky panel shows the day, the time of day and a dial', /^Day \d+ · (Day|Dusk|Night|Dawn)/.test(skyc.now) && skyc.dial, skyc.now);
+check('the sky panel says when night or dawn comes and when the next storm is due', /(Night|Dawn) in \d+/.test(skyc.when) && /Storm (in|now)/.test(skyc.storm), `${skyc.when} | ${skyc.storm}`);
+check('the top bar keeps only controls', await page.evaluate(() => !document.querySelector('.top .progress') && !document.querySelector('.top .sky')));
 // Tools matter: wood from a living tree cannot be gathered by hand, and can with an edge.
 await api('/api/control', { cmd: 'goto', agent: 7, ground: 'grove' });
 await api('/api/control', { cmd: 'hold', agent: 7, items: [] });
@@ -215,6 +222,7 @@ for (let attempt = 0; attempt < 3 && bitten === undefined; attempt++) {
 }
 check('the boar charges an agent caught in the open', bitten !== undefined, `agent ${bitten}`);
 check('the boar is drawn on the island while it is out', !!seen.last?.world?.boar);
+check('the sky panel says the boar is out', await page.evaluate(() => /boar is out/i.test(document.querySelector('.skycard .threat')?.textContent ?? '')));
 let speared;
 for (let attempt = 0; attempt < 3 && speared === undefined; attempt++) {
   const pick = openApart(bitten); if (pick === undefined) { await sleep(1000); continue; }
@@ -269,7 +277,7 @@ for (const width of [1400, 1200, 900, 640]) {
   const overflow = await page.evaluate(() => {
     const out = [];
     if (document.documentElement.scrollWidth > innerWidth + 1) out.push('page scrolls sideways');
-    for (const el of document.querySelectorAll('.top, .rail.left, .rail.right, .mode')) {
+    for (const el of document.querySelectorAll('.top, .rail.left, .rail.right, .mode, .skycard')) {
       const r = el.getBoundingClientRect(); if (getComputedStyle(el).display !== 'none' && r.width > 0 && (r.left < -1 || r.right > innerWidth + 1)) out.push(el.className);
     }
     return out;

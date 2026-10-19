@@ -813,7 +813,7 @@ setInterval(() => {
 }, 100);
 setInterval(() => {
   tick++;
-  send('state', { tick, running, mindMode, mix, world: { daylight: daylight(), night: isNight(), storm: !!storm, boar: boar.awake ? { x: boar.x, y: boarY(), z: boar.z } : null }, backends: ['scripted', ...available()], calls: stats.total, failed: stats.failed, mindError: stats.lastError, perMin: perMinute(), cap: MIND_CAP + COUNCIL_CAP,
+  send('state', { tick, running, mindMode, mix, world: { daylight: daylight(), night: isNight(), storm: !!storm, boar: boar.awake ? { x: boar.x, y: boarY(), z: boar.z } : null, simMs: simNow(), dayMs: DAY_MS, stormIn: storm ? null : Math.max(0, nextStorm - simNow()), stormLeft: storm ? Math.max(0, storm.until - simNow()) : null }, backends: ['scripted', ...available()], calls: stats.total, failed: stats.failed, mindError: stats.lastError, perMin: perMinute(), cap: MIND_CAP + COUNCIL_CAP,
     councilCalls: stats.byPurpose.council ?? 0, facts: facts.length,
     progress: { elements: chem.substances.filter(x => x.tier === 0).length, makeable: chem.substances.filter(x => x.tier > 0).length, found: new Set(agents.flatMap(a => a.made)).size,
       structures: chem.substances.filter(x => x.structure).length, built: new Set(structures.map(b => b.name)).size, councils: councils.length, skills: skills.size, regions: REGIONS.length, explored: new Set(agents.flatMap(a => a.visited ?? [])).size, named: Object.keys(placeNames).length, recall, hypotheses: hypTotal, hypothesesRight: hypRight, hypothesesMissing: hypMissing, ideas: ideas.length, chemistry: CHEMISTRY },
