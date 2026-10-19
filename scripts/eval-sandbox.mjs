@@ -431,6 +431,8 @@ seen.isletAgent = mate;
 const clipped = [];
 for (const width of [1400, 1200, 900, 640]) {
   await page.setViewportSize({ width, height: 820 }); await sleep(1500);
+  // Panels settle after a resize: give a slow machine up to ten seconds before judging.
+  await page.waitForFunction(() => [...document.querySelectorAll('.top, .rail.left, .rail.right, .mode, .skycard')].every(el => { const r = el.getBoundingClientRect(); return getComputedStyle(el).display === 'none' || r.width === 0 || (r.left >= -1 && r.right <= innerWidth + 1); }), null, { timeout: 10000 }).catch(() => {});
   const bad = await page.evaluate(() => [...document.querySelectorAll('.top .cam button, .top .run, .top .toggle-left, .top .toggle-right')]
     .filter(b => { const r = b.getBoundingClientRect(); return r.width < 20 || r.right > innerWidth || b.scrollWidth > b.clientWidth + 1; }).map(b => b.textContent));
   if (bad.length) clipped.push(`${width}: ${bad.join(', ')}`);
@@ -490,7 +492,9 @@ const d0 = await web.evaluate(() => window.__WEB__?.draws ?? -1); await sleep(50
 check('web draws nothing when nothing changes', d0 >= 0 && d1 - d0 <= 3, `${d1 - d0} draws in 5 s while paused`);
 await api('/api/control', { cmd: 'start' });
 // Selecting a fact isolates it: exactly one link per mind that knows it.
-await web.evaluate(() => window.__WEB__.selectFact(0)); await sleep(800);
+await web.evaluate(() => window.__WEB__.selectFact(0));
+// The links light on the next draw, which a slow machine may take seconds to reach.
+await web.waitForFunction(() => (window.__WEB__?.knowers ?? 0) > 0 && window.__WEB__.litLinks === window.__WEB__.knowers, null, { timeout: 15000 }).catch(() => {});
 const iso = await web.evaluate(() => ({ lit: window.__WEB__.litLinks, knowers: window.__WEB__.knowers }));
 check('selecting a fact shows only its links', iso.knowers > 0 && iso.lit === iso.knowers, `${iso.lit} links for ${iso.knowers} knowers`);
 await shot(web, `${OUT}/web.png`);

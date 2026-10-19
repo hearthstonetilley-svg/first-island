@@ -636,7 +636,7 @@ async function runIsland(scene: IslandScene) {
     if (diagnostics) { diagnostics.report.loading.enteredAtMs = performance.now(); diagnostics.report.loading.entry = loading?.element.dataset.state === 'limited' ? 'manual' : 'automatic'; }
     void loading?.finish().then(() => { if (active()) { quality.reset(); playing = true; } });
   };
-  addEventListener('resize', () => { if (active()) { scene.resize(); const { left, right } = insets(); scene.setInsets(left, right); quality.reset(); readiness.reset(); if (mode === 'island') wholeIsland(); } });
+  addEventListener('resize', () => { if (state) updateSky(state); if (active()) { scene.resize(); const { left, right } = insets(); scene.setInsets(left, right); quality.reset(); readiness.reset(); if (mode === 'island') wholeIsland(); } });
   if (everEntered) {
     // Recovering after the owner was already in: no second gate, quality adapts at once.
     entered = true; playing = true; app.classList.remove('is-loading', 'is-measuring');
