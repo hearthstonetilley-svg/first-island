@@ -55,7 +55,7 @@ let buffer = '';
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await browser.newPage({ viewport: { width: 1400, height: 820 } });
 const errors = []; page.on('pageerror', e => errors.push(String(e)));
-await page.goto(`http://localhost:${WEB}/sandbox.html?renderer=webgl2&debug=1`);
+await page.goto(`http://localhost:${WEB}/sandbox.html?renderer=webgl2&debug=1`, { waitUntil: 'commit', timeout: 120000 });
 // The startup contract: a loading screen that ends complete, or limited with an Enter button.
 const loadState = await page.waitForFunction(() => ['complete', 'limited', 'error'].includes(document.querySelector('.loading-screen')?.dataset.state ?? '') || (window.__SANDBOX__?.entered ?? false),
   null, { timeout: 150000 }).then(() => page.evaluate(() => document.querySelector('.loading-screen')?.dataset.state ?? 'gone'), () => 'timeout');
@@ -310,7 +310,7 @@ check('the day turns without rebuilding a shader', programs0 > 0 && [noon, dusk,
   `pipelines ${programs0} then ${[noon, dusk, night, dawn].map(d => d.programs).join(', ')}`);
 // No flash on reload: at night the page must already be at night when the loading screen lifts.
 await atPhase(0.5);
-await page.reload();
+await page.reload({ waitUntil: 'commit', timeout: 120000 });  // readiness is awaited below; CI can take over 30 s to fire load
 await page.waitForFunction(() => window.__SANDBOX__?.entered || document.querySelector('.loading-screen')?.dataset.state === 'limited', null, { timeout: 180000 }).catch(() => {});
 await page.evaluate(() => document.querySelector('.loading-action')?.click()).catch(() => {});
 await page.waitForFunction(() => window.__SANDBOX__?.entered, null, { timeout: 120000 }).catch(() => {});
@@ -478,7 +478,7 @@ check('Pause stops the agents', seen.actions === before, `${seen.actions - befor
 await api('/api/control', { cmd: 'start' });
 
 const web = await browser.newPage({ viewport: { width: 1200, height: 800 } });
-await web.goto(`http://localhost:${WEB}/web.html?debug=1`); await sleep(6000);
+await web.goto(`http://localhost:${WEB}/web.html?debug=1`, { timeout: 120000 }); await sleep(6000);
 const drawn = await web.evaluate(() => { const c = document.querySelector('canvas'); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 0) n++; return n; });
 check('web page draws the agents', drawn > 2000, `${drawn} pixels`);
 const debugStable = await web.evaluate(async () => { const a = window.__WEB__; await new Promise(r => setTimeout(r, 1500)); return a === window.__WEB__ && typeof a.selectFact === 'function'; });
