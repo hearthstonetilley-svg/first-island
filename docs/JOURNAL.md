@@ -202,7 +202,21 @@ The owner's reaction: "that's the design equivalent of the Matrix."
   it shows no measurable added cost. Every load passed the build eval's look checks in both versions.
 - Local: 92/92 sandbox eval (the last run read 2.71 for the detail check), zero model calls.
 
+## 20 Oct 2026: parked
+
+- Decision 61. The project is parked at v0.11.0 until the owner is free to play test. The preview was reset to a fresh
+  island at v0.11.0, paused and scripted, with no facts and no minds thinking. The old save is backed up.
+- Where it stands: v0.11.0 merged on green CI (92/92 sandbox eval, zero model calls) and tagged. Every version from
+  v0.7.0 has an Astra audit saved in docs/reviews, and every finding was fixed before merge. Held-out seeds last ran on
+  v0.8.1: 5 of 5 passed, 340 of 340 checks.
+- One mistake on record from this stretch: v0.7.0 merged on a red CI run because the watch command's exit was
+  misleading. The failures were eval timing on the slow CI renderer, fixed in v0.8.0.
+- Deferred, not done: rivals on the islet (#24), the awakening (#22), horizon haze, clouds, detail on trees, agents and
+  buildings, and the islet on the map panel. Ecology, population tuning and brief 3.5 stay parked as known debt
+  (decision 38).
+
 ## Next
 
-The owner's play test on a fresh island at v0.11.0, then the final audit and advisor review. Rivals and the
-awakening wait for the play test review.
+Parked (decision 61). When the owner returns: the play test on the fresh island at v0.11.0, then a final Astra audit
+of v0.7.0 to v0.11.0 and an advisor review, then the owner picks the next step: rivals on the islet, the awakening, or
+fixes from the play test.
