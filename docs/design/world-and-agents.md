@@ -191,7 +191,10 @@ into pieces, send them off and reassemble them, a dynamic spider web. In this wo
   sky panel and the sun never disagree. Sky colours, a warm horizon halo at dawn and dusk, stars and a moon at night,
   the ocean's tint and glints, and the one shadowing light (the moon's at night) all follow it through uniforms, so the
   day turns without rebuilding a shader. The page applies the time of day before the loading screen lifts, so a
-  reload never flashes daylight. Terrain, textures and water detail are later steps.
+  reload never flashes daylight.
+- **Materials that follow the light (decision 60), the second step.** Shallows and surf around every island, fine
+  sparkle in the sun's glitter, and two scales of variation in sand and grass with wet sand at the waterline. Clouds,
+  haze and detail on trees, agents and buildings are later steps.
 
 ## 9a. Observer views (owner request, 18 Oct 2026)
 

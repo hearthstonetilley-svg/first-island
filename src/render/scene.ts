@@ -6,7 +6,7 @@ import {
 } from 'three';
 import { MeshBasicNodeMaterial, MeshStandardNodeMaterial, Node, PostProcessing, WebGPURenderer } from 'three/webgpu';
 import {
-  attribute, cameraPosition, color, cos, dot, exp, float, floor, fract, max, mix, mrt, mx_noise_float, normalView, normalize, output,
+  attribute, cameraPosition, color, cos, dot, exp, float, floor, fract, max, mix, mrt, mx_noise_float, normalView, normalize, output, vec2,
   pass, positionLocal, positionWorld, pow, ShaderNodeObject, sin, smoothstep, step, texture, uniform, vec3,
 } from 'three/tsl';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
@@ -31,11 +31,13 @@ function skyUniforms() {
     sunDir: uniform(SUN_DIRECTION.clone()), moonDir: uniform(SUN_DIRECTION.clone().negate()),
     zenith: uniform(new ThreeColor('#1054b9')), horizon: uniform(new ThreeColor('#83bddc')), glow: uniform(new ThreeColor('#ffdca2')),
     sunVis: uniform(1), halo: uniform(0), night: uniform(0), glint: uniform(1), water: uniform(new ThreeColor('#ffffff')),
+    /** Surface detail (decision 60), 1 normally; a test-only switch sets 0 to compare a frame without it. */
+    detail: uniform(1),
   };
 }
 type SkyUniforms = ReturnType<typeof skyUniforms>;
 
-function addTerrain(scene: Scene, world: WorldData): Mesh {
+function addTerrain(scene: Scene, world: WorldData, detail?: ReturnType<typeof uniform>): Mesh {
   // An extra submerged ring continues the seabed out past the view, with no square shelf.
   const count = world.resolution + 2;
   const geometry = new PlaneGeometry(world.size, world.size, count - 1, count - 1);
@@ -90,7 +92,17 @@ function addTerrain(scene: Scene, world: WorldData): Mesh {
   const weathered = mix(stone, color('#a39779'), flecks.mul(0.2));
   const creviceShade = mix(float(1), float(0.42), attribute('cavity', 'float'));
   const surface = mix(attribute('color', 'vec3'), weathered.mul(creviceShade), attribute('rockWeight', 'float'));
-  material.colorNode = surface.mul(grain.mul(0.045).add(1));
+  // Sand and grass grain (decision 60): fine noise varies their colour as rock already varies, and sand at the
+  // waterline is darker and glossier where the sea wets it.
+  // Two scales, as in a real meadow or beach: broad patches of lighter and darker growth, and fine grain.
+  const patches = mx_noise_float(positionWorld.mul(0.9)).mul(0.5).add(0.5);
+  const fine = mx_noise_float(positionWorld.mul(5.2)).mul(0.5).add(0.5);
+  const soft = mix(float(0.8), float(1.2), patches).mul(mix(float(0.9), float(1.1), fine))
+    .mul(float(1).sub(attribute('rockWeight', 'float'))).add(attribute('rockWeight', 'float'));
+  const wet = float(1).sub(smoothstep(0.05, 0.32, positionWorld.y)).mul(float(1).sub(attribute('rockWeight', 'float')));
+  const amount = detail ?? float(1);
+  material.colorNode = surface.mul(grain.mul(0.045).add(1)).mul(mix(float(1), soft, amount)).mul(mix(float(1), float(0.68), wet.mul(amount)));
+  material.roughnessNode = mix(float(0.95), float(0.45), wet.mul(amount));
   const mesh = new Mesh(geometry, material);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
@@ -103,7 +115,7 @@ function smooth(low: number, high: number, value: number): number {
   return t * t * (3 - 2 * t);
 }
 
-function addOcean(scene: Scene, world: WorldData, u: SkyUniforms): { time: ReturnType<typeof uniform>; mesh: Mesh; heightTexture: DataTexture } {
+function addOcean(scene: Scene, world: WorldData, u: SkyUniforms, islet?: { world: WorldData; x: number; z: number }): { time: ReturnType<typeof uniform>; mesh: Mesh; heightTexture: DataTexture; isletTexture?: DataTexture } {
   const geometry = new PlaneGeometry(2, 2, 224, 224);
   geometry.rotateX(-Math.PI / 2);
   const pos = geometry.attributes.position;
@@ -135,11 +147,25 @@ function addOcean(scene: Scene, world: WorldData, u: SkyUniforms): { time: Retur
     dz = dz.add(cos(phase).mul(wave.amplitude * wave.z));
   }
   material.positionNode = positionLocal.add(vec3(0, displacement, 0));
+  // Fine ripples in the fragment normal only: the sun's glitter breaks into sparkle instead of broad blots.
+  for (const r of [{ x: 9.3, z: -6.1, a: 0.0035, s: 3.3 }, { x: -7.7, z: -11.2, a: 0.0028, s: 3.9 }, { x: 14.9, z: 5.3, a: 0.0018, s: 4.6 }]) {
+    const ph = positionWorld.x.mul(r.x).add(positionWorld.z.mul(r.z)).add(time.mul(r.s));
+    dx = dx.add(cos(ph).mul(r.a * r.x)); dz = dz.add(cos(ph).mul(r.a * r.z));
+  }
   const waterNormal = normalize(vec3(dx.negate(), 1, dz.negate()));
   const view = normalize(cameraPosition.sub(positionWorld));
   const uv = positionWorld.xz.div(world.size).add(0.5)
     .mul((world.resolution - 1) / world.resolution).add(0.5 / world.resolution);
-  const ground = texture(heightTexture, uv).r;
+  let ground: ShaderNodeObject<Node> = texture(heightTexture, uv).r;
+  // The islet's seabed too (decision 60), so its beaches get shallows and surf like the main island's.
+  let isletTexture: DataTexture | undefined;
+  if (islet) {
+    isletTexture = new DataTexture(islet.world.heights, islet.world.resolution, islet.world.resolution, RedFormat, FloatType);
+    isletTexture.minFilter = LinearFilter; isletTexture.magFilter = LinearFilter; isletTexture.needsUpdate = true;
+    const n = islet.world.resolution;
+    const iuv = vec2(positionWorld.x.sub(islet.x), positionWorld.z.sub(islet.z)).div(islet.world.size).add(0.5).clamp(0, 1).mul((n - 1) / n).add(0.5 / n);
+    ground = max(ground, texture(isletTexture, iuv).r);
+  }
   const depth = max(positionWorld.y.sub(ground), float(0));
   const fresnel = pow(float(1).sub(max(dot(waterNormal, view), float(0))), float(5));
   const depthColor = mix(color('#37cbb7'), color('#07516c'), smoothstep(0.25, 4.5, depth));
@@ -161,7 +187,7 @@ function addOcean(scene: Scene, world: WorldData, u: SkyUniforms): { time: Retur
   material.opacityNode = max(float(1).sub(exp(depth.mul(-2.5))), float(0.55)).add(foam).clamp(0, 1);
   const mesh = new Mesh(geometry, material);
   scene.add(mesh);
-  return { time, mesh, heightTexture };
+  return { time, mesh, heightTexture, isletTexture };
 }
 
 function addSky(scene: Scene, u: SkyUniforms): void {
@@ -240,6 +266,8 @@ export interface IslandScene {
   sunInfo(): { phase: number; elevation: number; azimuth: number };
   /** True when the islet offshore is drawn. */
   isletDrawn(): boolean;
+  /** Test only: 1 draws the surface detail, 0 leaves it out, with no shader rebuilt. */
+  setDetail(amount: number): void;
   /** Shader programs and render pipelines built so far, counted as they are created, for checking that the day turns without rebuilding one. */
   programCount(): number;
   /** The quality actually being drawn, which can lag a request while a path compiles. */
@@ -414,8 +442,8 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
   const sky0 = skyUniforms();
   let sunPhase = NaN, sunHeight = SUN_DIRECTION.y, sunAzimuth = NOON_AZIMUTH;
   addSky(scene, sky0);
-  addTerrain(scene, world);
-  if (isle) addTerrain(scene, isle.world).position.set(isle.x, 0, isle.z);
+  addTerrain(scene, world, sky0.detail);
+  if (isle) addTerrain(scene, isle.world, sky0.detail).position.set(isle.x, 0, isle.z);
   await progress({ stage: 'trees', message: 'Building forest canopies', percent: 51 });
   const treeTime = uniform(0);
   const trees = new TreeFigures(scene, treeTime, options.snapshot);
@@ -423,7 +451,8 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
   await progress({ stage: 'water', message: 'Preparing the ocean', percent: 56 });
   const figures = new AgentFigures(scene, options.snapshot);
   disposables.push(figures);
-  const ocean = addOcean(scene, world, sky0);
+  const ocean = addOcean(scene, world, sky0, options.islet);
+  if (ocean.isletTexture) disposables.push(ocean.isletTexture);
   disposables.push(ocean.heightTexture);
   const sky = new HemisphereLight('#c5defc', '#73654b', 3);
   scene.add(sky);
@@ -641,6 +670,7 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
     sunInfo: () => ({ phase: sunPhase, elevation: Math.asin(sunHeight) * 180 / Math.PI, azimuth: ((sunAzimuth * 180 / Math.PI) % 360 + 360) % 360 }),
     programCount: () => programsBuilt,
     isletDrawn: () => !!isle,
+    setDetail: (amount) => { sky0.detail.value = amount; },
     addStructure: (structure) => structures.add(structure),
     removeStructure: (id) => structures.remove(id),
     structureKinds: () => structures.kinds(),

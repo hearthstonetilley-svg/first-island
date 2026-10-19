@@ -670,6 +670,7 @@ async function runIsland(scene: IslandScene) {
     }
     // Test only, with ?debug=1: point the camera at a spot so a check can see what is drawn there.
     if (debug) (window as unknown as { __SANDBOX_LOOK__?: (x: number, z: number) => void }).__SANDBOX_LOOK__ = (x, z) => scene.setPose({ tx: x, ty: 0.5, tz: z, yaw: 0.58, pitch: 1.1, distance: 26 });
+    if (debug) (window as unknown as { __SANDBOX_DETAIL__?: (v: number) => void }).__SANDBOX_DETAIL__ = v => scene.setDetail(v);
     if (debug) window.__SANDBOX__ = { get camera() { return scene.cameraInfo(); }, tags: shown, mode, fps: smoothed ? 1000 / smoothed : 0, quality: scene.appliedQuality(), requested: quality.level, entered, qualitySamples, sun: scene.sunInfo(), sunAtEntry, programs: scene.programCount(), islet: scene.isletDrawn(), drawnKinds: scene.structureKinds() };
     frameRequest = requestAnimationFrame(t => { try { tick(t); } catch (err) { void controller?.reportFailure(scene, err); } });
   };

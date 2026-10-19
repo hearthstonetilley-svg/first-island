@@ -181,7 +181,24 @@ The owner's reaction: "that's the design equivalent of the Matrix."
   overhead sun put white glint blots under a downward view; glints now fade as the sun climbs. Local after the fixes:
   89/89, 118/118 unit tests.
 
+## 19 Oct 2026, night: photorealism, the materials follow the light
+
+- The owner set the order: photorealism as the last item, then a play test on a fresh island, then a final audit,
+  an advisor review and closing the task list. Rivals and the awakening wait until after the play test.
+- Decision 60. Checks first, failing on v0.10.0: islet shallows 0.000 (now about 0.14), and open-sea glare already
+  0.000 since the glint softening, so that check guards against the blots returning rather than proving the ripples.
+- The surface-detail check took three tries, and the record should say why. A neighbour-difference measure on a
+  shrunken screenshot could not see patches 20 pixels wide (6.48 before, 6.03 and 6.50 after). A block-contrast
+  measure was swamped by hill shading (22.21 before, 22.55 after). The check that holds switches the detail off and
+  on in the same frame with the same camera and compares: zero without it by construction, 3.50 of 255 with it,
+  against a bar of 3 set before measuring. The first reading, 2.97, was met by making the meadow patches slightly
+  stronger, not by moving the bar.
+- Frame cost on this machine, v0.10.0 against v0.11.0 alternating three times on the main page (seeds 1 and 42):
+  best medians 1316 ms and 850 ms per frame under software rendering. The machine is too noisy to call that faster;
+  it shows no measurable added cost. Every load passed the build eval's look checks in both versions.
+- Local: 92/92 sandbox eval, zero model calls.
+
 ## Next
 
-The owner's Later list, one version at a time: photorealism (the day cycle first), boats and other islands, rival
-societies, and the awakening gate with law rewriting.
+The owner's play test on a fresh island at v0.11.0, then the final audit and advisor review. Rivals and the
+awakening wait for the play test review.

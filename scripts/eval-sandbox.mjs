@@ -8,8 +8,9 @@ import { join } from 'node:path';
 import { createServer } from 'vite';
 import { chromium } from 'playwright';
 
-// Surface grain: v0.10.0 measured 6.48 on the meadow (decision 60); the bar is about a quarter more detail.
-const GRAIN_MIN = Number(process.env.EVAL_GRAIN_MIN ?? 8);
+// Surface detail (decision 60): switched off and on in the same frame, the land must change by more than this
+// mean brightness (of 255). Without the detail, the change is zero by construction.
+const GRAIN_MIN = Number(process.env.EVAL_GRAIN_MIN ?? 3);
 const PORT = Number(process.env.EVAL_SERVER_PORT ?? 8791), WEB = Number(process.env.EVAL_WEB_PORT ?? 5191), OUT = process.env.EVAL_OUT ?? 'eval-results/sandbox';
 mkdirSync(OUT, { recursive: true });
 const results = [];
@@ -441,11 +442,24 @@ const beach = isle.spots?.isletShore ? await shares(isle.spots.isletShore.x, isl
 await shot(page, `${OUT}/photo-islet-shore.png`);
 const openSea = await shares(isle.x * 1.7, isle.z * 1.7);
 await shot(page, `${OUT}/photo-open-sea.png`);
-const meadow = isle.spots?.mainMeadow ? await shares(isle.spots.mainMeadow.x, isle.spots.mainMeadow.z) : { grain: -1, land: -1 };
+// Surface detail on and off with the same camera and the same moment: how much it changes the land drawn.
+const detailEffect = async (x, z) => {
+  await page.evaluate(([x, z]) => window.__SANDBOX_LOOK__?.(x, z), [x, z]); await sleep(2500);
+  const grab = async v => { await page.evaluate(v => window.__SANDBOX_DETAIL__?.(v), v); await sleep(2500); return page.screenshot({ clip: { x: 600, y: 330, width: 200, height: 160 }, timeout: 120000 }).catch(() => null); };
+  const off = await grab(0), on = await grab(1);
+  if (!off || !on) return { change: -1, land: -1 };
+  return page.evaluate(async ([a, b]) => {
+    const load = async b64 => { const img = new Image(); img.src = `data:image/png;base64,${b64}`; await img.decode(); const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0); return ctx.getImageData(0, 0, c.width, c.height).data; };
+    const p = await load(a), q = await load(b); let sum = 0, n = 0, land = 0;
+    for (let i = 0; i < p.length; i += 4) { const isLand = p[i + 1] > p[i + 2] + 5 || p[i] > p[i + 2] + 15; if (!isLand) continue; land++; sum += Math.abs(0.2126 * (p[i] - q[i]) + 0.7152 * (p[i + 1] - q[i + 1]) + 0.0722 * (p[i + 2] - q[i + 2])); n++; }
+    return { change: n ? sum / n : 0, land: land / (p.length / 4) };
+  }, [off.toString('base64'), on.toString('base64')]);
+};
+const meadow = isle.spots?.mainMeadow ? await detailEffect(isle.spots.mainMeadow.x, isle.spots.mainMeadow.z) : { change: -1, land: -1 };
 await shot(page, `${OUT}/photo-meadow.png`);
 check('the islet has turquoise shallows and surf along its beaches', beach.shallow > 0.04, `shallow share at an islet beach ${beach.shallow.toFixed(3)}`);
 check('sun glitter on open water is fine sparkle, not white blots', openSea.glare >= 0 && openSea.glare < 0.02 && openSea.shallow < 0.01, `white glare ${openSea.glare.toFixed(3)}, shallow ${openSea.shallow.toFixed(3)} at open sea`);
-check('meadow and sand show surface grain', meadow.land > 0.5 && meadow.grain > GRAIN_MIN, `grain ${meadow.grain.toFixed(2)} (needs over ${GRAIN_MIN}) on ${(meadow.land * 100).toFixed(0)}% land`);
+check('surface detail visibly changes the land: patches, grain and wet sand', meadow.land > 0.5 && meadow.change > GRAIN_MIN, `mean brightness change ${meadow.change.toFixed(2)} of 255 (needs over ${GRAIN_MIN}) on ${(meadow.land * 100).toFixed(0)}% land`);
 await page.keyboard.press('Escape'); await sleep(1500);
 await api('/api/control', { cmd: 'start' });
 check('the islet is drawn on the island page: land where it stands, sea beyond it', onIsle > 0.3 && offIsle >= 0 && offIsle < 0.1,

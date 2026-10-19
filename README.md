@@ -9,7 +9,7 @@ so every run can be reproduced exactly.
 
 ## Status
 
-v0.10: a living sandbox. Eight agents live on a seeded island, each driven by a small model mind (Haiku or Sonnet
+v0.11: a living sandbox. Eight agents live on a seeded island, each driven by a small model mind (Haiku or Sonnet
 through Claude, Luna or Sol through Codex; the owner sets the mix in the top bar). They gather, combine materials under
 real-world chemistry, need an edge to cut a living tree, eat, build shelter, defend against the night boar, name
 places, build rafts and boats to reach a small island offshore, teach facts and skills, test predictions, and call councils when they disagree. Storms bring rain, and the sky
@@ -18,7 +18,7 @@ as a nucleus.
 
 Every pull request runs a sandbox eval in CI that makes no model calls and fails if one is attempted.
 
-Next: more photorealism (the day cycle is in), rival societies on the islet, and the awakening, where agents
+Next: a play test, then rival societies on the islet, and the awakening, where agents
 earn the right to rewrite the island's laws.
 
 ## How it is built
@@ -64,6 +64,7 @@ as about the world itself.
 | v0.8.1 | A restarted island always waits for Run ([audit](docs/reviews/astra-audit-14-2026-10-19.md)) |
 | v0.9.0 | The day cycle: the sun crosses the sky on the island's clock, with sky, stars, moon, water and shadows following it |
 | v0.10.0 | Boats and the islet: rafts and sealed boats, a launch verb where the sea decides, a small island offshore with obsidian |
+| v0.11.0 | The materials follow the light: shallows and surf around the islet, fine sun glitter, grain in sand and grass, wet sand at the waterline |
 
 ## Run it
 
