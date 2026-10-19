@@ -8,7 +8,13 @@ export interface Substance { name: string; description: string; tier: number; gr
   /** Strength gained (or lost) by eating it; undefined means it is not food. */
   food?: number;
   /** Tools any one of which must be carried to gather it (wood from a living tree needs an edge). */
-  needs?: string[] }
+  needs?: string[];
+  /** On the water (decision 59): a log rolls its rider back, small things drift off; unset means it sinks. */
+  floats?: 'rolls' | 'drifts';
+  /** A craft carries its rider across the sea: a raft until a storm, a sealed boat through one. */
+  craft?: 'raft' | 'boat';
+  /** Found only on the islet offshore. */
+  islet?: boolean }
 /** The tools still missing to gather this, or undefined when it can be gathered by hand or with what is carried. */
 export function missingTool(s: Substance | undefined, inventory: string[]): string[] | undefined {
   if (!s?.needs || s.needs.some(t => inventory.includes(t))) return undefined;

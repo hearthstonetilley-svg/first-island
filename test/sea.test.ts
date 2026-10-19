@@ -2,15 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { launch, startVoyage, voyageAt } from '../src/sandbox/sea';
 
 // Boats (decision 59): the sea decides. Effects and physics, never solutions (decision 12).
-const item = (name: string, floats: boolean, craft?: 'raft' | 'boat') => ({ name, floats, craft });
+const item = (name: string, floats?: 'rolls' | 'drifts', craft?: 'raft' | 'boat') => ({ name, floats, craft });
 const from = { x: 0, z: 0 }, to = { x: 30, z: -40 };
 
 describe('the sea', () => {
-  it('what sinks is lost, a lone float dumps its rider, a craft sails', () => {
-    for (const n of ['stone', 'flint', 'pyrite', 'clay']) expect(launch(item(n, false)).kind).toBe('sank');
-    for (const n of ['driftwood', 'wood']) expect(launch(item(n, true)).kind).toBe('dumped');
-    expect(launch(item('raft', true, 'raft')).kind).toBe('voyage');
-    expect(launch(item('boat', true, 'boat')).kind).toBe('voyage');
+  it('what sinks is lost, small floats drift off, a lone log dumps its rider, a craft sails', () => {
+    for (const n of ['stone', 'flint', 'pyrite', 'clay']) expect(launch(item(n)).kind).toBe('sank');
+    for (const n of ['fruit', 'dry grass']) expect(launch(item(n, 'drifts')).kind).toBe('drifted');
+    for (const n of ['driftwood', 'wood']) expect(launch(item(n, 'rolls')).kind).toBe('dumped');
+    expect(launch(item('raft', undefined, 'raft')).kind).toBe('voyage');
+    expect(launch(item('boat', undefined, 'boat')).kind).toBe('voyage');
     expect(launch(undefined).kind).toBe('nothing');
   });
   it('a raft crosses in calm weather and lands when the voyage is done', () => {

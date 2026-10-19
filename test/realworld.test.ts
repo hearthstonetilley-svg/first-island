@@ -30,7 +30,7 @@ describe('real-world chemistry', () => {
   });
   it('tools matter: wood from a living tree needs an edge, loose things do not', () => {
     const wood = c.substances.find(s => s.name === 'wood')!, drift = c.substances.find(s => s.name === 'driftwood')!;
-    expect(missingTool(wood, [])).toEqual(['flint flake', 'blade', 'axe']);
+    expect(missingTool(wood, [])).toEqual(['flint flake', 'blade', 'axe', 'obsidian blade']);
     expect(missingTool(wood, ['flint flake'])).toBeUndefined();
     expect(missingTool(wood, ['shell', 'axe'])).toBeUndefined();
     expect(missingTool(drift, [])).toBeUndefined();

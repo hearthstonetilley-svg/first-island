@@ -35,7 +35,7 @@ function skyUniforms() {
 }
 type SkyUniforms = ReturnType<typeof skyUniforms>;
 
-function addTerrain(scene: Scene, world: WorldData): void {
+function addTerrain(scene: Scene, world: WorldData): Mesh {
   // An extra submerged ring continues the seabed out past the view, with no square shelf.
   const count = world.resolution + 2;
   const geometry = new PlaneGeometry(world.size, world.size, count - 1, count - 1);
@@ -95,6 +95,7 @@ function addTerrain(scene: Scene, world: WorldData): void {
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   scene.add(mesh);
+  return mesh;
 }
 
 function smooth(low: number, high: number, value: number): number {
@@ -185,6 +186,8 @@ function addSky(scene: Scene, u: SkyUniforms): void {
 }
 
 interface SceneOptions {
+  /** The islet offshore (decision 59): its own small terrain, drawn at its place in the sea. */
+  islet?: { world: WorldData; x: number; z: number; radius: number };
   snapshot?: Snapshot;
   /** Called when the owner takes the camera by hand (drag or wheel), ending any follow. */
   onManualCamera?: () => void;
@@ -233,6 +236,8 @@ export interface IslandScene {
   setTimeOfDay(phase: number, daylight: number, storm?: boolean): void;
   /** Where the sun stands, in degrees; phase is NaN until a time of day is set. */
   sunInfo(): { phase: number; elevation: number; azimuth: number };
+  /** True when the islet offshore is drawn. */
+  isletDrawn(): boolean;
   /** Shader programs and render pipelines built so far, counted as they are created, for checking that the day turns without rebuilding one. */
   programCount(): number;
   /** The quality actually being drawn, which can lag a request while a path compiles. */
@@ -360,13 +365,16 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
   let dragging = false;
   let lastX = 0;
   let lastY = 0;
+  const isle = options.islet;
+  // The ground under a point, on either island, so the camera never sinks into the islet either.
+  const groundAt = (x: number, z: number) => Math.max(sampleHeight(world, x, z), isle ? sampleHeight(isle.world, x - isle.x, z - isle.z) : -Infinity);
   const updateCamera = () => {
     orbitPitch = Math.max(0.035, Math.min(1.25, orbitPitch));
     distance = Math.max(options.figureScale ? 5 : 15, Math.min(world.size * 2, distance));
     camera.position.set(target.x + Math.sin(orbitYaw) * Math.cos(orbitPitch) * distance,
       target.y + Math.sin(orbitPitch) * distance, target.z + Math.cos(orbitYaw) * Math.cos(orbitPitch) * distance);
     // The free camera never sinks into the land: lift the view above the ground under it.
-    const under = Math.max(0, sampleHeight(world, camera.position.x, camera.position.z));
+    const under = Math.max(0, groundAt(camera.position.x, camera.position.z));
     if (camera.position.y < under + 1.2) camera.position.y = under + 1.2;
     camera.lookAt(target);
   };
@@ -405,6 +413,7 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
   let sunPhase = NaN, sunHeight = SUN_DIRECTION.y, sunAzimuth = NOON_AZIMUTH;
   addSky(scene, sky0);
   addTerrain(scene, world);
+  if (isle) addTerrain(scene, isle.world).position.set(isle.x, 0, isle.z);
   await progress({ stage: 'trees', message: 'Building forest canopies', percent: 51 });
   const treeTime = uniform(0);
   const trees = new TreeFigures(scene, treeTime, options.snapshot);
@@ -606,7 +615,7 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
   const structures = new Structures(scene);
   if (options.figureScale) figures.scale = options.figureScale;
   if (options.agentColours) figures.colours = options.agentColours;
-  const limit = world.size / 2;
+  const limit = Math.max(world.size / 2, isle ? Math.max(Math.abs(isle.x), Math.abs(isle.z)) + isle.radius : 0);
   return { renderer, label, render, resize, setQuality, dispose,
     appliedQuality: () => applied,
     setDaylight: (daylight, storm) => {
@@ -629,6 +638,7 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
     },
     sunInfo: () => ({ phase: sunPhase, elevation: Math.asin(sunHeight) * 180 / Math.PI, azimuth: ((sunAzimuth * 180 / Math.PI) % 360 + 360) % 360 }),
     programCount: () => programsBuilt,
+    isletDrawn: () => !!isle,
     addStructure: (structure) => structures.add(structure),
     frameAgents: (ids) => {
       const list = figures.update(performance.now(), 0).filter(a => !ids || ids.includes(a.id));
@@ -646,7 +656,7 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
       target.x = Math.max(-limit, Math.min(limit, target.x - Math.sin(orbitYaw) * forward * step + Math.cos(orbitYaw) * right * step));
       target.z = Math.max(-limit, Math.min(limit, target.z - Math.cos(orbitYaw) * forward * step - Math.sin(orbitYaw) * right * step));
       // Glide over the land: the point the camera looks at rides on the terrain.
-      target.y = Math.max(0, sampleHeight(world, target.x, target.z)) + 0.45;
+      target.y = Math.max(0, groundAt(target.x, target.z)) + 0.45;
       updateCamera();
     },
     turn: (radians) => { cancelAutomatic(); orbitYaw += radians; updateCamera(); },

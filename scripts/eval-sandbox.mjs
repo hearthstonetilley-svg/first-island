@@ -21,7 +21,7 @@ const STATE_DIR = mkdtempSync(join(tmpdir(), 'sandbox-eval-'));
 const server = spawn('npx', ['vite-node', 'server/sandbox.ts'], { stdio: ['ignore', 'pipe', 'pipe'], detached: true,
   env: { ...process.env, SANDBOX_PORT: String(PORT), SANDBOX_FRESH: '1', MIND_MODE: 'scripted', SANDBOX_STATE_DIR: STATE_DIR,
     // The eval must never spend: both call caps are zero, whatever the mixer is set to.
-    MAX_CALLS_PER_MIN: '0', COUNCIL_CALLS_PER_MIN: '0', SANDBOX_TEST: '1', SANDBOX_COUNCIL_DELAY_MS: '1500', SANDBOX_DAY_MS: '60000', SANDBOX_TEST_BAD_PART: '1', SANDBOX_DIRECTOR_MS: '20000', SANDBOX_DRAIN: String(1 / 150) } });
+    MAX_CALLS_PER_MIN: '0', COUNCIL_CALLS_PER_MIN: '0', SANDBOX_TEST: '1', SANDBOX_COUNCIL_DELAY_MS: '1500', SANDBOX_DAY_MS: '60000', SANDBOX_VOYAGE_MS: '3000', SANDBOX_TEST_BAD_PART: '1', SANDBOX_DIRECTOR_MS: '20000', SANDBOX_DRAIN: String(1 / 150) } });
 let serverLog = ''; server.stdout.on('data', c => { serverLog += c; }); server.stderr.on('data', c => { serverLog += c; });
 process.env.SANDBOX_PORT = String(PORT);
 const vite = await createServer({ server: { port: WEB, strictPort: true }, logLevel: 'silent' });
@@ -358,11 +358,11 @@ check('a raft carries its rider across to the islet in calm weather', crossing.s
   `${crossing.map(e => e.text).join(' | ') || 'nothing happened'}; now on ${agentNow(sailor)?.island}`);
 check('the first sea crossing is a milestone', (seen.sea ?? []).some(e => e.type === 'milestone'));
 // The islet has what the main island lacks.
-await api('/api/control', { cmd: 'goto', agent: mate, ground: 'high rock' });
+await api('/api/control', { cmd: 'goto', agent: mate, ground: 'shore' });
 await api('/api/control', { cmd: 'hold', agent: mate, items: [] });
 await api('/api/control', { cmd: 'act', agent: mate, decision: { action: 'gather', target: 'obsidian' } }); await sleep(800);
 const mainObsidian = (agentNow(mate)?.inventory ?? []).includes('obsidian');
-await api('/api/control', { cmd: 'goto', agent: sailor, ground: 'high rock', island: 'islet' });
+await api('/api/control', { cmd: 'goto', agent: sailor, ground: 'shore', island: 'islet' });
 await api('/api/control', { cmd: 'hold', agent: sailor, items: [] });
 await api('/api/control', { cmd: 'act', agent: sailor, decision: { action: 'gather', target: 'obsidian' } }); await sleep(800);
 check('obsidian is found on the islet and nowhere on the main island', !mainObsidian && (agentNow(sailor)?.inventory ?? []).includes('obsidian') && agentNow(sailor)?.island === 'islet',
@@ -379,11 +379,12 @@ const rode = await sea(mate, { action: 'launch', target: 'boat' }, ['boat', 'fru
 check('a sealed boat crosses even in a storm, cargo and all', rode.some(e => e.type === 'landfall') && agentNow(mate)?.island === 'islet' && (agentNow(mate)?.inventory ?? []).includes('fruit'),
   `${rode.map(e => e.text).join(' | ') || 'nothing happened'}; on ${agentNow(mate)?.island}`);
 await api('/api/control', { cmd: 'storm', on: false });
-// The boar is a main-island animal: it never hunts on the islet.
+// The boar is a main-island animal: woken as near the islet agent as the main island allows, it never reaches them.
+const chargedBefore = (seen.charged ?? []).length;
 await api('/api/control', { cmd: 'boar', agent: mate });
 await sleep(3000);
 const boarAt = seen.last?.world?.boar;
-check('the boar never leaves the main island', !(seen.charged ?? []).includes(mate) && (!boarAt || Math.hypot(boarAt.x - isle.x, boarAt.z - isle.z) > isle.radius),
+check('the boar never leaves the main island', !(seen.charged ?? []).slice(chargedBefore).includes(mate) && (!boarAt || Math.hypot(boarAt.x - isle.x, boarAt.z - isle.z) > isle.radius),
   boarAt ? `boar ${Math.hypot(boarAt.x - isle.x, boarAt.z - isle.z).toFixed(1)} units from the islet's centre` : 'boar asleep');
 // The page draws the islet, and the eval stays honest.
 const isletDrawn = await page.evaluate(() => window.__SANDBOX__?.islet ?? false);
