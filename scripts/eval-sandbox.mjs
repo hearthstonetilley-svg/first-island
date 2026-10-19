@@ -215,14 +215,17 @@ const openApart = skip => {
 let bitten;
 for (let attempt = 0; attempt < 3 && bitten === undefined; attempt++) {
   const pick = openApart(); if (pick === undefined) { await sleep(1000); continue; }
+  // Only a charge after this boar wakes counts: a night boar may have charged the same agent earlier.
+  const before = (seen.charged ?? []).length;
   await api('/api/control', { cmd: 'hold', agent: pick, items: ['fruit'] });
   await api('/api/control', { cmd: 'boar', agent: pick });
-  for (let i = 0; i < 20 && !(seen.charged ?? []).includes(pick); i++) await sleep(300);
-  if ((seen.charged ?? []).includes(pick)) bitten = pick;
+  for (let i = 0; i < 20 && !(seen.charged ?? []).slice(before).includes(pick); i++) await sleep(300);
+  if ((seen.charged ?? []).slice(before).includes(pick)) bitten = pick;
 }
 check('the boar charges an agent caught in the open', bitten !== undefined, `agent ${bitten}`);
+for (let i = 0; i < 50 && !seen.last?.world?.boar; i++) await sleep(300);
 check('the boar is drawn on the island while it is out', !!seen.last?.world?.boar);
-check('the sky panel says the boar is out', await page.evaluate(() => /boar is out/i.test(document.querySelector('.skycard .threat')?.textContent ?? '')));
+check('the sky panel says the boar is out', await page.waitForFunction(() => /boar is out/i.test(document.querySelector('.skycard .threat')?.textContent ?? ''), null, { timeout: 15000 }).then(() => true, () => false));
 let speared;
 for (let attempt = 0; attempt < 3 && speared === undefined; attempt++) {
   const pick = openApart(bitten); if (pick === undefined) { await sleep(1000); continue; }
