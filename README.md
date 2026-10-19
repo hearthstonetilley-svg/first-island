@@ -9,19 +9,29 @@ so every run can be reproduced exactly.
 
 ## Status
 
-Stage 1: the world. An ocean and a seeded island. No agents yet.
+v0.8: a living sandbox. Eight agents live on a seeded island, each driven by a small model mind (Haiku or Sonnet
+through Claude, Luna or Sol through Codex; the owner sets the mix in the top bar). They gather, combine materials under
+real-world chemistry, need an edge to cut a living tree, eat, build shelter, defend against the night boar, name
+places, teach facts and skills, test predictions, and call councils when they disagree. Storms bring rain, and the sky
+panel shows the day. The page draws what they know as a nucleus.
+
+Every pull request runs a sandbox eval in CI that makes no model calls and fails if one is attempted.
+
+Next: photorealism (the day cycle first), boats and other islands, rival societies, and the awakening, where agents
+earn the right to rewrite the island's laws.
 
 ## How it is built
 
-The project is built in the open by two AI systems with a human owner:
+The project is built in the open by two AI systems with a human owner (decision 51):
 
-- **Codex** (OpenAI) writes the code from a short brief.
-- **Claude** (Anthropic) writes the briefs, reviews every version in a real browser, and sends back specific fixes.
+- **Claude** (Anthropic) builds every version: eval checks first, then the code, through a pull request on green CI.
+- **Codex** (OpenAI, GPT-6-Astra) only reviews. Each version gets one adversarial audit before it leaves draft, and
+  the verdict is saved word for word in [docs/reviews](docs/reviews).
 - **The owner** sets the direction and makes the calls.
 
-Every version is published, including the ones that failed review. Each one is a pull request carrying the review that
-judged it and the screenshots it was judged on. Failed versions are part of the record on purpose: the experiment is
-as much about how the world gets built as about the world itself.
+Rounds 1 to 13 (v0.0.1 to v0.4.2) were built the other way round, with Codex writing code from Claude's briefs. Every
+version is published, including the ones that failed review: the experiment is as much about how the world gets built
+as about the world itself.
 
 ## The record
 
@@ -47,6 +57,9 @@ as much about how the world gets built as about the world itself.
 | v0.4.0 | Round 11, accepted: stage 3a, the simulation clock in a worker with an event log and exact replay; deterministic across processes ([review](docs/reviews/v0.4.0.md)) |
 | v0.4.1 | Round 12, rejected: the first agents (bodies, traits, display) pass the builder's 90-minute eval but every seed goes extinct on a long run ([review](docs/reviews/v0.4.1.md)) |
 | v0.4.2 | Round 13, changes requested: extinction fixed with a measured cause, exact replay across processes and browser, pace at one generation; but only the cap limits the population ([review](docs/reviews/v0.4.2.md)) |
+| v0.7.0 | The sandbox: councils, chemistry, skills, the minds mixer, usage meters, the knowledge nucleus, and the restored performance contract ([review](docs/reviews/v0.7.0.md)) |
+| v0.7.1 | Survival readable on the page: strength on every box, shelter and food knowledge in the inspector, the survival rules written out |
+| v0.8.0 | Places, councils on disagreement, the recitation score, the director, fading strands, tools that matter, the night boar, the sky panel and rain in storms ([audit](docs/reviews/astra-audit-13-2026-10-19.md)) |
 
 ## Run it
 
@@ -56,6 +69,9 @@ npm run dev          # http://localhost:5173/?seed=42
 npm test
 npm run build
 npm run eval         # five seeds, three loads each, auto and forced WebGL2
+npm run typecheck:server
+npm run sandbox      # the agent server; the page connects to it
+npm run eval:sandbox # agents, councils, camera and pages, with zero model calls
 ```
 
 `?seed=N` picks the island. `?renderer=webgl2` forces the WebGL2 path.

@@ -779,7 +779,7 @@ function load() {
     if (data.weather && typeof data.weather.nextStorm === 'number') { nextStorm = data.weather.nextStorm; storm = data.weather.storm ?? null; }
     else nextStorm = simMs + 300000 + Math.random() * 300000;
     hypTotal = data.hypTotal ?? 0; hypRight = data.hypRight ?? 0; hypMissing = data.hypMissing ?? 0; hypUntested = data.hypUntested ?? 0; ideas.push(...(data.ideas ?? []));
-    structures = data.structures ?? []; if (Array.isArray(data.mix)) mix = data.mix; if (typeof data.running === 'boolean') running = data.running;
+    structures = data.structures ?? []; if (Array.isArray(data.mix)) mix = data.mix; // A restart always waits for the owner to press Run, whatever the save says.
     for (const k of data.skills ?? []) skills.set(k.name, k);
     facts.push(...data.facts); seq = data.seq; events = data.events; councils = data.councils ?? [];
     agents = data.agents.map((a: SandboxAgent) => ({ ...a, nextThink: Date.now() + 1000 + a.id * 500, busyUntil: 0,
