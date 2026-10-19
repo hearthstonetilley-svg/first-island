@@ -266,6 +266,57 @@ check('the survival rules are written on the page', /strength/.test(surv.rules) 
 await page.keyboard.press('Escape');
 check('agents write and run skills', seen.types.has('skill_written') && seen.types.has('skill_run'), [...seen.types].filter(t => t.startsWith('skill') || t === 'learn_skill').join(','));
 check('no page errors', errors.length === 0, errors.slice(0, 2).join(' | '));
+// The day cycle (decision 58): the sun moves on the island's own clock, and sky, light, water and shadows follow it.
+// One clock: the sun's height must agree with what the sky panel says. Uniforms only: no shader is rebuilt as the day turns.
+const brightness = async () => {
+  const png = await page.screenshot({ clip: { x: 520, y: 200, width: 360, height: 360 }, timeout: 120000 }).catch(() => null);
+  if (!png) return -1;
+  return page.evaluate(async b64 => {
+    const img = new Image(); img.src = `data:image/png;base64,${b64}`; await img.decode();
+    const c = document.createElement('canvas'); c.width = 60; c.height = 60; const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0, 60, 60);
+    const d = ctx.getImageData(0, 0, 60, 60).data; let sum = 0;
+    for (let i = 0; i < d.length; i += 4) sum += 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+    return sum / (d.length / 4);
+  }, png.toString('base64'));
+};
+const atPhase = async phase => {
+  await api('/api/control', { cmd: 'time', phase });
+  await page.waitForFunction(p => { const s = window.__SANDBOX__?.sun; return s && Math.abs(((s.phase - p + 1.5) % 1) - 0.5) < 0.03; }, phase, { timeout: 30000 }).catch(() => {});
+  await sleep(2500);
+  const s = await page.evaluate(() => ({ sun: window.__SANDBOX__?.sun ?? null, programs: window.__SANDBOX__?.programs ?? -1, now: document.querySelector('.skycard .now')?.textContent ?? '' }));
+  const light = await brightness();
+  await shot(page, `${OUT}/day-${String(phase).replace('.', '_')}.png`);
+  return { ...s, light };
+};
+// Pause holds the island's clock, so each reading is taken at the phase that was set, however slow the frames.
+await api('/api/control', { cmd: 'pause', minds: 'scripted' });
+const programs0 = await page.evaluate(() => window.__SANDBOX__?.programs ?? -1);
+const noon = await atPhase(0), dusk = await atPhase(0.25), night = await atPhase(0.5), dawn = await atPhase(0.75);
+const el = d => d.sun?.elevation ?? NaN;
+check('the sun moves: high at noon, on the horizon at dusk and dawn, below it at night',
+  el(noon) > 40 && Math.abs(el(dusk)) < 8 && Math.abs(el(dawn)) < 8 && el(night) < -30,
+  `noon ${el(noon).toFixed(1)}, dusk ${el(dusk).toFixed(1)}, night ${el(night).toFixed(1)}, dawn ${el(dawn).toFixed(1)} degrees`);
+check('the sun crosses the sky: it sets on the opposite side from where it rose',
+  Number.isFinite(dusk.sun?.azimuth) && Math.abs(((dusk.sun.azimuth - dawn.sun.azimuth + 540) % 360) - 180) > 150,
+  `dusk azimuth ${dusk.sun?.azimuth?.toFixed(0)}, dawn ${dawn.sun?.azimuth?.toFixed(0)}`);
+check('one clock: the sky panel agrees with the sun', /· Day/.test(noon.now) && /· Dusk/.test(dusk.now) && /· Night/.test(night.now) && /· Dawn/.test(dawn.now) && el(noon) > 0 && el(night) < 0,
+  [noon, dusk, night, dawn].map(d => d.now).join(' | '));
+check('the island is brightest at noon, dimmer at dusk, darkest at night', noon.light > dusk.light && dusk.light > night.light && night.light >= 0,
+  `mean light noon ${noon.light.toFixed(0)}, dusk ${dusk.light.toFixed(0)}, night ${night.light.toFixed(0)}`);
+check('the day turns without rebuilding a shader', programs0 > 0 && [noon, dusk, night, dawn].every(d => d.programs === programs0),
+  `pipelines ${programs0} then ${[noon, dusk, night, dawn].map(d => d.programs).join(', ')}`);
+// No flash on reload: at night the page must already be at night when the loading screen lifts.
+await atPhase(0.5);
+await page.reload();
+await page.waitForFunction(() => window.__SANDBOX__?.entered || document.querySelector('.loading-screen')?.dataset.state === 'limited', null, { timeout: 180000 }).catch(() => {});
+await page.evaluate(() => document.querySelector('.loading-action')?.click()).catch(() => {});
+await page.waitForFunction(() => window.__SANDBOX__?.entered, null, { timeout: 120000 }).catch(() => {});
+const entry = await page.evaluate(() => window.__SANDBOX__?.sunAtEntry ?? null);
+check('a reload at night opens at night, with no daylight flash', !!entry && entry.elevation < 0, entry ? `sun at ${entry.elevation.toFixed(1)} degrees when the page opened` : 'no reading');
+await atPhase(0);
+await api('/api/control', { cmd: 'start' });
+check('no page errors after the day cycle', errors.length === 0, errors.slice(0, 2).join(' | '));
+
 // Layout: at every width the camera and panel controls stay whole and on screen.
 const clipped = [];
 for (const width of [1400, 1200, 900, 640]) {

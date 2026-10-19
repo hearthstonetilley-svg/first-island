@@ -60,7 +60,7 @@ let trees: Snapshot['trees'] = [];
 let selected: number | undefined, mode: 'agents' | 'island' | 'free' | 'follow' = 'island';
 let showLeft = true, showRight = true;
 const debug = new URLSearchParams(location.search).get('debug') === '1';
-declare global { interface Window { __SANDBOX__?: { camera: { y: number; ground: number; tx: number; tz: number; yaw: number; pitch: number; distance: number; gliding: boolean }; tags: number; mode: string; fps: number; quality: string; requested: string; entered: boolean; qualitySamples: number } } }
+declare global { interface Window { __SANDBOX__?: { camera: { y: number; ground: number; tx: number; tz: number; yaw: number; pitch: number; distance: number; gliding: boolean }; tags: number; mode: string; fps: number; quality: string; requested: string; entered: boolean; qualitySamples: number; sun?: { phase: number; elevation: number; azimuth: number }; sunAtEntry?: { phase: number; elevation: number; azimuth: number }; programs?: number } } }
 
 const activity = (a: string): Activity => (['wandering', 'seeking food', 'eating', 'resting', 'seeking cover', 'socialising'].includes(a) ? a : 'wandering') as Activity;
 function snapshot(s: LiveState): Snapshot {
@@ -608,8 +608,15 @@ async function startIsland(seed: number, built: never[]) {
     await controller.start();
   } catch (err) { loading?.fail(err instanceof Error ? err.message : 'Graphics unavailable. Reload to retry.'); }
 }
+// One clock: the sun stands where the server's day says, from the very first frame.
+let sunAtEntry: ReturnType<IslandScene['sunInfo']> | undefined;
+function applyTimeOfDay(scene: IslandScene, s: LiveState) {
+  const dayMs = s.world.dayMs ?? 480000, phase = ((s.world.simMs ?? 0) % dayMs) / dayMs;
+  scene.setTimeOfDay(phase, s.world.daylight, s.world.storm);
+}
 async function runIsland(scene: IslandScene) {
   island = scene;
+  if (state) applyTimeOfDay(scene, state);
   const token = generation, active = () => token === generation;
   if (state) scene.updateSnapshot(snapshot(state), performance.now());
   builtMap.forEach(b => scene.addStructure(b));
@@ -620,7 +627,7 @@ async function runIsland(scene: IslandScene) {
   let entered = false, playing = false, start: number | undefined, previous: number | undefined, smoothed: number | undefined, lastHud = 0;
   const enter = () => {
     if (entered || !active()) return;
-    entered = true; everEntered = true; app.classList.remove('is-loading');
+    entered = true; everEntered = true; app.classList.remove('is-loading'); sunAtEntry = scene.sunInfo();
     if (diagnostics) { diagnostics.report.loading.enteredAtMs = performance.now(); diagnostics.report.loading.entry = loading?.element.dataset.state === 'limited' ? 'manual' : 'automatic'; }
     void loading?.finish().then(() => { if (active()) { quality.reset(); playing = true; } });
   };
@@ -656,7 +663,7 @@ async function runIsland(scene: IslandScene) {
       fpsLine.textContent = `${(1000 / smoothed).toFixed(0)} fps · ${smoothed.toFixed(1)} ms · ${scene.appliedQuality()} · ${scene.label}`;
       fpsLine.classList.toggle('slow', smoothed > 33); lastHud = time;
     }
-    if (debug) window.__SANDBOX__ = { get camera() { return scene.cameraInfo(); }, tags: shown, mode, fps: smoothed ? 1000 / smoothed : 0, quality: scene.appliedQuality(), requested: quality.level, entered, qualitySamples };
+    if (debug) window.__SANDBOX__ = { get camera() { return scene.cameraInfo(); }, tags: shown, mode, fps: smoothed ? 1000 / smoothed : 0, quality: scene.appliedQuality(), requested: quality.level, entered, qualitySamples, sun: scene.sunInfo(), sunAtEntry, programs: scene.programCount() };
     frameRequest = requestAnimationFrame(t => { try { tick(t); } catch (err) { void controller?.reportFailure(scene, err); } });
   };
   frameRequest = requestAnimationFrame(tick);
@@ -675,7 +682,7 @@ connect({
     updateCards(s);
     if (selected !== undefined) renderInspector();
     run.textContent = s.running ? 'Pause' : 'Run';
-    island?.setDaylight(s.world.daylight, s.world.storm);
+    if (island) applyTimeOfDay(island, s);
     updateSky(s);
     mixOptions = s.backends;
     if (!dragging && !mixDraft) drawMixer(countsOf(s.mix, mixOptions));

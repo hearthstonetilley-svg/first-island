@@ -915,6 +915,7 @@ createServer(async (req, res) => {
     if (process.env.SANDBOX_TEST === '1' && b.cmd === 'goto') { const ag = agents[Number(b.agent)], i = nodes.findIndex(n => soilOf(n) === b.ground); if (ag && i >= 0) { const n = nodes[i]; ag.node = i; ag.x = n.x; ag.y = n.y; ag.z = n.z; ag.path = []; } }
     if (process.env.SANDBOX_TEST === '1' && b.cmd === 'hold') { const ag = agents[Number(b.agent)]; if (ag && Array.isArray(b.items)) { itemLedger += b.items.length - ag.inventory.length; ag.inventory = b.items.map(String).slice(0, 6); } }
     if (process.env.SANDBOX_TEST === '1' && b.cmd === 'boar') { const ag = agents[Number(b.agent)]; if (ag) { boarForcedUntil = simNow() + 30000; boar.awake = true; boar.x = ag.x + 0.5; boar.z = ag.z; boar.nextHit = {}; boar.fleeUntil = 0; } }
+    if (process.env.SANDBOX_TEST === '1' && b.cmd === 'time' && typeof b.phase === 'number') simMs = Math.floor(simMs / DAY_MS) * DAY_MS + ((b.phase % 1) + 1) % 1 * DAY_MS;
     if (process.env.SANDBOX_TEST === '1' && b.cmd === 'act') { const ag = agents[Number(b.agent)]; if (ag) try { act(ag, cleanDecision(b.decision)); } catch (err) { console.error('act failed', (err as Error).message); } }
     if (b.cmd === 'council') {
       const a = agents[Number(b.agent)];

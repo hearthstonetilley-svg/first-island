@@ -181,6 +181,12 @@ into pieces, send them off and reassemble them, a dynamic spider web. In this wo
 - **Zoom changes what is shown:** far out, settlements, population and the idea web; close in, individual agents with
   their current action and thought.
 - **Camera modes:** free orbit, follow an agent, watch a settlement, and a timeline to scrub through any run.
+- **The day cycle (decision 58), the first photorealism step.** The sun crosses the sky on the island's own clock:
+  the page derives its height and bearing from the same phase the server uses for daylight (noon is phase 0), so the
+  sky panel and the sun never disagree. Sky colours, a warm horizon halo at dawn and dusk, stars and a moon at night,
+  the ocean's tint and glints, and the one shadowing light (the moon's at night) all follow it through uniforms, so the
+  day turns without rebuilding a shader. The page applies the time of day before the loading screen lifts, so a
+  reload never flashes daylight. Terrain, textures and water detail are later steps.
 
 ## 9a. Observer views (owner request, 18 Oct 2026)
 

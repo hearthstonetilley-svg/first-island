@@ -6,8 +6,8 @@ import {
 } from 'three';
 import { MeshBasicNodeMaterial, MeshStandardNodeMaterial, Node, PostProcessing, WebGPURenderer } from 'three/webgpu';
 import {
-  attribute, cameraPosition, color, cos, dot, exp, float, max, mix, mrt, mx_noise_float, normalView, normalize, output,
-  pass, positionLocal, positionWorld, pow, ShaderNodeObject, sin, smoothstep, texture, uniform, vec3,
+  attribute, cameraPosition, color, cos, dot, exp, float, floor, fract, max, mix, mrt, mx_noise_float, normalView, normalize, output,
+  pass, positionLocal, positionWorld, pow, ShaderNodeObject, sin, smoothstep, step, texture, uniform, vec3,
 } from 'three/tsl';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { ao } from 'three/addons/tsl/display/GTAONode.js';
@@ -22,8 +22,18 @@ import { Snapshot } from '../sim/types';
 import { AgentFigures } from './agents';
 import { StructureData, Structures } from './structures';
 import { LoadingProgress, paintLoading } from '../ui/loading';
+import { lightingAt, NOON_AZIMUTH, SUN_DIRECTION } from './daycycle';
 
-const SUN_DIRECTION = new Vector3(-0.82, 0.22, -0.53).normalize();
+// The day cycle (decision 58). Everything that follows the sun is a uniform, so the day turns
+// without rebuilding a shader. Until a time of day is set, the sky keeps the approved still look.
+function skyUniforms() {
+  return {
+    sunDir: uniform(SUN_DIRECTION.clone()), moonDir: uniform(SUN_DIRECTION.clone().negate()),
+    zenith: uniform(new ThreeColor('#1054b9')), horizon: uniform(new ThreeColor('#83bddc')), glow: uniform(new ThreeColor('#ffdca2')),
+    sunVis: uniform(1), halo: uniform(0), night: uniform(0), glint: uniform(1), water: uniform(new ThreeColor('#ffffff')),
+  };
+}
+type SkyUniforms = ReturnType<typeof skyUniforms>;
 
 function addTerrain(scene: Scene, world: WorldData): void {
   // An extra submerged ring continues the seabed out past the view, with no square shelf.
@@ -92,7 +102,7 @@ function smooth(low: number, high: number, value: number): number {
   return t * t * (3 - 2 * t);
 }
 
-function addOcean(scene: Scene, world: WorldData): { time: ReturnType<typeof uniform>; mesh: Mesh; heightTexture: DataTexture } {
+function addOcean(scene: Scene, world: WorldData, u: SkyUniforms): { time: ReturnType<typeof uniform>; mesh: Mesh; heightTexture: DataTexture } {
   const geometry = new PlaneGeometry(2, 2, 224, 224);
   geometry.rotateX(-Math.PI / 2);
   const pos = geometry.attributes.position;
@@ -135,7 +145,7 @@ function addOcean(scene: Scene, world: WorldData): { time: ReturnType<typeof uni
   const deepColor = mix(depthColor, color('#07314f'), smoothstep(4, 14, depth));
   const reflection = mix(color('#397da8'), color('#89b8cf'), fresnel);
   const reflected = mix(deepColor, reflection, fresnel.mul(0.65).add(0.06));
-  const halfVector = normalize(vec3(SUN_DIRECTION).add(view));
+  const halfVector = normalize(u.sunDir.add(view));
   const highlight = pow(max(dot(waterNormal, halfVector), float(0)), float(1200));
   const broadHighlight = pow(max(dot(waterNormal, halfVector), float(0)), float(120)).mul(0.012);
   const glints = color('#fff1ce').mul(highlight.mul(0.75).add(broadHighlight));
@@ -144,7 +154,8 @@ function addOcean(scene: Scene, world: WorldData): { time: ReturnType<typeof uni
   const breaker = sin(depth.mul(15).sub(time.mul(2.4)).add(sin(positionWorld.x.mul(8)).mul(0.45)))
     .mul(0.5).add(0.5);
   const foam = shore.mul(smoothstep(0.35, 0.78, breaker)).mul(0.82);
-  material.colorNode = mix(reflected.add(glints), color('#f3fff1'), foam);
+  // The ocean is unlit: it takes the sky's light through a tint, and the sun's glints only while the sun is up.
+  material.colorNode = mix(reflected.add(glints.mul(u.glint)), color('#f3fff1'), foam).mul(u.water);
   // Beer-Lambert absorption: sand remains visible only in the shallow water.
   material.opacityNode = max(float(1).sub(exp(depth.mul(-2.5))), float(0.55)).add(foam).clamp(0, 1);
   const mesh = new Mesh(geometry, material);
@@ -152,15 +163,24 @@ function addOcean(scene: Scene, world: WorldData): { time: ReturnType<typeof uni
   return { time, mesh, heightTexture };
 }
 
-function addSky(scene: Scene): void {
+function addSky(scene: Scene, u: SkyUniforms): void {
   const material = new MeshBasicNodeMaterial({ side: BackSide, depthWrite: false, fog: false });
   const direction = normalize(positionWorld.sub(cameraPosition));
   const gradient = smoothstep(0, 0.32, direction.y);
-  const sky = mix(color('#83bddc'), color('#1054b9'), gradient);
-  const sunAngle = dot(direction, vec3(SUN_DIRECTION));
+  const sky = mix(u.horizon, u.zenith, gradient);
+  const sunAngle = dot(direction, u.sunDir);
   const glow = pow(max(sunAngle, float(0)), float(200)).mul(0.5);
   const disc = smoothstep(0.99984, 0.99992, sunAngle).mul(7);
-  material.colorNode = sky.add(color('#ffdca2').mul(glow.add(disc)));
+  // A warm halo along the horizon near a low sun, at dawn and dusk only.
+  const halo = pow(max(sunAngle, float(0)), float(6)).mul(float(1).sub(gradient)).mul(u.halo).mul(0.45);
+  // Stars and the moon at night.
+  const cell = floor(direction.mul(260));
+  const star = step(0.9984, fract(sin(dot(cell, vec3(12.9898, 78.233, 37.719))).mul(43758.5453)))
+    .mul(smoothstep(0.02, 0.25, direction.y)).mul(u.night).mul(1.4);
+  const moonAngle = dot(direction, u.moonDir);
+  const moon = smoothstep(0.99955, 0.9997, moonAngle).mul(1.6).add(pow(max(moonAngle, float(0)), float(300)).mul(0.25)).mul(u.night);
+  material.colorNode = sky.add(u.glow.mul(glow.add(disc).mul(u.sunVis).add(halo)))
+    .add(color('#dfe6ff').mul(star.add(moon)));
   scene.add(new Mesh(new SphereGeometry(900, 48, 24), material));
 }
 
@@ -209,6 +229,12 @@ export interface IslandScene {
   setInsets(left: number, right: number): void;
   /** 1 is full day, 0 is deep night; storm darkens and greys the light. */
   setDaylight(daylight: number, storm?: boolean): void;
+  /** The day cycle: the sun (or the moon at night) lights the island from where it stands at this phase; 0 is noon. */
+  setTimeOfDay(phase: number, daylight: number, storm?: boolean): void;
+  /** Where the sun stands, in degrees; phase is NaN until a time of day is set. */
+  sunInfo(): { phase: number; elevation: number; azimuth: number };
+  /** Shader programs and render pipelines built so far, counted as they are created, for checking that the day turns without rebuilding one. */
+  programCount(): number;
   /** The quality actually being drawn, which can lag a request while a path compiles. */
   appliedQuality(): string;
   waitForGPU(): Promise<void>;
@@ -375,7 +401,9 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
   }, { passive: false, signal: events.signal });
 
   await progress({ stage: 'terrain', message: 'Building terrain and coastlines', percent: 46 });
-  addSky(scene);
+  const sky0 = skyUniforms();
+  let sunPhase = NaN, sunHeight = SUN_DIRECTION.y, sunAzimuth = NOON_AZIMUTH;
+  addSky(scene, sky0);
   addTerrain(scene, world);
   await progress({ stage: 'trees', message: 'Building forest canopies', percent: 51 });
   const treeTime = uniform(0);
@@ -384,7 +412,7 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
   await progress({ stage: 'water', message: 'Preparing the ocean', percent: 56 });
   const figures = new AgentFigures(scene, options.snapshot);
   disposables.push(figures);
-  const ocean = addOcean(scene, world);
+  const ocean = addOcean(scene, world, sky0);
   disposables.push(ocean.heightTexture);
   const sky = new HemisphereLight('#c5defc', '#73654b', 3);
   scene.add(sky);
@@ -404,6 +432,13 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
   scene.add(sun);
   disposables.push(sun.shadow);
 
+  // Count every shader program and render pipeline the backend builds, so a rebuild can never hide in a cache.
+  let programsBuilt = 0;
+  const backend = renderer.backend as unknown as Record<string, (...args: unknown[]) => unknown>;
+  for (const name of ['createProgram', 'createRenderPipeline']) {
+    const original = backend[name]?.bind(backend);
+    if (original) backend[name] = (...args: unknown[]) => { programsBuilt++; return original(...args); };
+  }
   const label = (renderer.backend as { isWebGLBackend?: boolean }).isWebGLBackend ? 'WebGL2' : 'WebGPU';
   renderer.setPixelRatio(options.pixelRatio ?? Math.min(devicePixelRatio, 1.5));
   renderer.setSize(innerWidth, innerHeight);
@@ -582,6 +617,18 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
       renderer.toneMappingExposure = 0.55 + 0.45 * d;
       if (scene.fog instanceof FogExp2) { scene.fog.color.set(storm ? '#5d6a72' : d < 0.35 ? '#1a2740' : '#9bc5d9'); scene.fog.density = storm ? 0.006 : 0.0018; }
     },
+    setTimeOfDay: (phase, daylight, storm) => {
+      const l = lightingAt(phase, daylight, storm);
+      sunPhase = phase; sunHeight = l.height; sunAzimuth = l.azimuth;
+      sky0.sunDir.value.copy(l.dir); sky0.moonDir.value.copy(l.dir).negate();
+      for (const k of ['zenith', 'horizon', 'glow', 'water'] as const) sky0[k].value.copy(l.colours[k]);
+      sky0.sunVis.value = l.sunVis; sky0.halo.value = l.halo; sky0.night.value = l.night; sky0.glint.value = l.glint;
+      sun.position.copy(l.light.dir).multiplyScalar(100); sun.intensity = l.light.intensity; sun.color.copy(l.light.color);
+      sky.intensity = l.hemisphere; renderer.toneMappingExposure = l.exposure;
+      if (scene.fog instanceof FogExp2) { scene.fog.color.copy(l.fog.color); scene.fog.density = l.fog.density; }
+    },
+    sunInfo: () => ({ phase: sunPhase, elevation: Math.asin(sunHeight) * 180 / Math.PI, azimuth: ((sunAzimuth * 180 / Math.PI) % 360 + 360) % 360 }),
+    programCount: () => programsBuilt,
     addStructure: (structure) => structures.add(structure),
     frameAgents: (ids) => {
       const list = figures.update(performance.now(), 0).filter(a => !ids || ids.includes(a.id));
