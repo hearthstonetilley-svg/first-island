@@ -8,6 +8,8 @@ import { join } from 'node:path';
 import { createServer } from 'vite';
 import { chromium } from 'playwright';
 
+// Surface grain: v0.10.0 measured 6.48 on the meadow (decision 60); the bar is about a quarter more detail.
+const GRAIN_MIN = Number(process.env.EVAL_GRAIN_MIN ?? 8);
 const PORT = Number(process.env.EVAL_SERVER_PORT ?? 8791), WEB = Number(process.env.EVAL_WEB_PORT ?? 5191), OUT = process.env.EVAL_OUT ?? 'eval-results/sandbox';
 mkdirSync(OUT, { recursive: true });
 const results = [];
@@ -295,6 +297,9 @@ const atPhase = async phase => {
 await api('/api/control', { cmd: 'pause', minds: 'scripted' });
 const programs0 = await page.evaluate(() => window.__SANDBOX__?.programs ?? -1);
 const noon = await atPhase(0), dusk = await atPhase(0.25), night = await atPhase(0.5), dawn = await atPhase(0.75);
+await api('/api/control', { cmd: 'storm', on: true }); await sleep(2500);
+const stormPrograms = await page.evaluate(() => window.__SANDBOX__?.programs ?? -1);
+await api('/api/control', { cmd: 'storm', on: false }); await sleep(1500);
 const el = d => d.sun?.elevation ?? NaN;
 check('the sun moves: high at noon, on the horizon at dusk and dawn, below it at night',
   el(noon) > 40 && Math.abs(el(dusk)) < 8 && Math.abs(el(dawn)) < 8 && el(night) < -30,
@@ -306,8 +311,8 @@ check('one clock: the sky panel agrees with the sun', /· Day/.test(noon.now) &&
   [noon, dusk, night, dawn].map(d => d.now).join(' | '));
 check('the island is brightest at noon, dimmer at dusk, darkest at night', noon.light > dusk.light && dusk.light > night.light && night.light >= 0,
   `mean light noon ${noon.light.toFixed(0)}, dusk ${dusk.light.toFixed(0)}, night ${night.light.toFixed(0)}`);
-check('the day turns without rebuilding a shader', programs0 > 0 && [noon, dusk, night, dawn].every(d => d.programs === programs0),
-  `pipelines ${programs0} then ${[noon, dusk, night, dawn].map(d => d.programs).join(', ')}`);
+check('the day turns and storms pass without rebuilding a shader', programs0 > 0 && [noon, dusk, night, dawn].every(d => d.programs === programs0) && stormPrograms === programs0,
+  `pipelines ${programs0} then ${[noon, dusk, night, dawn].map(d => d.programs).join(', ')}, in a storm ${stormPrograms}`);
 // No flash on reload: at night the page must already be at night when the loading screen lifts.
 await atPhase(0.5);
 await page.reload({ waitUntil: 'commit', timeout: 120000 });  // readiness is awaited below; CI can take over 30 s to fire load
@@ -402,25 +407,45 @@ check('the boar never leaves the main island', !(seen.charged ?? []).slice(charg
 // The page draws the islet, and the eval stays honest.
 check('every voyage keeps to open water', !(seen.sea ?? []).some(e => e.type === 'aground'), (seen.sea ?? []).filter(e => e.type === 'aground').map(e => e.text).slice(0, 2).join(' | ') || 'no rider over land');
 // Pixels, not a flag: land where the islet stands, open water well beyond it.
-const landShare = async (x, z) => {
+// Pixel shares in the middle of the view, with the camera pointed at a spot (test-only hook, ?debug=1).
+const shares = async (x, z) => {
   await page.evaluate(([x, z]) => window.__SANDBOX_LOOK__?.(x, z), [x, z]); await sleep(2500);
   const png = await page.screenshot({ clip: { x: 600, y: 330, width: 200, height: 160 }, timeout: 120000 }).catch(() => null);
-  if (!png) return -1;
+  if (!png) return { land: -1, shallow: -1, glare: -1, grain: -1 };
   return page.evaluate(async b64 => {
     const img = new Image(); img.src = `data:image/png;base64,${b64}`; await img.decode();
-    const c = document.createElement('canvas'); c.width = 50; c.height = 40; const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0, 50, 40);
-    const d = ctx.getImageData(0, 0, 50, 40).data; let land = 0;
-    // Land is green, sand or earth; blue water and white glitter are not.
-    for (let i = 0; i < d.length; i += 4) if (d[i + 1] > d[i + 2] + 5 || d[i] > d[i + 2] + 15) land++;
-    return land / (d.length / 4);
+    const c = document.createElement('canvas'); c.width = 100; c.height = 80; const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0, 100, 80);
+    const d = ctx.getImageData(0, 0, 100, 80).data, n = d.length / 4; let land = 0, shallow = 0, glare = 0, diff = 0, pairs = 0;
+    const lum = i => 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+    for (let i = 0; i < d.length; i += 4) {
+      const r = d[i], g = d[i + 1], b = d[i + 2];
+      // Land is green, sand or earth; blue water and white glitter are not.
+      const isLand = g > b + 5 || r > b + 15; if (isLand) land++;
+      if (g > r + 40 && b > r + 40 && g > 120) shallow++;        // turquoise shallows and surf
+      if (Math.min(r, g, b) > 190) glare++;                       // white sun glare
+      // Grain: how much neighbouring land pixels differ, a measure of surface detail.
+      const p = i / 4; if (isLand && p % 100 < 99) { const q = i + 4; if (d[q + 1] > d[q + 2] + 5 || d[q] > d[q + 2] + 15) { diff += Math.abs(lum(i) - lum(q)); pairs++; } }
+    }
+    return { land: land / n, shallow: shallow / n, glare: glare / n, grain: pairs ? diff / pairs : 0 };
   }, png.toString('base64'));
 };
+const landShare = async (x, z) => (await shares(x, z)).land;
 // Held at noon (Pause holds the clock), so open water reads as water however slow the frames.
 await api('/api/control', { cmd: 'pause' }); await api('/api/control', { cmd: 'time', phase: 0 });
 const onIsle = await landShare(isle.x, isle.z);
 await shot(page, `${OUT}/islet.png`);
 const offIsle = await landShare(isle.x * 1.7, isle.z * 1.7);
 await shot(page, `${OUT}/islet-sea.png`);
+// Photorealism (decision 60): the islet has shallows and surf, glitter is fine rather than blots, land has grain.
+const beach = isle.spots?.isletShore ? await shares(isle.spots.isletShore.x, isle.spots.isletShore.z) : { shallow: -1 };
+await shot(page, `${OUT}/photo-islet-shore.png`);
+const openSea = await shares(isle.x * 1.7, isle.z * 1.7);
+await shot(page, `${OUT}/photo-open-sea.png`);
+const meadow = isle.spots?.mainMeadow ? await shares(isle.spots.mainMeadow.x, isle.spots.mainMeadow.z) : { grain: -1, land: -1 };
+await shot(page, `${OUT}/photo-meadow.png`);
+check('the islet has turquoise shallows and surf along its beaches', beach.shallow > 0.04, `shallow share at an islet beach ${beach.shallow.toFixed(3)}`);
+check('sun glitter on open water is fine sparkle, not white blots', openSea.glare >= 0 && openSea.glare < 0.02 && openSea.shallow < 0.01, `white glare ${openSea.glare.toFixed(3)}, shallow ${openSea.shallow.toFixed(3)} at open sea`);
+check('meadow and sand show surface grain', meadow.land > 0.5 && meadow.grain > GRAIN_MIN, `grain ${meadow.grain.toFixed(2)} (needs over ${GRAIN_MIN}) on ${(meadow.land * 100).toFixed(0)}% land`);
 await page.keyboard.press('Escape'); await sleep(1500);
 await api('/api/control', { cmd: 'start' });
 check('the islet is drawn on the island page: land where it stands, sea beyond it', onIsle > 0.3 && offIsle >= 0 && offIsle < 0.1,
