@@ -47,7 +47,7 @@ let buffer = '';
       if (!data) continue;
       const d = JSON.parse(data);
       if (kind === 'state') { seen.last = d; seen.states++; seen.agents = d.agents.length; seen.maxDay = Math.max(seen.maxDay, d.world.daylight); seen.minDay = Math.min(seen.minDay, d.world.daylight); for (const a of d.agents) seen.minEnergy = Math.min(seen.minEnergy, a.energy); for (const a of d.agents) if (a.council === null) seen.maxCarry = Math.max(seen.maxCarry, a.inventory.length); }
-      if (kind === 'event') { seen.types.add(d.type); if (/^sets down /.test(d.text)) { seen.drops++; if (seen.watchDrop && d.agent === seen.watchDrop.agent && d.text === `sets down ${seen.watchDrop.item}`) seen.droppedBy = d.agent; } if (['action', 'result', 'thought', 'say'].includes(d.type)) seen.actions++; if (/^gathers (sand|shell|seaweed|driftwood|water|wood|plant fibre|resin|fruit|clay|dry grass|red berries|flint|stone|pyrite)$/.test(d.text)) seen.realItems++; if (d.type === 'hypothesis') seen.hyps++; if (d.type === 'threat' && /^is charged by the boar/.test(d.text)) (seen.charged ??= []).push(d.agent); if (d.type === 'threat' && /^drives the boar off/.test(d.text)) (seen.drove ??= []).push(d.agent); if (d.agent === 7 && /^cannot gather wood without/.test(d.text)) seen.toolBlocked = true; if (d.agent === 7 && d.text === 'gathers wood' && seen.toolGiven) seen.woodWithTool = true; if (d.type === 'disagreement') (seen.disagreements ??= []).push(d); if (d.type === 'council_open') (seen.opens ??= []).push(d); if (/^(eats|tries to eat) /.test(d.text)) seen.eats++; if (d.type === 'council_merge' && /^ADJOURNED/.test(d.text)) seen.adjourned = true; if (d.type === 'ledger_mismatch') seen.ledger = d.text; if (d.type === 'council_open') seen.councilOpens++; if (d.type === 'ledger_check') seen.ledgerChecks++; }
+      if (kind === 'event') { seen.types.add(d.type); if (/^sets down /.test(d.text)) { seen.drops++; if (seen.watchDrop && d.agent === seen.watchDrop.agent && d.text === `sets down ${seen.watchDrop.item}`) seen.droppedBy = d.agent; } if (['action', 'result', 'thought', 'say'].includes(d.type)) seen.actions++; if (/^gathers (sand|shell|seaweed|driftwood|water|wood|plant fibre|resin|fruit|clay|dry grass|red berries|flint|stone|pyrite)$/.test(d.text)) seen.realItems++; if (d.type === 'hypothesis') seen.hyps++; if (['launch', 'sank', 'voyage', 'landfall', 'capsized', 'milestone'].includes(d.type)) (seen.sea ??= []).push(d); if (d.type === 'threat' && /^is charged by the boar/.test(d.text)) (seen.charged ??= []).push(d.agent); if (d.type === 'threat' && /^drives the boar off/.test(d.text)) (seen.drove ??= []).push(d.agent); if (d.agent === 7 && /^cannot gather wood without/.test(d.text)) seen.toolBlocked = true; if (d.agent === 7 && d.text === 'gathers wood' && seen.toolGiven) seen.woodWithTool = true; if (d.type === 'disagreement') (seen.disagreements ??= []).push(d); if (d.type === 'council_open') (seen.opens ??= []).push(d); if (/^(eats|tries to eat) /.test(d.text)) seen.eats++; if (d.type === 'council_merge' && /^ADJOURNED/.test(d.text)) seen.adjourned = true; if (d.type === 'ledger_mismatch') seen.ledger = d.text; if (d.type === 'council_open') seen.councilOpens++; if (d.type === 'ledger_check') seen.ledgerChecks++; }
     }
   }
 })().catch(() => {});
@@ -317,6 +317,80 @@ await atPhase(0);
 await api('/api/control', { cmd: 'start' });
 check('no page errors after the day cycle', errors.length === 0, errors.slice(0, 2).join(' | '));
 
+// Boats and the islet (decision 59). Boats are found, not given: the sea decides what floats and what crosses.
+const isle = (await (await api('/api/places')).json()).islet;
+check('a small island lies offshore, apart from the main island', !!isle && isle.nodes >= 30 && isle.apart === true,
+  isle ? `${isle.nodes} walkable points, ${isle.gap?.toFixed(1)} units of open sea between` : 'none');
+let crew = [];
+for (let i = 0; i < 40 && crew.length < 2; i++) { crew = (await (await api('/api/control', { cmd: 'reserve', count: 2, ms: 120000 })).json()).reserved ?? []; if (crew.length < 2) await sleep(500); }
+const [sailor, mate] = crew;
+const agentNow = id => seen.last?.agents?.find(a => a.id === id);
+const seaSince = n => (seen.sea ?? []).slice(n);
+const sea = async (agent, decision, items, waitFor, ms = 15000) => {
+  const n = (seen.sea ?? []).length;
+  if (items) await api('/api/control', { cmd: 'hold', agent, items });
+  await api('/api/control', { cmd: 'act', agent, decision });
+  for (const until = Date.now() + ms; Date.now() < until && !seaSince(n).some(e => e.agent === agent && waitFor.includes(e.type));) await sleep(300);
+  return seaSince(n).filter(e => e.agent === agent);
+};
+// Real recipes: driftwood lashed to a frame floats as a raft; pitch seals a raft into a boat.
+await api('/api/control', { cmd: 'hold', agent: sailor, items: ['frame', 'driftwood'] });
+await api('/api/control', { cmd: 'act', agent: sailor, decision: { action: 'combine', target: 'frame', with: 'driftwood' } }); await sleep(800);
+const hasRaft = (agentNow(sailor)?.inventory ?? []).includes('raft');
+await api('/api/control', { cmd: 'hold', agent: sailor, items: ['raft', 'pitch'] });
+await api('/api/control', { cmd: 'act', agent: sailor, decision: { action: 'combine', target: 'raft', with: 'pitch' } }); await sleep(800);
+check('driftwood lashed to a frame makes a raft, and pitch seals a raft into a boat', hasRaft && (agentNow(sailor)?.inventory ?? []).includes('boat'),
+  `${hasRaft ? 'raft' : 'no raft'}, then ${(agentNow(sailor)?.inventory ?? []).join(', ')}`);
+// Launching only works at the shore, and the sea decides: stone sinks, a lone log rolls you back in.
+await api('/api/control', { cmd: 'goto', agent: sailor, ground: 'shore' });
+const sank = await sea(sailor, { action: 'launch', target: 'stone' }, ['stone'], ['sank']);
+check('a stone launched at the shore sinks and is gone', sank.some(e => e.type === 'sank') && !(agentNow(sailor)?.inventory ?? []).includes('stone'), sank.map(e => e.text).join(' | ') || 'nothing happened');
+const e0 = agentNow(sailor)?.energy ?? 1;
+const log = await sea(sailor, { action: 'launch', target: 'driftwood' }, ['driftwood'], ['launch', 'capsized']);
+await sleep(800);
+check('a lone log floats a moment and dumps the rider back ashore, wet', log.length > 0 && agentNow(sailor)?.island === 'main' && (agentNow(sailor)?.energy ?? 1) < e0,
+  `${log.map(e => e.text).join(' | ') || 'nothing happened'}; on ${agentNow(sailor)?.island}, strength ${e0.toFixed(2)} to ${(agentNow(sailor)?.energy ?? 1).toFixed(2)}`);
+// A raft crosses in calm weather; the first crossing is a milestone.
+await api('/api/control', { cmd: 'storm', on: false });
+await api('/api/control', { cmd: 'goto', agent: sailor, ground: 'shore' });
+const crossing = await sea(sailor, { action: 'launch', target: 'raft' }, ['raft', 'fruit'], ['landfall'], 30000);
+check('a raft carries its rider across to the islet in calm weather', crossing.some(e => e.type === 'landfall') && agentNow(sailor)?.island === 'islet',
+  `${crossing.map(e => e.text).join(' | ') || 'nothing happened'}; now on ${agentNow(sailor)?.island}`);
+check('the first sea crossing is a milestone', (seen.sea ?? []).some(e => e.type === 'milestone'));
+// The islet has what the main island lacks.
+await api('/api/control', { cmd: 'goto', agent: mate, ground: 'high rock' });
+await api('/api/control', { cmd: 'hold', agent: mate, items: [] });
+await api('/api/control', { cmd: 'act', agent: mate, decision: { action: 'gather', target: 'obsidian' } }); await sleep(800);
+const mainObsidian = (agentNow(mate)?.inventory ?? []).includes('obsidian');
+await api('/api/control', { cmd: 'goto', agent: sailor, ground: 'high rock', island: 'islet' });
+await api('/api/control', { cmd: 'hold', agent: sailor, items: [] });
+await api('/api/control', { cmd: 'act', agent: sailor, decision: { action: 'gather', target: 'obsidian' } }); await sleep(800);
+check('obsidian is found on the islet and nowhere on the main island', !mainObsidian && (agentNow(sailor)?.inventory ?? []).includes('obsidian') && agentNow(sailor)?.island === 'islet',
+  `main island: ${mainObsidian ? 'found' : 'none'}; islet: ${(agentNow(sailor)?.inventory ?? []).join(', ') || 'nothing'}`);
+// A storm capsizes a raft and the sea keeps its cargo; a sealed boat rides it out.
+await api('/api/control', { cmd: 'storm', on: true });
+await api('/api/control', { cmd: 'goto', agent: mate, ground: 'shore' });
+const tipped = await sea(mate, { action: 'launch', target: 'raft' }, ['raft', 'fruit'], ['capsized', 'landfall'], 30000);
+await sleep(800);
+check('a storm capsizes a raft: the cargo is lost and the rider washes back', tipped.some(e => e.type === 'capsized') && agentNow(mate)?.island === 'main' && !(agentNow(mate)?.inventory ?? []).includes('fruit'),
+  `${tipped.map(e => e.text).join(' | ') || 'nothing happened'}; on ${agentNow(mate)?.island}, carrying ${(agentNow(mate)?.inventory ?? []).join(', ') || 'nothing'}`);
+await api('/api/control', { cmd: 'goto', agent: mate, ground: 'shore' });
+const rode = await sea(mate, { action: 'launch', target: 'boat' }, ['boat', 'fruit'], ['capsized', 'landfall'], 30000);
+check('a sealed boat crosses even in a storm, cargo and all', rode.some(e => e.type === 'landfall') && agentNow(mate)?.island === 'islet' && (agentNow(mate)?.inventory ?? []).includes('fruit'),
+  `${rode.map(e => e.text).join(' | ') || 'nothing happened'}; on ${agentNow(mate)?.island}`);
+await api('/api/control', { cmd: 'storm', on: false });
+// The boar is a main-island animal: it never hunts on the islet.
+await api('/api/control', { cmd: 'boar', agent: mate });
+await sleep(3000);
+const boarAt = seen.last?.world?.boar;
+check('the boar never leaves the main island', !(seen.charged ?? []).includes(mate) && (!boarAt || Math.hypot(boarAt.x - isle.x, boarAt.z - isle.z) > isle.radius),
+  boarAt ? `boar ${Math.hypot(boarAt.x - isle.x, boarAt.z - isle.z).toFixed(1)} units from the islet's centre` : 'boar asleep');
+// The page draws the islet, and the eval stays honest.
+const isletDrawn = await page.evaluate(() => window.__SANDBOX__?.islet ?? false);
+check('the islet is drawn on the island page', isletDrawn === true);
+await shot(page, `${OUT}/islet.png`);
+seen.isletAgent = mate;
+
 // Layout: at every width the camera and panel controls stay whole and on screen.
 const clipped = [];
 for (const width of [1400, 1200, 900, 640]) {
@@ -398,6 +472,8 @@ const again = spawn('npx', ['vite-node', 'server/sandbox.ts'], { stdio: ['ignore
 let againLog = ''; again.stdout.on('data', c => { againLog += c; }); again.stderr.on('data', c => { againLog += c; });
 for (let i = 0; i < 60 && !againLog.includes('sandbox server on'); i++) await sleep(1000);
 check('the island resumes after a restart', /resumed/.test(againLog), againLog.split('\n')[0]);
+const afterIsle = (await (await api('/api/places')).json()).agents?.find?.(a => a.id === seen.isletAgent);
+check('an agent on the islet is still there after a restart', afterIsle?.island === 'islet', `agent ${seen.isletAgent} on ${afterIsle?.island}`);
 const watcher = await fetch(`http://localhost:${PORT}/api/events`); const wr = watcher.body.getReader();
 // The save was written while the island ran: a restart must still wait for the owner to press Run.
 let wbuf = '', firstState;
