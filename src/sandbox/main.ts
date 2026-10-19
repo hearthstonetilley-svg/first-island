@@ -595,7 +595,7 @@ async function startIsland(seed: number, built: never[], isletAt?: { x: number; 
     controller = new SceneRecovery(force => createIslandScene(app.querySelector('canvas')!, world, force, {
       postEnabled, pixelRatio, diagnostics, onProgress: progress, onFallback: () => { notice.textContent = 'Graphics interrupted · switching to WebGL2'; notice.hidden = false; },
       snapshot: state ? snapshot(state) : undefined, onSelect: id => select(id), figureScale: 2.2, agentColours: COLOURS,
-      onManualCamera: () => setMode('free'), islet,
+      onManualCamera: () => setMode('free'), islet, photoreal: true,
     }), forceWebGL2, () => {
       // A scene is going away (startup or a lost device): remember the view, stop its loop,
       // and make sure there is a live loading screen for the replacement to report to.
@@ -670,6 +670,8 @@ async function runIsland(scene: IslandScene) {
     }
     // Test only, with ?debug=1: point the camera at a spot so a check can see what is drawn there.
     if (debug) (window as unknown as { __SANDBOX_LOOK__?: (x: number, z: number) => void }).__SANDBOX_LOOK__ = (x, z) => scene.setPose({ tx: x, ty: 0.5, tz: z, yaw: 0.58, pitch: 1.1, distance: 26 });
+    if (debug) (window as unknown as { __SANDBOX_DETAIL__?: (v: number) => void }).__SANDBOX_DETAIL__ = v => scene.setDetail(v);
+    if (debug) (window as unknown as { __SANDBOX_FREEZE__?: (on: boolean) => void }).__SANDBOX_FREEZE__ = on => scene.freezeMotion(on);
     if (debug) window.__SANDBOX__ = { get camera() { return scene.cameraInfo(); }, tags: shown, mode, fps: smoothed ? 1000 / smoothed : 0, quality: scene.appliedQuality(), requested: quality.level, entered, qualitySamples, sun: scene.sunInfo(), sunAtEntry, programs: scene.programCount(), islet: scene.isletDrawn(), drawnKinds: scene.structureKinds() };
     frameRequest = requestAnimationFrame(t => { try { tick(t); } catch (err) { void controller?.reportFailure(scene, err); } });
   };

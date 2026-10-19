@@ -340,7 +340,10 @@ let firstCrossing = false;
 function isletFacts() {
   const gap = Math.min(...isletHabitable.map(i => Math.min(...habitable.map(j => Math.hypot(nodes[i].x - nodes[j].x, nodes[i].z - nodes[j].z)))));
   const linked = isletHabitable.some(i => nodes[i].neighbours.some(n => n < isletBase));
-  return { ...ISLET, nodes: isletHabitable.length, gap, apart: !linked && gap > 2 && !habitable.some(j => onIslet(nodes[j].x, nodes[j].z)) };
+  // Two spots for checks that look at what is drawn: a beach on the islet and a meadow on the main island.
+  const spot = (land: number[], soil: string) => { const id = land.find(i => soilOf(nodes[i]) === soil); return id === undefined ? undefined : { x: nodes[id].x, z: nodes[id].z }; };
+  const spots = { isletShore: spot(isletHabitable, 'shore'), mainMeadow: spot(habitable, 'meadow') };
+  return { ...ISLET, spots, nodes: isletHabitable.length, gap, apart: !linked && gap > 2 && !habitable.some(j => onIslet(nodes[j].x, nodes[j].z)) };
 }
 function stepVoyages() {
   for (const a of agents) {
