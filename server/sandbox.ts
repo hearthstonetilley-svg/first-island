@@ -8,7 +8,8 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { generateWorld } from '../src/world/generate';
 import { placeIslet } from '../src/sandbox/islet';
-import { launch as launchOn, startVoyage, voyageAt, Voyage } from '../src/sandbox/sea';
+import { launch as launchOn, seaClear, shoreGifts, startVoyage, voyageAt, Voyage } from '../src/sandbox/sea';
+import { sampleHeight } from '../src/world/generate';
 import { Ground } from '../src/sim/navigation';
 import { makeScrubber } from '../src/sandbox/scrub';
 import { readClaim as parseClaim } from '../src/sandbox/claim';
@@ -47,6 +48,13 @@ const isletTrees = islet.world.trees.map(t => ({ x: t.x + ISLET.x, z: t.z + ISLE
 const onIslet = (x: number, z: number) => Math.hypot(x - ISLET.x, z - ISLET.z) <= ISLET.radius + 2;
 const islandOf = (a: { x: number; z: number }): 'main' | 'islet' => (onIslet(a.x, a.z) ? 'islet' : 'main');
 const landOf = (island: 'main' | 'islet') => (island === 'islet' ? isletHabitable : habitable);
+const heightAt = (x: number, z: number) => Math.max(sampleHeight(world, x, z), sampleHeight(islet.world, x - ISLET.x, z - ISLET.z));
+/** The nearest shore across the water that a straight, sea-clear course reaches from here, if any. */
+function landingFrom(x: number, z: number, to: 'main' | 'islet'): number | undefined {
+  const shore = landOf(to).filter(id => soilOf(nodes[id]) === 'shore');
+  return (shore.length ? shore : landOf(to)).slice().sort((p, q) => Math.hypot(nodes[p].x - x, nodes[p].z - z) - Math.hypot(nodes[q].x - x, nodes[q].z - z))
+    .find(id => seaClear(heightAt, { x, z }, nodes[id]));
+}
 type GNode = typeof nodes[number];
 
 const byKey = (score: (n: GNode) => number) => habitable.reduce((best, id) => (score(nodes[id]) > score(nodes[best]) ? id : best), habitable[0]);
@@ -127,6 +135,8 @@ function combine(inventory: Item[], a: Item, b: Item): Item | 'nothing' | undefi
 }
 interface Built { id: number; kind: string; name: string; x: number; y: number; z: number; colour: string; by: number; at: number }
 let structures: Built[] = [];
+// Ids only ever grow, so a craft that leaves and lands again never shares an id with anything.
+const nextStructureId = () => structures.reduce((m, b) => Math.max(m, b.id), 0) + 1;
 
 // ---------- knowledge: facts are the unit that passes between minds ----------
 const facts: string[] = [];
@@ -195,8 +205,8 @@ function direct() {
   const candidates = agents.filter(a => !a.collapsedUntil && a.council === null && a.inventory.length < 6);
   if (!candidates.length) return;
   const a = pick(candidates);
-  const untried = chem.substances.filter(x => x.tier === 0 && !a.inventory.includes(x.name));
-  const gift = pick(untried.length ? untried : chem.substances.filter(x => x.tier === 0)).name;
+  const loose = shoreGifts(chem.substances, islandOf(a)), untried = loose.filter(x => !a.inventory.includes(x.name));
+  const gift = pick(untried.length ? untried : loose).name;
   a.inventory.push(gift); itemLedger += 1;
   a.lastResult = `The sea washed ${describeItem(gift)} up at your feet.`;
   emit('director', `Director: the sea washes ${gift} ashore by ${a.name} (nothing new found for a while)`, a.id, undefined, { gift });
@@ -337,6 +347,8 @@ function stepVoyages() {
     const v = a.voyage; if (!v) continue;
     const at = voyageAt(v, simNow(), !!storm);
     a.x = at.x; a.z = at.z; a.y = 0.05;
+    // Under test, any rider over land away from the shores they left and reach is reported: courses must be sea-clear.
+    if (process.env.SANDBOX_TEST === '1' && at.state === 'sailing' && heightAt(a.x, a.z) > 0.3 && Math.hypot(a.x - v.from.x, a.z - v.from.z) > 3 && Math.hypot(a.x - v.to.x, a.z - v.to.z) > 3) emit('aground', `is over land at sea (${a.x.toFixed(1)}, ${a.z.toFixed(1)})`, a.id);
     if (at.state === 'capsized') {
       // The sea keeps the raft and all it carried; the rider swims back to where they set out.
       itemLedger -= a.inventory.length; a.inventory = []; a.voyage = undefined; a.doing = undefined;
@@ -348,7 +360,7 @@ function stepVoyages() {
       const n = nodes[v.land]; a.node = v.land; a.x = n.x; a.y = n.y; a.z = n.z; a.voyage = undefined; a.doing = undefined;
       // The craft is moored where it lands, ready to carry someone back.
       const sub = substance(chem, v.craftName);
-      structures.push({ id: structures.length + 1, kind: v.craft, name: v.craftName, x: n.x, y: n.y, z: n.z, colour: sub?.colour ?? '#8a6a40', by: a.id, at: Date.now() });
+      structures.push({ id: nextStructureId(), kind: v.craft, name: v.craftName, x: n.x, y: n.y, z: n.z, colour: sub?.colour ?? '#8a6a40', by: a.id, at: Date.now() });
       learn(a, factId(`a ${v.craftName} carries you across the sea`));
       const g = regionAt(a.x, a.z); knowPlace(a, g);
       a.lastResult = `Your ${v.craftName} reached the land across the water. You are ashore at ${placeLabel(a, g)}; the ${v.craftName} is moored here.`;
@@ -523,7 +535,7 @@ function act(a: SandboxAgent, d: Decision) {
     else if (!sub?.structure) { a.lastResult = `${target} cannot be built.`; emit('result', `tries to build with ${target}, which cannot be built`, a.id); }
     else {
       a.inventory.splice(i, 1); itemLedger -= 1; a.activity = 'seeking cover'; a.busyUntil = Date.now() + 4000;
-      const b: Built = { id: structures.length + 1, kind: sub.structure, name: target, x: a.x, y: a.y, z: a.z, colour: sub.colour, by: a.id, at: Date.now() };
+      const b: Built = { id: nextStructureId(), kind: sub.structure, name: target, x: a.x, y: a.y, z: a.z, colour: sub.colour, by: a.id, at: Date.now() };
       structures.push(b); learn(a, factId(`${target} can be built`));
       a.lastResult = `You built ${target} at ${placeLabel(a, regionAt(a.x, a.z))}. It stays there.`;
       emit('built', `BUILDS ${target} at ${placeLabel(undefined, regionAt(a.x, a.z))}`, a.id, undefined, { structure: b });
@@ -536,7 +548,7 @@ function act(a: SandboxAgent, d: Decision) {
     else if (i < 0 && moored < 0) a.lastResult = `You have no ${target}.`;
     else {
       const out = launchOn(sub ? { name: target, floats: sub.floats, craft: sub.craft } : undefined);
-      const take = () => { if (i >= 0) { a.inventory.splice(i, 1); itemLedger -= 1; } else structures.splice(moored, 1); };
+      const take = () => { if (i >= 0) { a.inventory.splice(i, 1); itemLedger -= 1; } else { emit('unmoored', `takes the ${target} from its mooring`, a.id, undefined, { removed: structures[moored].id }); structures.splice(moored, 1); } };
       if (out.kind === 'sank') { take(); learn(a, factId(`${target} sinks in the sea`)); a.lastResult = `You put ${target} on the water. It sank and is gone.`; emit('sank', `puts ${target} on the water, and it sinks`, a.id); }
       else if (out.kind === 'drifted') { take(); learn(a, factId(`${target} floats away on the sea`)); a.lastResult = `You put ${target} on the water. It floated off and is gone.`; emit('launch', `puts ${target} on the water, and it drifts away`, a.id); }
       else if (out.kind === 'dumped') {
@@ -544,13 +556,18 @@ function act(a: SandboxAgent, d: Decision) {
         a.lastResult = `You pushed off on the ${target}. It rolled over, tipped you into the sea, and you waded back, soaked. You kept the ${target}.`;
         emit('launch', `rides ${target} into the water, rolls off and wades back, soaked`, a.id);
       } else if (out.kind === 'voyage') {
-        const dest = landOf(islandOf(a) === 'main' ? 'islet' : 'main'), shore = dest.filter(id => soilOf(nodes[id]) === 'shore');
-        const land = ground.nearest(a.x, a.z, shore.length ? shore : dest);
-        take();
-        a.voyage = { ...startVoyage(out.craft, { x: a.x, z: a.z }, { x: nodes[land].x, z: nodes[land].z }, simNow(), VOYAGE_MS), land, from_node: a.node, craftName: target };
-        a.path = []; a.running = null; a.activity = 'wandering'; a.doing = `sailing on a ${target}`;
-        a.lastResult = `You pushed off from the shore on the ${target} toward the land across the water.`;
-        emit('launch', `pushes off from the shore on the ${target}`, a.id, undefined, { craft: out.craft });
+        const land = landingFrom(a.x, a.z, islandOf(a) === 'main' ? 'islet' : 'main');
+        if (land === undefined) {
+          learn(a, factId('land blocks the way across the water from some shores'));
+          a.lastResult = `From this shore, land blocks the way to the far land across the water. A shore that faces it would do.`;
+          emit('result', `finds land in the way of the far shore`, a.id);
+        } else {
+          take();
+          a.voyage = { ...startVoyage(out.craft, { x: a.x, z: a.z }, { x: nodes[land].x, z: nodes[land].z }, simNow(), VOYAGE_MS), land, from_node: a.node, craftName: target };
+          a.path = []; a.running = null; a.activity = 'wandering'; a.doing = `sailing on a ${target}`;
+          a.lastResult = `You pushed off from the shore on the ${target} toward the land across the water.`;
+          emit('launch', `pushes off from the shore on the ${target}`, a.id, undefined, { craft: out.craft });
+        }
       } else a.lastResult = `You have no ${target}.`;
     }
   } else if (action === 'name_place') {
@@ -978,7 +995,7 @@ createServer(async (req, res) => {
     return;
   }
   if (req.url === '/api/skills') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify([...skills.values()])); return; }
-  if (req.url === '/api/places') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ islet: isletFacts(), agents: agents.map(a => ({ id: a.id, island: islandOf(a), atSea: !!a.voyage })), grid: GRID, size: world.size, regions: REGIONS.map(g => ({ id: g, x: nodes[regionCentre(g)].x, y: nodes[regionCentre(g)].y, z: nodes[regionCentre(g)].z, soil: soilOfRegion(g), name: placeNames[g]?.name ?? null, by: placeNames[g]?.by ?? null, explored: agents.some(a => (a.visited ?? []).includes(g)) })) })); return; }
+  if (req.url === '/api/places') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ islet: isletFacts(), agents: agents.map(a => ({ id: a.id, island: islandOf(a), atSea: !!a.voyage })), structures: structures.map(b => ({ id: b.id, kind: b.kind })), grid: GRID, size: world.size, regions: REGIONS.map(g => ({ id: g, x: nodes[regionCentre(g)].x, y: nodes[regionCentre(g)].y, z: nodes[regionCentre(g)].z, soil: soilOfRegion(g), name: placeNames[g]?.name ?? null, by: placeNames[g]?.by ?? null, explored: agents.some(a => (a.visited ?? []).includes(g)) })) })); return; }
   if (req.url === '/api/ideas') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(ideas)); return; }
   if (req.url === '/api/facts') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(facts)); return; }
   if (req.url === '/api/usage') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(usage())); return; }
@@ -1004,7 +1021,9 @@ createServer(async (req, res) => {
       reply.reserved = picked.map(a => a.id);
     }
     if (process.env.SANDBOX_TEST === '1' && b.cmd === 'goto') {
-      const ag = agents[Number(b.agent)], land = b.island === 'islet' ? isletHabitable : habitable, i = land.find(id => soilOf(nodes[id]) === b.ground);
+      const ag = agents[Number(b.agent)], land = b.island === 'islet' ? isletHabitable : habitable;
+      // facing: a spot with a sea-clear course to the other island, for tests that sail.
+      const i = land.find(id => soilOf(nodes[id]) === b.ground && (!b.facing || landingFrom(nodes[id].x, nodes[id].z, b.facing === 'islet' ? 'islet' : 'main') !== undefined));
       if (ag && i !== undefined) { const n = nodes[i]; ag.node = i; ag.x = n.x; ag.y = n.y; ag.z = n.z; ag.path = []; ag.voyage = undefined; }
     }
     if (process.env.SANDBOX_TEST === '1' && b.cmd === 'storm') { if (b.on) storm = { until: simNow() + 600000 }; else { storm = null; nextStorm = simNow() + 600000; } }

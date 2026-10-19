@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { launch, startVoyage, voyageAt } from '../src/sandbox/sea';
+import { launch, seaClear, shoreGifts, startVoyage, voyageAt } from '../src/sandbox/sea';
 
 // Boats (decision 59): the sea decides. Effects and physics, never solutions (decision 12).
 const item = (name: string, floats?: 'rolls' | 'drifts', craft?: 'raft' | 'boat') => ({ name, floats, craft });
@@ -33,5 +33,28 @@ describe('the sea', () => {
       expect(along).toBeGreaterThanOrEqual(0); expect(along).toBeLessThanOrEqual(1);
       expect(Math.abs(x * to.z - z * to.x) / Math.hypot(to.x, to.z)).toBeLessThan(1e-9);
     }
+  });
+});
+
+describe('the sea route', () => {
+  // A height field: a ridge of land across x = 10, open sea elsewhere.
+  const height = (x: number, _z: number) => (Math.abs(x - 10) < 2 ? 2 : -1);
+  it('a straight course across open water is clear', () => {
+    expect(seaClear(height, { x: 0, z: 0 }, { x: 0, z: 30 })).toBe(true);
+  });
+  it('a course that would cross land is not', () => {
+    expect(seaClear(height, { x: 0, z: 0 }, { x: 20, z: 0 })).toBe(false);
+  });
+  it('the shores at either end do not block the course', () => {
+    const shores = (x: number, _z: number) => (x < 1 || x > 19 ? 1 : -1);
+    expect(seaClear(shores, { x: 0, z: 0 }, { x: 20, z: 0 })).toBe(true);
+  });
+});
+
+describe('what the sea washes ashore', () => {
+  const subs = [{ name: 'sand', tier: 0 }, { name: 'obsidian', tier: 0, islet: true }, { name: 'rope', tier: 1 }];
+  it('never gives the islet\'s own material on the main island', () => {
+    expect(shoreGifts(subs, 'main').map(s => s.name)).toEqual(['sand']);
+    expect(shoreGifts(subs, 'islet').map(s => s.name)).toEqual(['sand', 'obsidian']);
   });
 });

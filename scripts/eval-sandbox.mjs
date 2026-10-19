@@ -47,7 +47,7 @@ let buffer = '';
       if (!data) continue;
       const d = JSON.parse(data);
       if (kind === 'state') { seen.last = d; seen.states++; seen.agents = d.agents.length; seen.maxDay = Math.max(seen.maxDay, d.world.daylight); seen.minDay = Math.min(seen.minDay, d.world.daylight); for (const a of d.agents) seen.minEnergy = Math.min(seen.minEnergy, a.energy); for (const a of d.agents) if (a.council === null) seen.maxCarry = Math.max(seen.maxCarry, a.inventory.length); }
-      if (kind === 'event') { seen.types.add(d.type); if (/^sets down /.test(d.text)) { seen.drops++; if (seen.watchDrop && d.agent === seen.watchDrop.agent && d.text === `sets down ${seen.watchDrop.item}`) seen.droppedBy = d.agent; } if (['action', 'result', 'thought', 'say'].includes(d.type)) seen.actions++; if (/^gathers (sand|shell|seaweed|driftwood|water|wood|plant fibre|resin|fruit|clay|dry grass|red berries|flint|stone|pyrite)$/.test(d.text)) seen.realItems++; if (d.type === 'hypothesis') seen.hyps++; if (['launch', 'sank', 'voyage', 'landfall', 'capsized', 'milestone'].includes(d.type)) (seen.sea ??= []).push(d); if (d.type === 'threat' && /^is charged by the boar/.test(d.text)) (seen.charged ??= []).push(d.agent); if (d.type === 'threat' && /^drives the boar off/.test(d.text)) (seen.drove ??= []).push(d.agent); if (d.agent === 7 && /^cannot gather wood without/.test(d.text)) seen.toolBlocked = true; if (d.agent === 7 && d.text === 'gathers wood' && seen.toolGiven) seen.woodWithTool = true; if (d.type === 'disagreement') (seen.disagreements ??= []).push(d); if (d.type === 'council_open') (seen.opens ??= []).push(d); if (/^(eats|tries to eat) /.test(d.text)) seen.eats++; if (d.type === 'council_merge' && /^ADJOURNED/.test(d.text)) seen.adjourned = true; if (d.type === 'ledger_mismatch') seen.ledger = d.text; if (d.type === 'council_open') seen.councilOpens++; if (d.type === 'ledger_check') seen.ledgerChecks++; }
+      if (kind === 'event') { seen.types.add(d.type); if (/^sets down /.test(d.text)) { seen.drops++; if (seen.watchDrop && d.agent === seen.watchDrop.agent && d.text === `sets down ${seen.watchDrop.item}`) seen.droppedBy = d.agent; } if (['action', 'result', 'thought', 'say'].includes(d.type)) seen.actions++; if (/^gathers (sand|shell|seaweed|driftwood|water|wood|plant fibre|resin|fruit|clay|dry grass|red berries|flint|stone|pyrite)$/.test(d.text)) seen.realItems++; if (d.type === 'hypothesis') seen.hyps++; if (['launch', 'sank', 'voyage', 'landfall', 'capsized', 'milestone', 'aground', 'unmoored'].includes(d.type)) (seen.sea ??= []).push(d); if (d.type === 'threat' && /^is charged by the boar/.test(d.text)) (seen.charged ??= []).push(d.agent); if (d.type === 'threat' && /^drives the boar off/.test(d.text)) (seen.drove ??= []).push(d.agent); if (d.agent === 7 && /^cannot gather wood without/.test(d.text)) seen.toolBlocked = true; if (d.agent === 7 && d.text === 'gathers wood' && seen.toolGiven) seen.woodWithTool = true; if (d.type === 'disagreement') (seen.disagreements ??= []).push(d); if (d.type === 'council_open') (seen.opens ??= []).push(d); if (/^(eats|tries to eat) /.test(d.text)) seen.eats++; if (d.type === 'council_merge' && /^ADJOURNED/.test(d.text)) seen.adjourned = true; if (d.type === 'ledger_mismatch') seen.ledger = d.text; if (d.type === 'council_open') seen.councilOpens++; if (d.type === 'ledger_check') seen.ledgerChecks++; }
     }
   }
 })().catch(() => {});
@@ -352,11 +352,21 @@ check('a lone log floats a moment and dumps the rider back ashore, wet', log.len
   `${log.map(e => e.text).join(' | ') || 'nothing happened'}; on ${agentNow(sailor)?.island}, strength ${e0.toFixed(2)} to ${(agentNow(sailor)?.energy ?? 1).toFixed(2)}`);
 // A raft crosses in calm weather; the first crossing is a milestone.
 await api('/api/control', { cmd: 'storm', on: false });
-await api('/api/control', { cmd: 'goto', agent: sailor, ground: 'shore' });
+await api('/api/control', { cmd: 'goto', agent: sailor, ground: 'shore', facing: 'islet' });
 const crossing = await sea(sailor, { action: 'launch', target: 'raft' }, ['raft', 'fruit'], ['landfall'], 30000);
 check('a raft carries its rider across to the islet in calm weather', crossing.some(e => e.type === 'landfall') && agentNow(sailor)?.island === 'islet',
   `${crossing.map(e => e.text).join(' | ') || 'nothing happened'}; now on ${agentNow(sailor)?.island}`);
 check('the first sea crossing is a milestone', (seen.sea ?? []).some(e => e.type === 'milestone'));
+const drawnRafts = () => page.evaluate(() => (window.__SANDBOX__?.drawnKinds ?? []).filter(k => k === 'raft').length);
+await page.waitForFunction(() => (window.__SANDBOX__?.drawnKinds ?? []).includes('raft'), null, { timeout: 30000 }).catch(() => {});
+const mooredShown = await drawnRafts();
+const sailedBack = await sea(sailor, { action: 'launch', target: 'raft' }, null, ['landfall', 'capsized'], 30000);
+await page.waitForFunction(() => (window.__SANDBOX__?.drawnKinds ?? []).filter(k => k === 'raft').length === 1, null, { timeout: 30000 }).catch(() => {});
+const builtNow = (await (await api('/api/places')).json()).structures ?? [];
+const ids = builtNow.map(b => b.id), rafts = builtNow.filter(b => b.kind === 'raft').length;
+check('a moored raft is drawn, sails again from its mooring, and the page keeps exactly the craft the island has',
+  mooredShown === 1 && sailedBack.some(e => e.type === 'landfall') && agentNow(sailor)?.island === 'main' && rafts === 1 && (await drawnRafts()) === 1 && new Set(ids).size === ids.length,
+  `drawn after landing ${mooredShown}; sailed back: ${sailedBack.map(e => e.text).join(' | ') || 'nothing'}; island rafts ${rafts}, drawn ${await drawnRafts()}, ids ${ids.join(',')}`);
 // The islet has what the main island lacks.
 await api('/api/control', { cmd: 'goto', agent: mate, ground: 'shore' });
 await api('/api/control', { cmd: 'hold', agent: mate, items: [] });
@@ -369,12 +379,12 @@ check('obsidian is found on the islet and nowhere on the main island', !mainObsi
   `main island: ${mainObsidian ? 'found' : 'none'}; islet: ${(agentNow(sailor)?.inventory ?? []).join(', ') || 'nothing'}`);
 // A storm capsizes a raft and the sea keeps its cargo; a sealed boat rides it out.
 await api('/api/control', { cmd: 'storm', on: true });
-await api('/api/control', { cmd: 'goto', agent: mate, ground: 'shore' });
+await api('/api/control', { cmd: 'goto', agent: mate, ground: 'shore', facing: 'islet' });
 const tipped = await sea(mate, { action: 'launch', target: 'raft' }, ['raft', 'fruit'], ['capsized', 'landfall'], 30000);
 await sleep(800);
 check('a storm capsizes a raft: the cargo is lost and the rider washes back', tipped.some(e => e.type === 'capsized') && agentNow(mate)?.island === 'main' && !(agentNow(mate)?.inventory ?? []).includes('fruit'),
   `${tipped.map(e => e.text).join(' | ') || 'nothing happened'}; on ${agentNow(mate)?.island}, carrying ${(agentNow(mate)?.inventory ?? []).join(', ') || 'nothing'}`);
-await api('/api/control', { cmd: 'goto', agent: mate, ground: 'shore' });
+await api('/api/control', { cmd: 'goto', agent: mate, ground: 'shore', facing: 'islet' });
 const rode = await sea(mate, { action: 'launch', target: 'boat' }, ['boat', 'fruit'], ['capsized', 'landfall'], 30000);
 check('a sealed boat crosses even in a storm, cargo and all', rode.some(e => e.type === 'landfall') && agentNow(mate)?.island === 'islet' && (agentNow(mate)?.inventory ?? []).includes('fruit'),
   `${rode.map(e => e.text).join(' | ') || 'nothing happened'}; on ${agentNow(mate)?.island}`);
@@ -387,9 +397,31 @@ const boarAt = seen.last?.world?.boar;
 check('the boar never leaves the main island', !(seen.charged ?? []).slice(chargedBefore).includes(mate) && (!boarAt || Math.hypot(boarAt.x - isle.x, boarAt.z - isle.z) > isle.radius),
   boarAt ? `boar ${Math.hypot(boarAt.x - isle.x, boarAt.z - isle.z).toFixed(1)} units from the islet's centre` : 'boar asleep');
 // The page draws the islet, and the eval stays honest.
-const isletDrawn = await page.evaluate(() => window.__SANDBOX__?.islet ?? false);
-check('the islet is drawn on the island page', isletDrawn === true);
+check('every voyage keeps to open water', !(seen.sea ?? []).some(e => e.type === 'aground'), (seen.sea ?? []).filter(e => e.type === 'aground').map(e => e.text).slice(0, 2).join(' | ') || 'no rider over land');
+// Pixels, not a flag: land where the islet stands, open water well beyond it.
+const landShare = async (x, z) => {
+  await page.evaluate(([x, z]) => window.__SANDBOX_LOOK__?.(x, z), [x, z]); await sleep(2500);
+  const png = await page.screenshot({ clip: { x: 600, y: 330, width: 200, height: 160 }, timeout: 120000 }).catch(() => null);
+  if (!png) return -1;
+  return page.evaluate(async b64 => {
+    const img = new Image(); img.src = `data:image/png;base64,${b64}`; await img.decode();
+    const c = document.createElement('canvas'); c.width = 50; c.height = 40; const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0, 50, 40);
+    const d = ctx.getImageData(0, 0, 50, 40).data; let land = 0;
+    // Land is green, sand or earth; blue water and white glitter are not.
+    for (let i = 0; i < d.length; i += 4) if (d[i + 1] > d[i + 2] + 5 || d[i] > d[i + 2] + 15) land++;
+    return land / (d.length / 4);
+  }, png.toString('base64'));
+};
+// Held at noon (Pause holds the clock), so open water reads as water however slow the frames.
+await api('/api/control', { cmd: 'pause' }); await api('/api/control', { cmd: 'time', phase: 0 });
+const onIsle = await landShare(isle.x, isle.z);
 await shot(page, `${OUT}/islet.png`);
+const offIsle = await landShare(isle.x * 1.7, isle.z * 1.7);
+await shot(page, `${OUT}/islet-sea.png`);
+await page.keyboard.press('Escape'); await sleep(1500);
+await api('/api/control', { cmd: 'start' });
+check('the islet is drawn on the island page: land where it stands, sea beyond it', onIsle > 0.3 && offIsle >= 0 && offIsle < 0.1,
+  `land share at the islet ${onIsle.toFixed(2)}, out at sea ${offIsle.toFixed(2)}`);
 seen.isletAgent = mate;
 
 // Layout: at every width the camera and panel controls stay whole and on screen.

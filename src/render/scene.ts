@@ -215,6 +215,8 @@ export interface IslandScene {
   islandView(pitch?: number, fill?: number): void;
   agentPositions(): ReturnType<AgentFigures['projected']>;
   addStructure(structure: StructureData): void;
+  removeStructure(id: number): void;
+  structureKinds(): string[];
   project(x: number, y: number, z: number): { x: number; y: number; visible: boolean };
   /** Free camera: move along the ground relative to the view, turn, and zoom. */
   move(forward: number, right: number): void;
@@ -640,6 +642,8 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
     programCount: () => programsBuilt,
     isletDrawn: () => !!isle,
     addStructure: (structure) => structures.add(structure),
+    removeStructure: (id) => structures.remove(id),
+    structureKinds: () => structures.kinds(),
     frameAgents: (ids) => {
       const list = figures.update(performance.now(), 0).filter(a => !ids || ids.includes(a.id));
       if (!list.length) return;

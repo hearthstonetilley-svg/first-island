@@ -61,7 +61,7 @@ let trees: Snapshot['trees'] = [];
 let selected: number | undefined, mode: 'agents' | 'island' | 'free' | 'follow' = 'island';
 let showLeft = true, showRight = true;
 const debug = new URLSearchParams(location.search).get('debug') === '1';
-declare global { interface Window { __SANDBOX__?: { camera: { y: number; ground: number; tx: number; tz: number; yaw: number; pitch: number; distance: number; gliding: boolean }; tags: number; mode: string; fps: number; quality: string; requested: string; entered: boolean; qualitySamples: number; sun?: { phase: number; elevation: number; azimuth: number }; sunAtEntry?: { phase: number; elevation: number; azimuth: number }; programs?: number; islet?: boolean } } }
+declare global { interface Window { __SANDBOX__?: { camera: { y: number; ground: number; tx: number; tz: number; yaw: number; pitch: number; distance: number; gliding: boolean }; tags: number; mode: string; fps: number; quality: string; requested: string; entered: boolean; qualitySamples: number; sun?: { phase: number; elevation: number; azimuth: number }; sunAtEntry?: { phase: number; elevation: number; azimuth: number }; programs?: number; islet?: boolean; drawnKinds?: string[] } } }
 
 const activity = (a: string): Activity => (['wandering', 'seeking food', 'eating', 'resting', 'seeking cover', 'socialising'].includes(a) ? a : 'wandering') as Activity;
 function snapshot(s: LiveState): Snapshot {
@@ -432,7 +432,9 @@ function onEvent(e: FeedEvent, live = true) {
   if (e.type === 'hypothesis' || e.type === 'idea') addHypothesis(e);
   if (live && (e.type === 'named' || e.type === 'explored')) void refreshPlaces();
   if (e.type === 'named' || e.type === 'director' || e.type === 'disagreement') addFind(e);
-  if (e.type === 'built' && e.data?.structure) { const b = e.data.structure as { id: number }; builtMap.set(b.id, b as never); island?.addStructure(b as never); }
+  // Craft moor where they land and leave when launched (decision 59): the page follows both.
+  if (e.type === 'unmoored' && typeof e.data?.removed === 'number') { builtMap.delete(e.data.removed); island?.removeStructure(e.data.removed); }
+  if ((e.type === 'built' || e.type === 'landfall') && e.data?.structure) { const b = e.data.structure as { id: number }; builtMap.set(b.id, b as never); island?.addStructure(b as never); }
   if (!live) { if (e.type === 'thought' || e.type === 'say') land(agent, e.type, e.text, e.t, e.seq); return; }
   const now = performance.now();
   if (e.type === 'thought' || e.type === 'say') {
@@ -666,7 +668,9 @@ async function runIsland(scene: IslandScene) {
       fpsLine.textContent = `${(1000 / smoothed).toFixed(0)} fps · ${smoothed.toFixed(1)} ms · ${scene.appliedQuality()} · ${scene.label}`;
       fpsLine.classList.toggle('slow', smoothed > 33); lastHud = time;
     }
-    if (debug) window.__SANDBOX__ = { get camera() { return scene.cameraInfo(); }, tags: shown, mode, fps: smoothed ? 1000 / smoothed : 0, quality: scene.appliedQuality(), requested: quality.level, entered, qualitySamples, sun: scene.sunInfo(), sunAtEntry, programs: scene.programCount(), islet: scene.isletDrawn() };
+    // Test only, with ?debug=1: point the camera at a spot so a check can see what is drawn there.
+    if (debug) (window as unknown as { __SANDBOX_LOOK__?: (x: number, z: number) => void }).__SANDBOX_LOOK__ = (x, z) => scene.setPose({ tx: x, ty: 0.5, tz: z, yaw: 0.58, pitch: 1.1, distance: 26 });
+    if (debug) window.__SANDBOX__ = { get camera() { return scene.cameraInfo(); }, tags: shown, mode, fps: smoothed ? 1000 / smoothed : 0, quality: scene.appliedQuality(), requested: quality.level, entered, qualitySamples, sun: scene.sunInfo(), sunAtEntry, programs: scene.programCount(), islet: scene.isletDrawn(), drawnKinds: scene.structureKinds() };
     frameRequest = requestAnimationFrame(t => { try { tick(t); } catch (err) { void controller?.reportFailure(scene, err); } });
   };
   frameRequest = requestAnimationFrame(tick);

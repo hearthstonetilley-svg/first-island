@@ -23,7 +23,16 @@ export class Structures {
     else if (s.kind === 'boat') { add(new Mesh(new BoxGeometry(1.2, 0.14, 0.7), body), 0.07); add(new Mesh(new BoxGeometry(1.2, 0.22, 0.08), body).translateZ(0.31), 0.2); add(new Mesh(new BoxGeometry(1.2, 0.22, 0.08), body).translateZ(-0.31), 0.2); }
     else add(new Mesh(new BoxGeometry(0.5, 0.5, 0.5), body), 0.25);
     group.position.set(s.x, s.y, s.z);
+    group.userData.kind = s.kind;
     this.scene.add(group);
     this.built.set(s.id, group);
   }
+  /** A craft leaving its mooring (decision 59) leaves the scene too. */
+  remove(id: number): void {
+    const group = this.built.get(id); if (!group) return;
+    this.scene.remove(group); this.built.delete(id);
+    group.traverse(o => { if (o instanceof Mesh) o.geometry.dispose(); });
+  }
+  /** The kinds drawn now, one entry per structure, for checks that the page matches the island. */
+  kinds(): string[] { return [...this.built.values()].map(g => String(g.userData.kind ?? '')); }
 }

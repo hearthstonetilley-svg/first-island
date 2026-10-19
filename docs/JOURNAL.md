@@ -174,6 +174,12 @@ The owner's reaction: "that's the design equivalent of the Matrix."
   With no walkable high rock left on it, obsidian is found on its beaches, as on real volcanic islands.
 - Two eval fixes, both in the test: the boar hook could drop the boar onto the islet, and a check counted charges from
   earlier in the run. Local: 87/87, 113/113 unit tests, zero model calls.
+- Astra audit 16 said not ready, with five real findings: moored craft never reached the page, a relaunched craft
+  could reuse a structure id, a voyage could pass under the main island, the director could wash obsidian ashore on
+  the main island, and the islet check passed on a flag. The sea route and the director's gifts became unit-tested
+  functions that failed first; the rest are eval checks. The new pixel check exposed a flaw from the day cycle: an
+  overhead sun put white glint blots under a downward view; glints now fade as the sun climbs. Local after the fixes:
+  89/89, 118/118 unit tests.
 
 ## Next
 

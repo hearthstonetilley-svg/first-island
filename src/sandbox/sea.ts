@@ -24,3 +24,18 @@ export function voyageAt(v: Voyage, now: number, storm: boolean): Point & { stat
   if (storm && v.craft === 'raft') return { ...at, state: 'capsized' };
   return { ...at, state: 'sailing' };
 }
+
+/** A course is sea-clear when nothing but water lies under it, apart from the shores it leaves and reaches. */
+export function seaClear(height: (x: number, z: number) => number, from: Point, to: Point, shore = 3): boolean {
+  const length = Math.hypot(to.x - from.x, to.z - from.z);
+  for (let d = shore; d <= length - shore; d += 0.5) {
+    const t = d / length;
+    if (height(from.x + (to.x - from.x) * t, from.z + (to.z - from.z) * t) > 0) return false;
+  }
+  return true;
+}
+
+/** What the sea may wash ashore for an agent: loose materials, but never the islet's own off the islet. */
+export function shoreGifts<T extends { tier: number; islet?: boolean }>(substances: T[], island: 'main' | 'islet'): T[] {
+  return substances.filter(s => s.tier === 0 && (!s.islet || island === 'islet'));
+}
