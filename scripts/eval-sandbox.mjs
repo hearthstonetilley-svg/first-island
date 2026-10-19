@@ -348,8 +348,17 @@ let againLog = ''; again.stdout.on('data', c => { againLog += c; }); again.stder
 for (let i = 0; i < 60 && !againLog.includes('sandbox server on'); i++) await sleep(1000);
 check('the island resumes after a restart', /resumed/.test(againLog), againLog.split('\n')[0]);
 const watcher = await fetch(`http://localhost:${PORT}/api/events`); const wr = watcher.body.getReader();
+// The save was written while the island ran: a restart must still wait for the owner to press Run.
+let wbuf = '', firstState;
+for (const until0 = Date.now() + 15000; !firstState && Date.now() < until0;) {
+  const { value } = await Promise.race([wr.read(), sleep(2000).then(() => ({ value: undefined }))]);
+  if (value) wbuf += new TextDecoder().decode(value);
+  const m = wbuf.match(/event: state\ndata: (.*)\n\n/); if (m) firstState = JSON.parse(m[1]);
+}
+check('a restarted island waits for Run', firstState?.running === false, `running ${firstState?.running}`);
+wbuf = '';
 await api('/api/control', { cmd: 'start' });
-let woke = false; const until = Date.now() + 40000; let wbuf = '';
+let woke = false; const until = Date.now() + 40000;
 // Only a live event for agent 7 counts: the hello replays saved history, which is ignored here.
 while (!woke && Date.now() < until) {
   const { value } = await Promise.race([wr.read(), sleep(2000).then(() => ({ value: undefined }))]);
