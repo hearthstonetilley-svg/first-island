@@ -14,7 +14,7 @@ export interface LiveState {
   councils: Array<{ id: number; chair: number; members: number[]; problem: string; mode: string; open: boolean; winner: number | null }>;
 }
 export interface FeedEvent { seq: number; t: number; type: string; agent?: number; text: string; to?: number[]; data?: Record<string, unknown> }
-export interface Hello { seed: number; names: string[]; history: FeedEvent[] }
+export interface Hello { seed: number; names: string[]; history: FeedEvent[]; islet?: { x: number; z: number; radius: number } }
 export const LEARN = '#5cffc1';
 export const GOLD = '#ffd34d';
 

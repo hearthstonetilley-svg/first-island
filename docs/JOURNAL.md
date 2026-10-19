@@ -162,6 +162,25 @@ The owner's reaction: "that's the design equivalent of the Matrix."
   became a pure function with unit tests that sweep the whole day; both failed on the old logic and pass now. The
   shader check counts every pipeline as it is built. Local after the fixes: 109/109 unit tests, 75/75 sandbox eval.
 
+## 19 Oct 2026, evening: boats and the islet
+
+- The owner asked what was using their machine: the local evals, each a headless browser drawing the island in
+  software for several minutes, and the preview tab drawing on the GPU.
+- Boats and a second island (decision 59). Checks and unit tests first: twelve new eval checks and four sea-physics
+  tests, all failing before the build. A first smoke test caught two real problems before any eval ran: a small
+  generated island keeps a full island's height, so it was all cliff (2 walkable points), and placing it by walkable
+  ground alone could have put it inside the main island's peak. The islet is now built at half height and placed
+  beyond all main-island land; across seeds it has 37 to 86 walkable points and at least 20 units of open sea.
+  With no walkable high rock left on it, obsidian is found on its beaches, as on real volcanic islands.
+- Two eval fixes, both in the test: the boar hook could drop the boar onto the islet, and a check counted charges from
+  earlier in the run. Local: 87/87, 113/113 unit tests, zero model calls.
+- Astra audit 16 said not ready, with five real findings: moored craft never reached the page, a relaunched craft
+  could reuse a structure id, a voyage could pass under the main island, the director could wash obsidian ashore on
+  the main island, and the islet check passed on a flag. The sea route and the director's gifts became unit-tested
+  functions that failed first; the rest are eval checks. The new pixel check exposed a flaw from the day cycle: an
+  overhead sun put white glint blots under a downward view; glints now fade as the sun climbs. Local after the fixes:
+  89/89, 118/118 unit tests.
+
 ## Next
 
 The owner's Later list, one version at a time: photorealism (the day cycle first), boats and other islands, rival

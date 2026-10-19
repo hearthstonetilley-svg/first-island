@@ -21,7 +21,7 @@ const STATE_DIR = mkdtempSync(join(tmpdir(), 'sandbox-eval-'));
 const server = spawn('npx', ['vite-node', 'server/sandbox.ts'], { stdio: ['ignore', 'pipe', 'pipe'], detached: true,
   env: { ...process.env, SANDBOX_PORT: String(PORT), SANDBOX_FRESH: '1', MIND_MODE: 'scripted', SANDBOX_STATE_DIR: STATE_DIR,
     // The eval must never spend: both call caps are zero, whatever the mixer is set to.
-    MAX_CALLS_PER_MIN: '0', COUNCIL_CALLS_PER_MIN: '0', SANDBOX_TEST: '1', SANDBOX_COUNCIL_DELAY_MS: '1500', SANDBOX_DAY_MS: '60000', SANDBOX_TEST_BAD_PART: '1', SANDBOX_DIRECTOR_MS: '20000', SANDBOX_DRAIN: String(1 / 150) } });
+    MAX_CALLS_PER_MIN: '0', COUNCIL_CALLS_PER_MIN: '0', SANDBOX_TEST: '1', SANDBOX_COUNCIL_DELAY_MS: '1500', SANDBOX_DAY_MS: '60000', SANDBOX_VOYAGE_MS: '3000', SANDBOX_TEST_BAD_PART: '1', SANDBOX_DIRECTOR_MS: '20000', SANDBOX_DRAIN: String(1 / 150) } });
 let serverLog = ''; server.stdout.on('data', c => { serverLog += c; }); server.stderr.on('data', c => { serverLog += c; });
 process.env.SANDBOX_PORT = String(PORT);
 const vite = await createServer({ server: { port: WEB, strictPort: true }, logLevel: 'silent' });
@@ -47,7 +47,7 @@ let buffer = '';
       if (!data) continue;
       const d = JSON.parse(data);
       if (kind === 'state') { seen.last = d; seen.states++; seen.agents = d.agents.length; seen.maxDay = Math.max(seen.maxDay, d.world.daylight); seen.minDay = Math.min(seen.minDay, d.world.daylight); for (const a of d.agents) seen.minEnergy = Math.min(seen.minEnergy, a.energy); for (const a of d.agents) if (a.council === null) seen.maxCarry = Math.max(seen.maxCarry, a.inventory.length); }
-      if (kind === 'event') { seen.types.add(d.type); if (/^sets down /.test(d.text)) { seen.drops++; if (seen.watchDrop && d.agent === seen.watchDrop.agent && d.text === `sets down ${seen.watchDrop.item}`) seen.droppedBy = d.agent; } if (['action', 'result', 'thought', 'say'].includes(d.type)) seen.actions++; if (/^gathers (sand|shell|seaweed|driftwood|water|wood|plant fibre|resin|fruit|clay|dry grass|red berries|flint|stone|pyrite)$/.test(d.text)) seen.realItems++; if (d.type === 'hypothesis') seen.hyps++; if (d.type === 'threat' && /^is charged by the boar/.test(d.text)) (seen.charged ??= []).push(d.agent); if (d.type === 'threat' && /^drives the boar off/.test(d.text)) (seen.drove ??= []).push(d.agent); if (d.agent === 7 && /^cannot gather wood without/.test(d.text)) seen.toolBlocked = true; if (d.agent === 7 && d.text === 'gathers wood' && seen.toolGiven) seen.woodWithTool = true; if (d.type === 'disagreement') (seen.disagreements ??= []).push(d); if (d.type === 'council_open') (seen.opens ??= []).push(d); if (/^(eats|tries to eat) /.test(d.text)) seen.eats++; if (d.type === 'council_merge' && /^ADJOURNED/.test(d.text)) seen.adjourned = true; if (d.type === 'ledger_mismatch') seen.ledger = d.text; if (d.type === 'council_open') seen.councilOpens++; if (d.type === 'ledger_check') seen.ledgerChecks++; }
+      if (kind === 'event') { seen.types.add(d.type); if (/^sets down /.test(d.text)) { seen.drops++; if (seen.watchDrop && d.agent === seen.watchDrop.agent && d.text === `sets down ${seen.watchDrop.item}`) seen.droppedBy = d.agent; } if (['action', 'result', 'thought', 'say'].includes(d.type)) seen.actions++; if (/^gathers (sand|shell|seaweed|driftwood|water|wood|plant fibre|resin|fruit|clay|dry grass|red berries|flint|stone|pyrite)$/.test(d.text)) seen.realItems++; if (d.type === 'hypothesis') seen.hyps++; if (['launch', 'sank', 'voyage', 'landfall', 'capsized', 'milestone', 'aground', 'unmoored'].includes(d.type)) (seen.sea ??= []).push(d); if (d.type === 'threat' && /^is charged by the boar/.test(d.text)) (seen.charged ??= []).push(d.agent); if (d.type === 'threat' && /^drives the boar off/.test(d.text)) (seen.drove ??= []).push(d.agent); if (d.agent === 7 && /^cannot gather wood without/.test(d.text)) seen.toolBlocked = true; if (d.agent === 7 && d.text === 'gathers wood' && seen.toolGiven) seen.woodWithTool = true; if (d.type === 'disagreement') (seen.disagreements ??= []).push(d); if (d.type === 'council_open') (seen.opens ??= []).push(d); if (/^(eats|tries to eat) /.test(d.text)) seen.eats++; if (d.type === 'council_merge' && /^ADJOURNED/.test(d.text)) seen.adjourned = true; if (d.type === 'ledger_mismatch') seen.ledger = d.text; if (d.type === 'council_open') seen.councilOpens++; if (d.type === 'ledger_check') seen.ledgerChecks++; }
     }
   }
 })().catch(() => {});
@@ -55,7 +55,7 @@ let buffer = '';
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await browser.newPage({ viewport: { width: 1400, height: 820 } });
 const errors = []; page.on('pageerror', e => errors.push(String(e)));
-await page.goto(`http://localhost:${WEB}/sandbox.html?renderer=webgl2&debug=1`);
+await page.goto(`http://localhost:${WEB}/sandbox.html?renderer=webgl2&debug=1`, { waitUntil: 'commit', timeout: 120000 });
 // The startup contract: a loading screen that ends complete, or limited with an Enter button.
 const loadState = await page.waitForFunction(() => ['complete', 'limited', 'error'].includes(document.querySelector('.loading-screen')?.dataset.state ?? '') || (window.__SANDBOX__?.entered ?? false),
   null, { timeout: 150000 }).then(() => page.evaluate(() => document.querySelector('.loading-screen')?.dataset.state ?? 'gone'), () => 'timeout');
@@ -215,14 +215,17 @@ const openApart = skip => {
 let bitten;
 for (let attempt = 0; attempt < 3 && bitten === undefined; attempt++) {
   const pick = openApart(); if (pick === undefined) { await sleep(1000); continue; }
+  // Only a charge after this boar wakes counts: a night boar may have charged the same agent earlier.
+  const before = (seen.charged ?? []).length;
   await api('/api/control', { cmd: 'hold', agent: pick, items: ['fruit'] });
   await api('/api/control', { cmd: 'boar', agent: pick });
-  for (let i = 0; i < 20 && !(seen.charged ?? []).includes(pick); i++) await sleep(300);
-  if ((seen.charged ?? []).includes(pick)) bitten = pick;
+  for (let i = 0; i < 20 && !(seen.charged ?? []).slice(before).includes(pick); i++) await sleep(300);
+  if ((seen.charged ?? []).slice(before).includes(pick)) bitten = pick;
 }
 check('the boar charges an agent caught in the open', bitten !== undefined, `agent ${bitten}`);
+for (let i = 0; i < 50 && !seen.last?.world?.boar; i++) await sleep(300);
 check('the boar is drawn on the island while it is out', !!seen.last?.world?.boar);
-check('the sky panel says the boar is out', await page.evaluate(() => /boar is out/i.test(document.querySelector('.skycard .threat')?.textContent ?? '')));
+check('the sky panel says the boar is out', await page.waitForFunction(() => /boar is out/i.test(document.querySelector('.skycard .threat')?.textContent ?? ''), null, { timeout: 15000 }).then(() => true, () => false));
 let speared;
 for (let attempt = 0; attempt < 3 && speared === undefined; attempt++) {
   const pick = openApart(bitten); if (pick === undefined) { await sleep(1000); continue; }
@@ -307,7 +310,7 @@ check('the day turns without rebuilding a shader', programs0 > 0 && [noon, dusk,
   `pipelines ${programs0} then ${[noon, dusk, night, dawn].map(d => d.programs).join(', ')}`);
 // No flash on reload: at night the page must already be at night when the loading screen lifts.
 await atPhase(0.5);
-await page.reload();
+await page.reload({ waitUntil: 'commit', timeout: 120000 });  // readiness is awaited below; CI can take over 30 s to fire load
 await page.waitForFunction(() => window.__SANDBOX__?.entered || document.querySelector('.loading-screen')?.dataset.state === 'limited', null, { timeout: 180000 }).catch(() => {});
 await page.evaluate(() => document.querySelector('.loading-action')?.click()).catch(() => {});
 await page.waitForFunction(() => window.__SANDBOX__?.entered, null, { timeout: 120000 }).catch(() => {});
@@ -317,10 +320,119 @@ await atPhase(0);
 await api('/api/control', { cmd: 'start' });
 check('no page errors after the day cycle', errors.length === 0, errors.slice(0, 2).join(' | '));
 
+// Boats and the islet (decision 59). Boats are found, not given: the sea decides what floats and what crosses.
+const isle = (await (await api('/api/places')).json()).islet;
+check('a small island lies offshore, apart from the main island', !!isle && isle.nodes >= 30 && isle.apart === true,
+  isle ? `${isle.nodes} walkable points, ${isle.gap?.toFixed(1)} units of open sea between` : 'none');
+let crew = [];
+for (let i = 0; i < 40 && crew.length < 2; i++) { crew = (await (await api('/api/control', { cmd: 'reserve', count: 2, ms: 120000 })).json()).reserved ?? []; if (crew.length < 2) await sleep(500); }
+const [sailor, mate] = crew;
+const agentNow = id => seen.last?.agents?.find(a => a.id === id);
+const seaSince = n => (seen.sea ?? []).slice(n);
+const sea = async (agent, decision, items, waitFor, ms = 15000) => {
+  const n = (seen.sea ?? []).length;
+  if (items) await api('/api/control', { cmd: 'hold', agent, items });
+  await api('/api/control', { cmd: 'act', agent, decision });
+  for (const until = Date.now() + ms; Date.now() < until && !seaSince(n).some(e => e.agent === agent && waitFor.includes(e.type));) await sleep(300);
+  return seaSince(n).filter(e => e.agent === agent);
+};
+// Real recipes: driftwood lashed to a frame floats as a raft; pitch seals a raft into a boat.
+await api('/api/control', { cmd: 'hold', agent: sailor, items: ['frame', 'driftwood'] });
+await api('/api/control', { cmd: 'act', agent: sailor, decision: { action: 'combine', target: 'frame', with: 'driftwood' } }); await sleep(800);
+const hasRaft = (agentNow(sailor)?.inventory ?? []).includes('raft');
+await api('/api/control', { cmd: 'hold', agent: sailor, items: ['raft', 'pitch'] });
+await api('/api/control', { cmd: 'act', agent: sailor, decision: { action: 'combine', target: 'raft', with: 'pitch' } }); await sleep(800);
+check('driftwood lashed to a frame makes a raft, and pitch seals a raft into a boat', hasRaft && (agentNow(sailor)?.inventory ?? []).includes('boat'),
+  `${hasRaft ? 'raft' : 'no raft'}, then ${(agentNow(sailor)?.inventory ?? []).join(', ')}`);
+// Launching only works at the shore, and the sea decides: stone sinks, a lone log rolls you back in.
+await api('/api/control', { cmd: 'goto', agent: sailor, ground: 'shore' });
+const sank = await sea(sailor, { action: 'launch', target: 'stone' }, ['stone'], ['sank']);
+check('a stone launched at the shore sinks and is gone', sank.some(e => e.type === 'sank') && !(agentNow(sailor)?.inventory ?? []).includes('stone'), sank.map(e => e.text).join(' | ') || 'nothing happened');
+const e0 = agentNow(sailor)?.energy ?? 1;
+const log = await sea(sailor, { action: 'launch', target: 'driftwood' }, ['driftwood'], ['launch', 'capsized']);
+await sleep(800);
+check('a lone log floats a moment and dumps the rider back ashore, wet', log.length > 0 && agentNow(sailor)?.island === 'main' && (agentNow(sailor)?.energy ?? 1) < e0,
+  `${log.map(e => e.text).join(' | ') || 'nothing happened'}; on ${agentNow(sailor)?.island}, strength ${e0.toFixed(2)} to ${(agentNow(sailor)?.energy ?? 1).toFixed(2)}`);
+// A raft crosses in calm weather; the first crossing is a milestone.
+await api('/api/control', { cmd: 'storm', on: false });
+await api('/api/control', { cmd: 'goto', agent: sailor, ground: 'shore', facing: 'islet' });
+const crossing = await sea(sailor, { action: 'launch', target: 'raft' }, ['raft', 'fruit'], ['landfall'], 30000);
+check('a raft carries its rider across to the islet in calm weather', crossing.some(e => e.type === 'landfall') && agentNow(sailor)?.island === 'islet',
+  `${crossing.map(e => e.text).join(' | ') || 'nothing happened'}; now on ${agentNow(sailor)?.island}`);
+check('the first sea crossing is a milestone', (seen.sea ?? []).some(e => e.type === 'milestone'));
+const drawnRafts = () => page.evaluate(() => (window.__SANDBOX__?.drawnKinds ?? []).filter(k => k === 'raft').length);
+await page.waitForFunction(() => (window.__SANDBOX__?.drawnKinds ?? []).includes('raft'), null, { timeout: 30000 }).catch(() => {});
+const mooredShown = await drawnRafts();
+const sailedBack = await sea(sailor, { action: 'launch', target: 'raft' }, null, ['landfall', 'capsized'], 30000);
+await page.waitForFunction(() => (window.__SANDBOX__?.drawnKinds ?? []).filter(k => k === 'raft').length === 1, null, { timeout: 30000 }).catch(() => {});
+const builtNow = (await (await api('/api/places')).json()).structures ?? [];
+const ids = builtNow.map(b => b.id), rafts = builtNow.filter(b => b.kind === 'raft').length;
+check('a moored raft is drawn, sails again from its mooring, and the page keeps exactly the craft the island has',
+  mooredShown === 1 && sailedBack.some(e => e.type === 'landfall') && agentNow(sailor)?.island === 'main' && rafts === 1 && (await drawnRafts()) === 1 && new Set(ids).size === ids.length,
+  `drawn after landing ${mooredShown}; sailed back: ${sailedBack.map(e => e.text).join(' | ') || 'nothing'}; island rafts ${rafts}, drawn ${await drawnRafts()}, ids ${ids.join(',')}`);
+// The islet has what the main island lacks.
+await api('/api/control', { cmd: 'goto', agent: mate, ground: 'shore' });
+await api('/api/control', { cmd: 'hold', agent: mate, items: [] });
+await api('/api/control', { cmd: 'act', agent: mate, decision: { action: 'gather', target: 'obsidian' } }); await sleep(800);
+const mainObsidian = (agentNow(mate)?.inventory ?? []).includes('obsidian');
+await api('/api/control', { cmd: 'goto', agent: sailor, ground: 'shore', island: 'islet' });
+await api('/api/control', { cmd: 'hold', agent: sailor, items: [] });
+await api('/api/control', { cmd: 'act', agent: sailor, decision: { action: 'gather', target: 'obsidian' } }); await sleep(800);
+check('obsidian is found on the islet and nowhere on the main island', !mainObsidian && (agentNow(sailor)?.inventory ?? []).includes('obsidian') && agentNow(sailor)?.island === 'islet',
+  `main island: ${mainObsidian ? 'found' : 'none'}; islet: ${(agentNow(sailor)?.inventory ?? []).join(', ') || 'nothing'}`);
+// A storm capsizes a raft and the sea keeps its cargo; a sealed boat rides it out.
+await api('/api/control', { cmd: 'storm', on: true });
+await api('/api/control', { cmd: 'goto', agent: mate, ground: 'shore', facing: 'islet' });
+const tipped = await sea(mate, { action: 'launch', target: 'raft' }, ['raft', 'fruit'], ['capsized', 'landfall'], 30000);
+await sleep(800);
+check('a storm capsizes a raft: the cargo is lost and the rider washes back', tipped.some(e => e.type === 'capsized') && agentNow(mate)?.island === 'main' && !(agentNow(mate)?.inventory ?? []).includes('fruit'),
+  `${tipped.map(e => e.text).join(' | ') || 'nothing happened'}; on ${agentNow(mate)?.island}, carrying ${(agentNow(mate)?.inventory ?? []).join(', ') || 'nothing'}`);
+await api('/api/control', { cmd: 'goto', agent: mate, ground: 'shore', facing: 'islet' });
+const rode = await sea(mate, { action: 'launch', target: 'boat' }, ['boat', 'fruit'], ['capsized', 'landfall'], 30000);
+check('a sealed boat crosses even in a storm, cargo and all', rode.some(e => e.type === 'landfall') && agentNow(mate)?.island === 'islet' && (agentNow(mate)?.inventory ?? []).includes('fruit'),
+  `${rode.map(e => e.text).join(' | ') || 'nothing happened'}; on ${agentNow(mate)?.island}`);
+await api('/api/control', { cmd: 'storm', on: false });
+// The boar is a main-island animal: woken as near the islet agent as the main island allows, it never reaches them.
+const chargedBefore = (seen.charged ?? []).length;
+await api('/api/control', { cmd: 'boar', agent: mate });
+await sleep(3000);
+const boarAt = seen.last?.world?.boar;
+check('the boar never leaves the main island', !(seen.charged ?? []).slice(chargedBefore).includes(mate) && (!boarAt || Math.hypot(boarAt.x - isle.x, boarAt.z - isle.z) > isle.radius),
+  boarAt ? `boar ${Math.hypot(boarAt.x - isle.x, boarAt.z - isle.z).toFixed(1)} units from the islet's centre` : 'boar asleep');
+// The page draws the islet, and the eval stays honest.
+check('every voyage keeps to open water', !(seen.sea ?? []).some(e => e.type === 'aground'), (seen.sea ?? []).filter(e => e.type === 'aground').map(e => e.text).slice(0, 2).join(' | ') || 'no rider over land');
+// Pixels, not a flag: land where the islet stands, open water well beyond it.
+const landShare = async (x, z) => {
+  await page.evaluate(([x, z]) => window.__SANDBOX_LOOK__?.(x, z), [x, z]); await sleep(2500);
+  const png = await page.screenshot({ clip: { x: 600, y: 330, width: 200, height: 160 }, timeout: 120000 }).catch(() => null);
+  if (!png) return -1;
+  return page.evaluate(async b64 => {
+    const img = new Image(); img.src = `data:image/png;base64,${b64}`; await img.decode();
+    const c = document.createElement('canvas'); c.width = 50; c.height = 40; const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0, 50, 40);
+    const d = ctx.getImageData(0, 0, 50, 40).data; let land = 0;
+    // Land is green, sand or earth; blue water and white glitter are not.
+    for (let i = 0; i < d.length; i += 4) if (d[i + 1] > d[i + 2] + 5 || d[i] > d[i + 2] + 15) land++;
+    return land / (d.length / 4);
+  }, png.toString('base64'));
+};
+// Held at noon (Pause holds the clock), so open water reads as water however slow the frames.
+await api('/api/control', { cmd: 'pause' }); await api('/api/control', { cmd: 'time', phase: 0 });
+const onIsle = await landShare(isle.x, isle.z);
+await shot(page, `${OUT}/islet.png`);
+const offIsle = await landShare(isle.x * 1.7, isle.z * 1.7);
+await shot(page, `${OUT}/islet-sea.png`);
+await page.keyboard.press('Escape'); await sleep(1500);
+await api('/api/control', { cmd: 'start' });
+check('the islet is drawn on the island page: land where it stands, sea beyond it', onIsle > 0.3 && offIsle >= 0 && offIsle < 0.1,
+  `land share at the islet ${onIsle.toFixed(2)}, out at sea ${offIsle.toFixed(2)}`);
+seen.isletAgent = mate;
+
 // Layout: at every width the camera and panel controls stay whole and on screen.
 const clipped = [];
 for (const width of [1400, 1200, 900, 640]) {
   await page.setViewportSize({ width, height: 820 }); await sleep(1500);
+  // Panels settle after a resize: give a slow machine up to ten seconds before judging.
+  await page.waitForFunction(() => [...document.querySelectorAll('.top, .rail.left, .rail.right, .mode, .skycard')].every(el => { const r = el.getBoundingClientRect(); return getComputedStyle(el).display === 'none' || r.width === 0 || (r.left >= -1 && r.right <= innerWidth + 1); }), null, { timeout: 10000 }).catch(() => {});
   const bad = await page.evaluate(() => [...document.querySelectorAll('.top .cam button, .top .run, .top .toggle-left, .top .toggle-right')]
     .filter(b => { const r = b.getBoundingClientRect(); return r.width < 20 || r.right > innerWidth || b.scrollWidth > b.clientWidth + 1; }).map(b => b.textContent));
   if (bad.length) clipped.push(`${width}: ${bad.join(', ')}`);
@@ -368,7 +480,7 @@ check('Pause stops the agents', seen.actions === before, `${seen.actions - befor
 await api('/api/control', { cmd: 'start' });
 
 const web = await browser.newPage({ viewport: { width: 1200, height: 800 } });
-await web.goto(`http://localhost:${WEB}/web.html?debug=1`); await sleep(6000);
+await web.goto(`http://localhost:${WEB}/web.html?debug=1`, { timeout: 120000 }); await sleep(6000);
 const drawn = await web.evaluate(() => { const c = document.querySelector('canvas'); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 0) n++; return n; });
 check('web page draws the agents', drawn > 2000, `${drawn} pixels`);
 const debugStable = await web.evaluate(async () => { const a = window.__WEB__; await new Promise(r => setTimeout(r, 1500)); return a === window.__WEB__ && typeof a.selectFact === 'function'; });
@@ -380,7 +492,9 @@ const d0 = await web.evaluate(() => window.__WEB__?.draws ?? -1); await sleep(50
 check('web draws nothing when nothing changes', d0 >= 0 && d1 - d0 <= 3, `${d1 - d0} draws in 5 s while paused`);
 await api('/api/control', { cmd: 'start' });
 // Selecting a fact isolates it: exactly one link per mind that knows it.
-await web.evaluate(() => window.__WEB__.selectFact(0)); await sleep(800);
+await web.evaluate(() => window.__WEB__.selectFact(0));
+// The links light on the next draw, which a slow machine may take seconds to reach.
+await web.waitForFunction(() => (window.__WEB__?.knowers ?? 0) > 0 && window.__WEB__.litLinks === window.__WEB__.knowers, null, { timeout: 15000 }).catch(() => {});
 const iso = await web.evaluate(() => ({ lit: window.__WEB__.litLinks, knowers: window.__WEB__.knowers }));
 check('selecting a fact shows only its links', iso.knowers > 0 && iso.lit === iso.knowers, `${iso.lit} links for ${iso.knowers} knowers`);
 await shot(web, `${OUT}/web.png`);
@@ -398,6 +512,8 @@ const again = spawn('npx', ['vite-node', 'server/sandbox.ts'], { stdio: ['ignore
 let againLog = ''; again.stdout.on('data', c => { againLog += c; }); again.stderr.on('data', c => { againLog += c; });
 for (let i = 0; i < 60 && !againLog.includes('sandbox server on'); i++) await sleep(1000);
 check('the island resumes after a restart', /resumed/.test(againLog), againLog.split('\n')[0]);
+const afterIsle = (await (await api('/api/places')).json()).agents?.find?.(a => a.id === seen.isletAgent);
+check('an agent on the islet is still there after a restart', afterIsle?.island === 'islet', `agent ${seen.isletAgent} on ${afterIsle?.island}`);
 const watcher = await fetch(`http://localhost:${PORT}/api/events`); const wr = watcher.body.getReader();
 // The save was written while the island ran: a restart must still wait for the owner to press Run.
 let wbuf = '', firstState;

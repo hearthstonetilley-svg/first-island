@@ -34,3 +34,11 @@ describe('day cycle lighting', () => {
     expect(lightingAt(0.5, 0, false).night).toBeGreaterThan(0.9);
   });
 });
+
+describe('sun glints on the water', () => {
+  it('are softest with the sun overhead and strongest with it low', () => {
+    const at = (p: number) => lightingAt(p, 0.5 + 0.5 * Math.cos(p * Math.PI * 2), false).glint;
+    expect(at(0)).toBeLessThan(0.4);
+    expect(at(0.2)).toBeGreaterThan(at(0));
+  });
+});

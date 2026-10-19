@@ -8,6 +8,7 @@ import { ReadinessGate } from '../render/readiness';
 import { FrameDiagnostics } from '../render/diagnostics';
 import { LoadingProgress, LoadingScreen, paintLoading } from '../ui/loading';
 import { Agent, DEFAULT_DIALS, Snapshot, Activity } from '../sim/types';
+import { isletWorld } from './islet';
 import { COLOURS, connect, control, FeedEvent, GOLD, LEARN, LiveState, MIND_COLOURS, MIND_LABELS, MIND_PLAN, Places, places, SKILL, usage, factTexts } from './stream';
 
 // The island page: an observation station. Left, the eight minds, each with its
@@ -60,7 +61,7 @@ let trees: Snapshot['trees'] = [];
 let selected: number | undefined, mode: 'agents' | 'island' | 'free' | 'follow' = 'island';
 let showLeft = true, showRight = true;
 const debug = new URLSearchParams(location.search).get('debug') === '1';
-declare global { interface Window { __SANDBOX__?: { camera: { y: number; ground: number; tx: number; tz: number; yaw: number; pitch: number; distance: number; gliding: boolean }; tags: number; mode: string; fps: number; quality: string; requested: string; entered: boolean; qualitySamples: number; sun?: { phase: number; elevation: number; azimuth: number }; sunAtEntry?: { phase: number; elevation: number; azimuth: number }; programs?: number } } }
+declare global { interface Window { __SANDBOX__?: { camera: { y: number; ground: number; tx: number; tz: number; yaw: number; pitch: number; distance: number; gliding: boolean }; tags: number; mode: string; fps: number; quality: string; requested: string; entered: boolean; qualitySamples: number; sun?: { phase: number; elevation: number; azimuth: number }; sunAtEntry?: { phase: number; elevation: number; azimuth: number }; programs?: number; islet?: boolean; drawnKinds?: string[] } } }
 
 const activity = (a: string): Activity => (['wandering', 'seeking food', 'eating', 'resting', 'seeking cover', 'socialising'].includes(a) ? a : 'wandering') as Activity;
 function snapshot(s: LiveState): Snapshot {
@@ -431,7 +432,9 @@ function onEvent(e: FeedEvent, live = true) {
   if (e.type === 'hypothesis' || e.type === 'idea') addHypothesis(e);
   if (live && (e.type === 'named' || e.type === 'explored')) void refreshPlaces();
   if (e.type === 'named' || e.type === 'director' || e.type === 'disagreement') addFind(e);
-  if (e.type === 'built' && e.data?.structure) { const b = e.data.structure as { id: number }; builtMap.set(b.id, b as never); island?.addStructure(b as never); }
+  // Craft moor where they land and leave when launched (decision 59): the page follows both.
+  if (e.type === 'unmoored' && typeof e.data?.removed === 'number') { builtMap.delete(e.data.removed); island?.removeStructure(e.data.removed); }
+  if ((e.type === 'built' || e.type === 'landfall') && e.data?.structure) { const b = e.data.structure as { id: number }; builtMap.set(b.id, b as never); island?.addStructure(b as never); }
   if (!live) { if (e.type === 'thought' || e.type === 'say') land(agent, e.type, e.text, e.t, e.seq); return; }
   const now = performance.now();
   if (e.type === 'thought' || e.type === 'say') {
@@ -572,7 +575,7 @@ let loading: LoadingScreen | undefined;
 let generation = 0, frameRequest = 0;
 let everEntered = false, islandSeed = 1, qualitySamples = 0;
 let savedPose: ReturnType<IslandScene['getPose']> | undefined;
-async function startIsland(seed: number, built: never[]) {
+async function startIsland(seed: number, built: never[], isletAt?: { x: number; z: number; radius: number }) {
   islandSeed = seed;
   for (const b of built) builtMap.set((b as { id: number }).id, b);
   status.hidden = true; void refreshPlaces();
@@ -586,11 +589,13 @@ async function startIsland(seed: number, built: never[]) {
       await progress({ stage, message: stage === 'terrain' ? 'Generating terrain' : 'Placing trees', percent: stage === 'terrain' ? 2 + fraction * 26 : 28 + fraction * 10 });
     });
     diagnostics?.phase('worldGeneration', performance.now() - worldStarted);
-    trees = world.trees.map((t, id) => ({ ...t, id, foodId: null }));
+    // The islet offshore (decision 59): the same terrain the server walks, built from the seed at the place it sent.
+    const islet = isletAt ? { world: isletWorld(seed), ...isletAt } : undefined;
+    trees = [...world.trees, ...(islet?.world.trees.map(t => ({ ...t, x: t.x + islet.x, z: t.z + islet.z })) ?? [])].map((t, id) => ({ ...t, id, foodId: null }));
     controller = new SceneRecovery(force => createIslandScene(app.querySelector('canvas')!, world, force, {
       postEnabled, pixelRatio, diagnostics, onProgress: progress, onFallback: () => { notice.textContent = 'Graphics interrupted · switching to WebGL2'; notice.hidden = false; },
       snapshot: state ? snapshot(state) : undefined, onSelect: id => select(id), figureScale: 2.2, agentColours: COLOURS,
-      onManualCamera: () => setMode('free'),
+      onManualCamera: () => setMode('free'), islet,
     }), forceWebGL2, () => {
       // A scene is going away (startup or a lost device): remember the view, stop its loop,
       // and make sure there is a live loading screen for the replacement to report to.
@@ -631,7 +636,7 @@ async function runIsland(scene: IslandScene) {
     if (diagnostics) { diagnostics.report.loading.enteredAtMs = performance.now(); diagnostics.report.loading.entry = loading?.element.dataset.state === 'limited' ? 'manual' : 'automatic'; }
     void loading?.finish().then(() => { if (active()) { quality.reset(); playing = true; } });
   };
-  addEventListener('resize', () => { if (active()) { scene.resize(); const { left, right } = insets(); scene.setInsets(left, right); quality.reset(); readiness.reset(); if (mode === 'island') wholeIsland(); } });
+  addEventListener('resize', () => { if (state) updateSky(state); if (active()) { scene.resize(); const { left, right } = insets(); scene.setInsets(left, right); quality.reset(); readiness.reset(); if (mode === 'island') wholeIsland(); } });
   if (everEntered) {
     // Recovering after the owner was already in: no second gate, quality adapts at once.
     entered = true; playing = true; app.classList.remove('is-loading', 'is-measuring');
@@ -663,7 +668,9 @@ async function runIsland(scene: IslandScene) {
       fpsLine.textContent = `${(1000 / smoothed).toFixed(0)} fps · ${smoothed.toFixed(1)} ms · ${scene.appliedQuality()} · ${scene.label}`;
       fpsLine.classList.toggle('slow', smoothed > 33); lastHud = time;
     }
-    if (debug) window.__SANDBOX__ = { get camera() { return scene.cameraInfo(); }, tags: shown, mode, fps: smoothed ? 1000 / smoothed : 0, quality: scene.appliedQuality(), requested: quality.level, entered, qualitySamples, sun: scene.sunInfo(), sunAtEntry, programs: scene.programCount() };
+    // Test only, with ?debug=1: point the camera at a spot so a check can see what is drawn there.
+    if (debug) (window as unknown as { __SANDBOX_LOOK__?: (x: number, z: number) => void }).__SANDBOX_LOOK__ = (x, z) => scene.setPose({ tx: x, ty: 0.5, tz: z, yaw: 0.58, pitch: 1.1, distance: 26 });
+    if (debug) window.__SANDBOX__ = { get camera() { return scene.cameraInfo(); }, tags: shown, mode, fps: smoothed ? 1000 / smoothed : 0, quality: scene.appliedQuality(), requested: quality.level, entered, qualitySamples, sun: scene.sunInfo(), sunAtEntry, programs: scene.programCount(), islet: scene.isletDrawn(), drawnKinds: scene.structureKinds() };
     frameRequest = requestAnimationFrame(t => { try { tick(t); } catch (err) { void controller?.reportFailure(scene, err); } });
   };
   frameRequest = requestAnimationFrame(tick);
@@ -674,7 +681,7 @@ connect({
     names = h.names; ensureCards();
     h.history.forEach(e => onEvent(e, false));
     if (controller) return;
-    startIsland(h.seed, (h as unknown as { structures?: never[] }).structures ?? []);
+    startIsland(h.seed, (h as unknown as { structures?: never[] }).structures ?? [], h.islet);
   },
   state(s) {
     state = s;

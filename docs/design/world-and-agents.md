@@ -42,6 +42,8 @@ Layer 4 has two depths, and they are different in kind:
 - A **build layer**: a coarse grid of cells above the terrain where placed material lives. Simple structural rules:
   a cell needs support below or beside it, heavy material on weak material collapses.
 - Water, weather and day/night as fields over the map.
+- **The islet (decision 59):** a small second island offshore, generated from the seed, joined to the main island
+  only by the sea. Its beaches hold obsidian, which the main island lacks.
 
 ### 4.2 The island chemistry
 - A small set of **invented elements** (start with 6), each a vector of hidden properties: density, hardness,
@@ -79,6 +81,9 @@ the definition that makes it.
 move, look, take, drop, strike, combine, place, eat, give, speak, rest, reproduce.
 Every skill is a combination of verbs and materials. "Chopping a tree" is strike, with something hard, on something
 fibrous. Nothing more specific is coded.
+
+- **launch** (decision 59): put something on the water at the shore. The sea decides: it sinks, drifts off, rolls
+  its rider back, or carries them across. A storm capsizes a raft; a sealed boat rides it out.
 
 ### 5.4 Mind (runs occasionally, an AI model, budgeted)
 - Called for goals, plans, inventions, teaching and group decisions, not for moment-to-moment movement.

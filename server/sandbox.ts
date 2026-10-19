@@ -7,6 +7,9 @@ import { readFileSync, writeFileSync, mkdirSync, renameSync, readdirSync, statSy
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { generateWorld } from '../src/world/generate';
+import { placeIslet } from '../src/sandbox/islet';
+import { launch as launchOn, seaClear, shoreGifts, startVoyage, voyageAt, Voyage } from '../src/sandbox/sea';
+import { sampleHeight } from '../src/world/generate';
 import { Ground } from '../src/sim/navigation';
 import { makeScrubber } from '../src/sandbox/scrub';
 import { readClaim as parseClaim } from '../src/sandbox/claim';
@@ -34,6 +37,24 @@ const world = generateWorld(SEED);
 const ground = new Ground(world);
 const nodes = ground.nodes;
 const habitable = ground.habitable;
+// ---------- the islet (decision 59) ----------
+// Its nodes join the shared node list with no land link to the main island: only the sea crosses.
+const islet = placeIslet(SEED, ground);
+const ISLET = { x: islet.x, z: islet.z, radius: islet.radius };
+const isletBase = nodes.length;
+for (const n of islet.ground.nodes) nodes.push({ ...n, x: n.x + ISLET.x, z: n.z + ISLET.z, neighbours: n.neighbours.map(i => i + isletBase) });
+const isletHabitable = islet.ground.habitable.map(i => i + isletBase);
+const isletTrees = islet.world.trees.map(t => ({ x: t.x + ISLET.x, z: t.z + ISLET.z }));
+const onIslet = (x: number, z: number) => Math.hypot(x - ISLET.x, z - ISLET.z) <= ISLET.radius + 2;
+const islandOf = (a: { x: number; z: number }): 'main' | 'islet' => (onIslet(a.x, a.z) ? 'islet' : 'main');
+const landOf = (island: 'main' | 'islet') => (island === 'islet' ? isletHabitable : habitable);
+const heightAt = (x: number, z: number) => Math.max(sampleHeight(world, x, z), sampleHeight(islet.world, x - ISLET.x, z - ISLET.z));
+/** The nearest shore across the water that a straight, sea-clear course reaches from here, if any. */
+function landingFrom(x: number, z: number, to: 'main' | 'islet'): number | undefined {
+  const shore = landOf(to).filter(id => soilOf(nodes[id]) === 'shore');
+  return (shore.length ? shore : landOf(to)).slice().sort((p, q) => Math.hypot(nodes[p].x - x, nodes[p].z - z) - Math.hypot(nodes[q].x - x, nodes[q].z - z))
+    .find(id => seaClear(heightAt, { x, z }, nodes[id]));
+}
 type GNode = typeof nodes[number];
 
 const byKey = (score: (n: GNode) => number) => habitable.reduce((best, id) => (score(nodes[id]) > score(nodes[best]) ? id : best), habitable[0]);
@@ -59,7 +80,20 @@ const regionCentre = (g: number) => {
   centres.set(g, best); return best;
 };
 const placeNames: Record<number, { name: string; by: number; at: number }> = {};
-const regionAt = (x: number, z: number) => { const g = cellOf(x, z); return REGIONS.includes(g) ? g : REGIONS.reduce((b, r) => (Math.hypot(nodes[regionCentre(r)].x - x, nodes[regionCentre(r)].z - z) < Math.hypot(nodes[regionCentre(b)].x - x, nodes[regionCentre(b)].z - z) ? r : b), REGIONS[0]); };
+const mainRegionAt = (x: number, z: number) => { const g = cellOf(x, z); return REGIONS.includes(g) ? g : REGIONS.reduce((b, r) => (Math.hypot(nodes[regionCentre(r)].x - x, nodes[regionCentre(r)].z - z) < Math.hypot(nodes[regionCentre(b)].x - x, nodes[regionCentre(b)].z - z) ? r : b), REGIONS[0]); };
+// The islet is cut into its own small grid of regions, numbered from 1000, so it can be explored and named.
+const ISLET_GRID = 3, isletCell = (x: number, z: number) => {
+  const f = (v: number) => Math.min(ISLET_GRID - 1, Math.max(0, Math.floor((v + ISLET.radius) / (2 * ISLET.radius) * ISLET_GRID)));
+  return 1000 + f(z - ISLET.z) * ISLET_GRID + f(x - ISLET.x);
+};
+for (const id of isletHabitable) { const g = isletCell(nodes[id].x, nodes[id].z); if (!regionNodes.has(g)) regionNodes.set(g, []); regionNodes.get(g)!.push(id); }
+const ISLET_REGIONS = [...regionNodes.keys()].filter(g => g >= 1000).sort((a, b) => a - b);
+const regionAt = (x: number, z: number) => {
+  if (!onIslet(x, z)) return mainRegionAt(x, z);
+  const g = isletCell(x, z);
+  return ISLET_REGIONS.includes(g) ? g : ISLET_REGIONS.reduce((b, r) => (Math.hypot(nodes[regionCentre(r)].x - x, nodes[regionCentre(r)].z - z) < Math.hypot(nodes[regionCentre(b)].x - x, nodes[regionCentre(b)].z - z) ? r : b), ISLET_REGIONS[0]);
+};
+const regionsOn = (island: 'main' | 'islet') => (island === 'islet' ? ISLET_REGIONS : REGIONS);
 const DIRS = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'];
 function direction(fx: number, fz: number, tx: number, tz: number) { const ang = Math.atan2(tx - fx, -(tz - fz)); return DIRS[(Math.round(ang / (Math.PI / 4)) + 8) % 8]; }
 const soilOfRegion = (g: number) => { const counts: Record<string, number> = {}; for (const i of regionNodes.get(g)!) { const k = soilOf(nodes[i]); counts[k] = (counts[k] ?? 0) + 1; } return Object.entries(counts).sort((x, y) => y[1] - x[1])[0][0]; };
@@ -78,13 +112,14 @@ const chem = CHEMISTRY === 'invented' ? generateChemistry(SEED) : realWorldChemi
 function soilOf(n: GNode): Soil {
   if (n.y < 1.2) return 'shore';
   if (n.y > 4) return 'high rock';
-  return world.trees.some(t => Math.hypot(t.x - n.x, t.z - n.z) < 2.5) ? 'grove' : 'meadow';
+  return world.trees.some(t => Math.hypot(t.x - n.x, t.z - n.z) < 2.5) || isletTrees.some(t => Math.hypot(t.x - n.x, t.z - n.z) < 2.5) ? 'grove' : 'meadow';
 }
-const gatherable = (n: GNode): Item[] => chem.substances.filter(s => s.tier === 0 && s.ground === soilOf(n)).map(s => s.name);
+const gatherable = (n: GNode): Item[] => chem.substances.filter(s => s.tier === 0 && s.ground === soilOf(n) && (!s.islet || onIslet(n.x, n.z))).map(s => s.name);
 const describeItem = (name: string) => { const s = substance(chem, name); return s ? `${name} (${s.description})` : name; };
 const LAWS = [
   'Each kind of ground (shore, grove, meadow, high rock) yields its own material, and only there.',
   'You can carry six things, and set down anything you carry to make room.',
+  'At the shore you can launch something onto the water and ride it. The sea decides what sinks, what floats away and what carries you.',
   'Two things you carry may be combined. Some pairs make something new; most do nothing. Some things change when struck alone.',
   'Some things you make can be set down and built where you stand; what is built stays.',
   'Words carry only a short distance; others hear you only if they are near.',
@@ -100,6 +135,8 @@ function combine(inventory: Item[], a: Item, b: Item): Item | 'nothing' | undefi
 }
 interface Built { id: number; kind: string; name: string; x: number; y: number; z: number; colour: string; by: number; at: number }
 let structures: Built[] = [];
+// Ids only ever grow, so a craft that leaves and lands again never shares an id with anything.
+const nextStructureId = () => structures.reduce((m, b) => Math.max(m, b.id), 0) + 1;
 
 // ---------- knowledge: facts are the unit that passes between minds ----------
 const facts: string[] = [];
@@ -114,6 +151,8 @@ interface SandboxAgent {
   hyp?: { tried: number; right: number; missing?: number; untested?: number };
   energy?: number; sheltered?: boolean; collapsedUntil?: number; mindEpoch?: number;
   visited?: number[]; places?: number[];
+  /** At sea (decision 59): the voyage, where it lands, what carries the rider, and where it set out from. */
+  voyage?: Voyage & { to: { x: number; z: number }; land: number; from_node: number; craftName: string };
   /** Test fixtures only: until this time the agent can only join a council a reserved agent chairs. */
   reservedUntil?: number;
   /** Who made the decision being carried out: the model, or the scripted fallback. */
@@ -166,8 +205,8 @@ function direct() {
   const candidates = agents.filter(a => !a.collapsedUntil && a.council === null && a.inventory.length < 6);
   if (!candidates.length) return;
   const a = pick(candidates);
-  const untried = chem.substances.filter(x => x.tier === 0 && !a.inventory.includes(x.name));
-  const gift = pick(untried.length ? untried : chem.substances.filter(x => x.tier === 0)).name;
+  const loose = shoreGifts(chem.substances, islandOf(a)), untried = loose.filter(x => !a.inventory.includes(x.name));
+  const gift = pick(untried.length ? untried : loose).name;
   a.inventory.push(gift); itemLedger += 1;
   a.lastResult = `The sea washed ${describeItem(gift)} up at your feet.`;
   emit('director', `Director: the sea washes ${gift} ashore by ${a.name} (nothing new found for a while)`, a.id, undefined, { gift });
@@ -182,7 +221,7 @@ function updatePressure(dt: number) {
     if (a.collapsedUntil) {
       if (now < a.collapsedUntil) continue;
       a.collapsedUntil = undefined; a.energy = 0.4;
-      const home = PLACES['south shore']; a.node = home; a.x = nodes[home].x; a.y = nodes[home].y; a.z = nodes[home].z; a.path = [];
+      const home = islandOf(a) === 'islet' ? ground.nearest(a.x, a.z, isletHabitable.filter(id => soilOf(nodes[id]) === 'shore')) : PLACES['south shore']; a.node = home; a.x = nodes[home].x; a.y = nodes[home].y; a.z = nodes[home].z; a.path = [];
       // Where they wake is described by what they know of it, never by a built-in name.
       const where = placeLabel(a, regionAt(a.x, a.z));
       a.lastResult = `You collapsed from weakness, lost what you carried, and woke in ${where}, where you first woke. Find food.`;
@@ -210,14 +249,14 @@ const boarY = () => nodes.reduce((best, n) => Math.hypot(n.x - boar.x, n.z - boa
 function updateBoar(dt: number, now: number) {
   const active = isNight() || now < boarForcedUntil;
   if (active && !boar.awake && now >= boarForcedUntil) {
-    const rock = nodes.filter(n => soilOf(n) === 'high rock'), pool = rock.length ? rock : nodes;
+    const land = habitable.map(id => nodes[id]), rock = land.filter(n => soilOf(n) === 'high rock'), pool = rock.length ? rock : land;
     const far = (n: GNode) => Math.min(...agents.map(a => Math.hypot(a.x - n.x, a.z - n.z)));
     const den = pool.reduce((best, n) => far(n) > far(best) ? n : best, pool[0]);
     boar.x = den.x; boar.z = den.z; boar.nextHit = {}; boar.fleeUntil = 0;
     emit('threat', 'Night falls, and a wild boar stirs on the high rock.');
   }
   const wasAwake = boar.awake;
-  const events = stepBoar(boar, agents.map(a => ({ id: a.id, x: a.x, z: a.z, sheltered: !!a.sheltered || a.council !== null, collapsed: !!a.collapsedUntil, inventory: a.inventory })), active, now, dt, i => (substance(chem, i)?.food ?? 0) > 0);
+  const events = stepBoar(boar, agents.map(a => ({ id: a.id, x: a.x, z: a.z, sheltered: !!a.sheltered || a.council !== null || !!a.voyage || islandOf(a) === 'islet', collapsed: !!a.collapsedUntil, inventory: a.inventory })), active, now, dt, i => (substance(chem, i)?.food ?? 0) > 0);
   if (wasAwake && !boar.awake) emit('threat', 'Dawn comes, and the boar goes back to its den.');
   for (const e of events) {
     const a = agents[e.id];
@@ -240,7 +279,7 @@ function updateBoar(dt: number, now: number) {
 interface Step { action: string; target?: string; with?: string; expect?: string }
 interface Skill { name: string; steps: Step[]; author: number; uses: number; successes: number; made: string[]; at: number }
 const skills = new Map<string, Skill>();
-const STEP_ACTIONS = ['walk', 'gather', 'combine', 'strike', 'build', 'drop'];
+const STEP_ACTIONS = ['walk', 'gather', 'combine', 'strike', 'build', 'drop', 'launch'];
 function cleanSteps(raw: unknown): Step[] {
   return (Array.isArray(raw) ? raw : []).slice(0, 8).filter(x => x && typeof x === 'object').map(x => x as Record<string, unknown>)
     .map(x => ({ action: txt(x.action, 20).toLowerCase(), target: txt(x.target, 40) ? scrub(txt(x.target, 40)).toLowerCase() : undefined, with: txt(x.with, 40) ? scrub(txt(x.with, 40)).toLowerCase() : undefined, expect: txt(x.expect, 60) ? scrub(txt(x.expect, 60)) : undefined }))
@@ -294,9 +333,46 @@ function route(from: number, to: number): number[] {
   const path: number[] = []; for (let c = to; c !== from; c = prev.get(c)!) path.unshift(c);
   return path;
 }
+// ---------- voyages (decision 59): the craft crosses in a straight line; a storm capsizes a raft ----------
+const VOYAGE_MS = Number(process.env.SANDBOX_VOYAGE_MS ?? 40000);
+let firstCrossing = false;
+/** The islet as the eval and the page see it: its size, and proof that only the sea joins it to the main island. */
+function isletFacts() {
+  const gap = Math.min(...isletHabitable.map(i => Math.min(...habitable.map(j => Math.hypot(nodes[i].x - nodes[j].x, nodes[i].z - nodes[j].z)))));
+  const linked = isletHabitable.some(i => nodes[i].neighbours.some(n => n < isletBase));
+  return { ...ISLET, nodes: isletHabitable.length, gap, apart: !linked && gap > 2 && !habitable.some(j => onIslet(nodes[j].x, nodes[j].z)) };
+}
+function stepVoyages() {
+  for (const a of agents) {
+    const v = a.voyage; if (!v) continue;
+    const at = voyageAt(v, simNow(), !!storm);
+    a.x = at.x; a.z = at.z; a.y = 0.05;
+    // Under test, any rider over land away from the shores they left and reach is reported: courses must be sea-clear.
+    if (process.env.SANDBOX_TEST === '1' && at.state === 'sailing' && heightAt(a.x, a.z) > 0.3 && Math.hypot(a.x - v.from.x, a.z - v.from.z) > 3 && Math.hypot(a.x - v.to.x, a.z - v.to.z) > 3) emit('aground', `is over land at sea (${a.x.toFixed(1)}, ${a.z.toFixed(1)})`, a.id);
+    if (at.state === 'capsized') {
+      // The sea keeps the raft and all it carried; the rider swims back to where they set out.
+      itemLedger -= a.inventory.length; a.inventory = []; a.voyage = undefined; a.doing = undefined;
+      const back = nodes[v.from_node]; a.node = v.from_node; a.x = back.x; a.y = back.y; a.z = back.z;
+      a.energy = Math.max(0, (a.energy ?? 1) - 0.25); learn(a, factId(`a ${v.craftName} capsizes in a storm`));
+      a.lastResult = `A storm caught your ${v.craftName}. It capsized; the sea took it and everything you carried. You swam back, exhausted.`;
+      emit('capsized', `capsizes in the storm; the sea takes the ${v.craftName} and all they carried`, a.id);
+    } else if (at.state === 'landfall') {
+      const n = nodes[v.land]; a.node = v.land; a.x = n.x; a.y = n.y; a.z = n.z; a.voyage = undefined; a.doing = undefined;
+      // The craft is moored where it lands, ready to carry someone back.
+      const sub = substance(chem, v.craftName);
+      structures.push({ id: nextStructureId(), kind: v.craft, name: v.craftName, x: n.x, y: n.y, z: n.z, colour: sub?.colour ?? '#8a6a40', by: a.id, at: Date.now() });
+      learn(a, factId(`a ${v.craftName} carries you across the sea`));
+      const g = regionAt(a.x, a.z); knowPlace(a, g);
+      a.lastResult = `Your ${v.craftName} reached the land across the water. You are ashore at ${placeLabel(a, g)}; the ${v.craftName} is moored here.`;
+      if (!firstCrossing) { firstCrossing = true; emit('milestone', `MILESTONE: the first crossing of the sea, on a ${v.craftName}`, a.id); }
+      emit('landfall', `lands across the water at ${placeLabel(undefined, g)}`, a.id, undefined, { structure: structures[structures.length - 1] });
+    }
+  }
+}
+
 function stepAgents(dt: number) {
   for (const a of agents) {
-    if (!a.path.length) continue;
+    if (!a.path.length || a.voyage) continue;
     const next = nodes[a.path[0]]; const dx = next.x - a.x, dz = next.z - a.z, d = Math.hypot(dx, dz), move = WALK_SPEED * dt;
     if (d <= move) { a.node = a.path.shift()!; a.x = next.x; a.y = next.y; a.z = next.z; }
     else { a.x += dx / d * move; a.z += dz / d * move; a.y += (next.y - a.y) * Math.min(1, move / d); }
@@ -414,10 +490,10 @@ function act(a: SandboxAgent, d: Decision) {
     const dir = [...DIRS].sort((x, y) => y.length - x.length).find(d => target.includes(d)) ?? (/\b(uphill|up|peak|high)\b/.test(target) ? 'uphill' : /\b(downhill|down|shore|sea|coast)\b/.test(target) ? 'downhill' : undefined);
     let goal: number | undefined = friend ? friend.node : named !== undefined ? regionCentre(named) : undefined;
     if (goal === undefined && dir) {
-      const options = REGIONS.filter(g => g !== hereRegion).map(regionCentre).filter(n => dir === 'uphill' ? nodes[n].y > nodes[a.node].y + 0.5 : dir === 'downhill' ? nodes[n].y < nodes[a.node].y - 0.3 : direction(a.x, a.z, nodes[n].x, nodes[n].z) === dir);
+      const options = regionsOn(islandOf(a)).filter(g => g !== hereRegion).map(regionCentre).filter(n => dir === 'uphill' ? nodes[n].y > nodes[a.node].y + 0.5 : dir === 'downhill' ? nodes[n].y < nodes[a.node].y - 0.3 : direction(a.x, a.z, nodes[n].x, nodes[n].z) === dir);
       goal = options.sort((x, y) => Math.hypot(nodes[x].x - a.x, nodes[x].z - a.z) - Math.hypot(nodes[y].x - a.x, nodes[y].z - a.z))[0];
     }
-    if (goal === undefined) goal = regionCentre(pick(REGIONS));
+    if (goal === undefined) goal = regionCentre(pick(regionsOn(islandOf(a))));
     a.path = route(a.node, goal); a.activity = friend ? 'socialising' : 'wandering';
     const where = friend ? friend.name : placeLabel(a, regionAt(nodes[goal].x, nodes[goal].z));
     a.lastResult = a.path.length ? `You are walking to ${where}.` : 'You cannot find a way there.';
@@ -459,10 +535,40 @@ function act(a: SandboxAgent, d: Decision) {
     else if (!sub?.structure) { a.lastResult = `${target} cannot be built.`; emit('result', `tries to build with ${target}, which cannot be built`, a.id); }
     else {
       a.inventory.splice(i, 1); itemLedger -= 1; a.activity = 'seeking cover'; a.busyUntil = Date.now() + 4000;
-      const b: Built = { id: structures.length + 1, kind: sub.structure, name: target, x: a.x, y: a.y, z: a.z, colour: sub.colour, by: a.id, at: Date.now() };
+      const b: Built = { id: nextStructureId(), kind: sub.structure, name: target, x: a.x, y: a.y, z: a.z, colour: sub.colour, by: a.id, at: Date.now() };
       structures.push(b); learn(a, factId(`${target} can be built`));
       a.lastResult = `You built ${target} at ${placeLabel(a, regionAt(a.x, a.z))}. It stays there.`;
       emit('built', `BUILDS ${target} at ${placeLabel(undefined, regionAt(a.x, a.z))}`, a.id, undefined, { structure: b });
+    }
+  } else if (action === 'launch') {
+    // Put something on the water at the shore; the sea decides what happens (decision 59).
+    const i = a.inventory.indexOf(target), sub = substance(chem, target);
+    const moored = structures.findIndex(b => b.name === target && (b.kind === 'raft' || b.kind === 'boat') && Math.hypot(b.x - a.x, b.z - a.z) < 3);
+    if (soilOf(here) !== 'shore') { a.lastResult = 'You must stand at the shore to put anything on the water.'; emit('result', `cannot reach the water from here`, a.id); }
+    else if (i < 0 && moored < 0) a.lastResult = `You have no ${target}.`;
+    else {
+      const out = launchOn(sub ? { name: target, floats: sub.floats, craft: sub.craft } : undefined);
+      const take = () => { if (i >= 0) { a.inventory.splice(i, 1); itemLedger -= 1; } else { emit('unmoored', `takes the ${target} from its mooring`, a.id, undefined, { removed: structures[moored].id }); structures.splice(moored, 1); } };
+      if (out.kind === 'sank') { take(); learn(a, factId(`${target} sinks in the sea`)); a.lastResult = `You put ${target} on the water. It sank and is gone.`; emit('sank', `puts ${target} on the water, and it sinks`, a.id); }
+      else if (out.kind === 'drifted') { take(); learn(a, factId(`${target} floats away on the sea`)); a.lastResult = `You put ${target} on the water. It floated off and is gone.`; emit('launch', `puts ${target} on the water, and it drifts away`, a.id); }
+      else if (out.kind === 'dumped') {
+        a.energy = Math.max(0, (a.energy ?? 1) - 0.1); learn(a, factId(`a lone ${target} rolls over in the water and will not carry anyone`));
+        a.lastResult = `You pushed off on the ${target}. It rolled over, tipped you into the sea, and you waded back, soaked. You kept the ${target}.`;
+        emit('launch', `rides ${target} into the water, rolls off and wades back, soaked`, a.id);
+      } else if (out.kind === 'voyage') {
+        const land = landingFrom(a.x, a.z, islandOf(a) === 'main' ? 'islet' : 'main');
+        if (land === undefined) {
+          learn(a, factId('land blocks the way across the water from some shores'));
+          a.lastResult = `From this shore, land blocks the way to the far land across the water. A shore that faces it would do.`;
+          emit('result', `finds land in the way of the far shore`, a.id);
+        } else {
+          take();
+          a.voyage = { ...startVoyage(out.craft, { x: a.x, z: a.z }, { x: nodes[land].x, z: nodes[land].z }, simNow(), VOYAGE_MS), land, from_node: a.node, craftName: target };
+          a.path = []; a.running = null; a.activity = 'wandering'; a.doing = `sailing on a ${target}`;
+          a.lastResult = `You pushed off from the shore on the ${target} toward the land across the water.`;
+          emit('launch', `pushes off from the shore on the ${target}`, a.id, undefined, { craft: out.craft });
+        }
+      } else a.lastResult = `You have no ${target}.`;
     }
   } else if (action === 'name_place') {
     const g = regionAt(a.x, a.z);
@@ -542,6 +648,7 @@ function scriptedMind(a: SandboxAgent): Decision {
   if (a.skills?.length && Math.random() < 0.2) d.teach_skill = [pick(a.skills)];
   if ((a.energy ?? 1) < 0.45 && a.inventory.some(i => (substance(chem, i)?.food ?? 0) !== 0) && Math.random() < 0.6) { d.action = 'eat'; d.target = a.inventory.find(i => (substance(chem, i)?.food ?? 0) !== 0); }
   else if (a.inventory.length >= 6 && Math.random() < 0.5) { d.action = 'drop'; d.target = pick(a.inventory); }
+  else if (soilOf(nodes[a.node]) === 'shore' && a.inventory.some(i => substance(chem, i)?.craft) && r < 0.3) { d.action = 'launch'; d.target = a.inventory.find(i => substance(chem, i)?.craft); }
   else if (a.skills?.length && r < 0.12) { d.action = 'use_skill'; d.target = pick(a.skills); }
   else if ((!a.skills?.length ? Math.random() < 0.3 : r > 0.95) && a.known.some(f => / makes (?!nothing)/.test(facts[f]))) {
     const f = facts[a.known.filter(x => / makes (?!nothing)/.test(facts[x]))[0]], m = f.match(/^(.+?) \+ (.+?) makes (.+)$/);
@@ -563,7 +670,7 @@ const SYSTEM = `You are one inhabitant of a small island. You and seven others w
 Island laws: ${LAWS.join(' ')} Facts pass between minds only when spoken: share the numbers of facts you want nearby listeners to learn.
 A council: when a problem is too big for one mind, you may call the people near you into a council. The council may split the problem into parts, try competing plans side by side, and merge what worked.
 You control only yourself. Each turn reply with ONE JSON object and nothing else:
-{"thought": "<one short private thought>", "say": "<words spoken aloud, or empty>", "share": [<fact numbers to teach listeners>], "action": "walk|gather|combine|strike|build|drop|eat|rest|wait|council|name_place", "target": "<place, person or thing>", "with": "<second thing for combine>", "expect": "<for combine or strike: what you predict it makes, or nothing>", "problem": "<for council: the problem>"}
+{"thought": "<one short private thought>", "say": "<words spoken aloud, or empty>", "share": [<fact numbers to teach listeners>], "action": "walk|gather|combine|strike|build|drop|launch|eat|rest|wait|council|name_place", "target": "<place, person or thing>", "with": "<second thing for combine>", "expect": "<for combine or strike: what you predict it makes, or nothing>", "problem": "<for council: the problem>"}
 Nobody has named any place on this island. You want to know all of it: walk to places nobody has reached, and name each place in your own words with name_place (target: the name). Walk by person, by a place name you know, or by direction (north, south-east, uphill, downhill...). ${CHEMISTRY === 'real' ? 'The materials here are ordinary real-world things and behave as they do in the real world. Whenever you combine or strike, first predict the result in "expect": the world will show whether your hypothesis was right. If you think something real could be made that nobody has tried, say what and from what.' : 'Nothing here is like anything you remember: the materials have their own names and ways, and you must learn them by trying.'}
 Skills: when you know a way of doing something in several steps, write it down as a skill and give it a name of your own: {"action": "write_skill", "skill_name": "<your name for it>", "steps": [{"action": "gather", "target": "<thing>"}, {"action": "combine", "target": "<thing>", "with": "<thing>", "expect": "<what it makes>"}, ...]}. Steps may be walk, gather, combine, strike, build, drop. Run a skill you know with {"action": "use_skill", "target": "<skill name>"}: it carries out every step for you. Teach a skill to people near you by adding "teach_skill": ["<skill name>"].
 Be curious, share what you learn, turn what works into skills, and call a council when working together would help. Keep words short.`;
@@ -572,9 +679,9 @@ const factList = (ids: number[]) => ids.slice(-24).map(f => `[${f}] ${facts[f]}`
 function prompt(a: SandboxAgent): string {
   const here = regionAt(a.x, a.z);
   const knownPlaces = (a.places ?? []).filter(g => g !== here && placeNames[g]).map(g => `${placeNames[g].name} (${direction(a.x, a.z, nodes[regionCentre(g)].x, nodes[regionCentre(g)].z)})`);
-  const unexplored = DIRS.filter(d => REGIONS.some(g => !(a.visited ?? []).includes(g) && direction(a.x, a.z, nodes[regionCentre(g)].x, nodes[regionCentre(g)].z) === d));
+  const unexplored = DIRS.filter(d => regionsOn(islandOf(a)).some(g => !(a.visited ?? []).includes(g) && direction(a.x, a.z, nodes[regionCentre(g)].x, nodes[regionCentre(g)].z) === d));
   return [`You are ${a.name}. You are in ${placeLabel(a, here)}${placeNames[here] ? '' : ' (you may name it)'}. You have been to ${(a.visited ?? []).length} of ${REGIONS.length} places.`,
-    `Places you know by name: ${knownPlaces.join(', ') || 'none'}. Directions with places you have never been: ${unexplored.join(', ') || 'none, you have been everywhere'}.`, `Your strength: ${Math.round((a.energy ?? 1) * 100)}%. It is ${isNight() ? 'night' : daylight() < 0.55 ? 'dusk or dawn' : 'day'}${storm ? ', and a storm is raging' : ''}. You are ${a.sheltered ? 'sheltered' : 'exposed'}.`, `Last result: ${a.lastResult}`,
+    `Places you know by name: ${knownPlaces.join(', ') || 'none'}. Directions with places you have never been: ${unexplored.join(', ') || 'none, you have been everywhere'}.`, soilOf(nodes[a.node]) === 'shore' ? `Across the water to the ${islandOf(a) === 'main' ? direction(a.x, a.z, ISLET.x, ISLET.z) : direction(a.x, a.z, 0, 0)}, you can see land.` : '', `Your strength: ${Math.round((a.energy ?? 1) * 100)}%. It is ${isNight() ? 'night' : daylight() < 0.55 ? 'dusk or dawn' : 'day'}${storm ? ', and a storm is raging' : ''}. You are ${a.sheltered ? 'sheltered' : 'exposed'}.`, `Last result: ${a.lastResult}`,
     `The ground here is ${soilOf(nodes[a.node])}. Here you could gather: ${gatherable(nodes[a.node]).map(describeItem).join(', ') || 'nothing'}.`,
     `You carry: ${a.inventory.map(describeItem).join(', ') || 'nothing'}.`,
     `Facts you know: ${factList(a.known)}.`,
@@ -623,7 +730,7 @@ function scheduleMinds() {
   if (!running || viewers.size === 0) return;
   stepSkills();
   const now = Date.now();
-  const ready = agents.filter(a => !a.thinking && !a.running && !a.collapsedUntil && a.council === null && !a.path.length && now >= a.busyUntil && now >= a.nextThink)
+  const ready = agents.filter(a => !a.thinking && !a.running && !a.voyage && !a.collapsedUntil && a.council === null && !a.path.length && now >= a.busyUntil && now >= a.nextThink)
     .sort((x, y) => x.nextThink - y.nextThink);
   for (const a of ready) { if (mindOf(a) !== 'scripted' && inFlight >= MAX_IN_FLIGHT) continue; void think(a); }
 }
@@ -758,7 +865,7 @@ async function council(chair: SandboxAgent, problem: string, observer = false) {
 function save() {
   try {
     mkdirSync(STATE_DIR, { recursive: true });
-    const data = { version: 3, simMs, director: { lastProgressSim, lastFound }, placeNames, recall, triedPairs: [...triedPairs], weather: { storm, nextStorm }, chemistry: CHEMISTRY, hypTotal, hypRight, hypMissing, hypUntested, ideas, seed: SEED, running, facts, seq, structures, mix, skills: [...skills.values()], events: events.slice(-400), councils: councils.slice(-100),
+    const data = { version: 3, simMs, firstCrossing, director: { lastProgressSim, lastFound }, placeNames, recall, triedPairs: [...triedPairs], weather: { storm, nextStorm }, chemistry: CHEMISTRY, hypTotal, hypRight, hypMissing, hypUntested, ideas, seed: SEED, running, facts, seq, structures, mix, skills: [...skills.values()], events: events.slice(-400), councils: councils.slice(-100),
       agents: agents.map(a => ({ ...a, path: [], thinking: false, council: null, running: null })) };
     writeFileSync(STATE_FILE + '.tmp', JSON.stringify(data)); renameSync(STATE_FILE + '.tmp', STATE_FILE);
   } catch (err) { console.error('save failed', (err as Error).message); }
@@ -770,6 +877,7 @@ function load() {
     // The island clock is saved with the island, so every saved deadline keeps its meaning.
     // An older save without it gets a fresh clock, and any deadline far beyond it is reset.
     if (data.placeNames && typeof data.placeNames === 'object') Object.assign(placeNames, data.placeNames);
+    if (data.firstCrossing === true) firstCrossing = true;
     // The director's stall clock survives a restart; an older save starts it from the saved island time.
     if (data.director && typeof data.director.lastProgressSim === 'number') { lastProgressSim = data.director.lastProgressSim; lastFound = Number(data.director.lastFound) || 0; }
     else { lastProgressSim = typeof data.simMs === 'number' ? data.simMs : 0; lastFound = -1; }
@@ -803,7 +911,7 @@ const CARRY = 6;
 setInterval(() => {
   const now = Date.now(), dt = (now - last) / 1000; last = now;
   // Bodies, hunger and minds share one condition: the island lives while it runs and is watched.
-  if (running && viewers.size > 0) { simMs += dt * 1000; stepAgents(dt); updatePressure(dt); direct(); }
+  if (running && viewers.size > 0) { simMs += dt * 1000; stepAgents(dt); stepVoyages(); updatePressure(dt); direct(); }
   // The carry law holds between every step: anything over six is set down.
   for (const a of agents) if (a.council === null && a.inventory.length > CARRY) {
     const dropped = a.inventory.splice(CARRY); itemLedger -= dropped.length;
@@ -813,14 +921,14 @@ setInterval(() => {
 }, 100);
 setInterval(() => {
   tick++;
-  send('state', { tick, running, mindMode, mix, world: { daylight: daylight(), night: isNight(), storm: !!storm, boar: boar.awake ? { x: boar.x, y: boarY(), z: boar.z } : null, simMs: simNow(), dayMs: DAY_MS, stormIn: storm ? null : Math.max(0, nextStorm - simNow()), stormLeft: storm ? Math.max(0, storm.until - simNow()) : null }, backends: ['scripted', ...available()], calls: stats.total, failed: stats.failed, mindError: stats.lastError, perMin: perMinute(), cap: MIND_CAP + COUNCIL_CAP,
+  send('state', { tick, running, mindMode, mix, world: { islet: ISLET, daylight: daylight(), night: isNight(), storm: !!storm, boar: boar.awake ? { x: boar.x, y: boarY(), z: boar.z } : null, simMs: simNow(), dayMs: DAY_MS, stormIn: storm ? null : Math.max(0, nextStorm - simNow()), stormLeft: storm ? Math.max(0, storm.until - simNow()) : null }, backends: ['scripted', ...available()], calls: stats.total, failed: stats.failed, mindError: stats.lastError, perMin: perMinute(), cap: MIND_CAP + COUNCIL_CAP,
     councilCalls: stats.byPurpose.council ?? 0, facts: facts.length,
     progress: { elements: chem.substances.filter(x => x.tier === 0).length, makeable: chem.substances.filter(x => x.tier > 0).length, found: new Set(agents.flatMap(a => a.made)).size,
       structures: chem.substances.filter(x => x.structure).length, built: new Set(structures.map(b => b.name)).size, councils: councils.length, skills: skills.size, regions: REGIONS.length, explored: new Set(agents.flatMap(a => a.visited ?? [])).size, named: Object.keys(placeNames).length, recall, hypotheses: hypTotal, hypothesesRight: hypRight, hypothesesMissing: hypMissing, ideas: ideas.length, chemistry: CHEMISTRY },
     councils: councils.filter(c => !c.closedAt || Date.now() - c.closedAt < 6000).map(c => ({ id: c.id, chair: c.chair, members: c.members, problem: c.problem, mode: c.mode, open: !c.closedAt, winner: c.winner })),
     agents: agents.map(a => ({ id: a.id, name: a.name, x: a.x, y: a.y, z: a.z, activity: a.activity, thought: a.thought,
       said: Date.now() - a.saidAt < 8000 ? a.said : '', saidAt: a.saidAt, thinking: a.thinking, inventory: a.inventory, known: a.made, facts: a.known.length, knownIds: a.known,
-      visited: (a.visited ?? []).length, energy: a.energy ?? 1, sheltered: !!a.sheltered, collapsed: !!a.collapsedUntil, hyp: { tried: a.hyp?.tried ?? 0, right: a.hyp?.right ?? 0, missing: a.hyp?.missing ?? 0, untested: a.hyp?.untested ?? 0 }, skills: a.skills ?? [], runningSkill: a.running ? `${a.running.skill} (step ${a.running.step} of ${skills.get(a.running.skill)?.steps.length ?? 0})` : '',
+      visited: (a.visited ?? []).length, island: islandOf(a), atSea: !!a.voyage, energy: a.energy ?? 1, sheltered: !!a.sheltered, collapsed: !!a.collapsedUntil, hyp: { tried: a.hyp?.tried ?? 0, right: a.hyp?.right ?? 0, missing: a.hyp?.missing ?? 0, untested: a.hyp?.untested ?? 0 }, skills: a.skills ?? [], runningSkill: a.running ? `${a.running.skill} (step ${a.running.step} of ${skills.get(a.running.skill)?.steps.length ?? 0})` : '',
       council: a.council, doing: a.collapsedUntil ? 'collapsed' : a.running ? `running skill ${a.running.skill}` : a.council !== null ? 'in council' : a.path.length ? a.doing ?? 'walking' : a.doing ?? 'waiting', outcome: a.outcome ?? '' })) });
 }, 250);
 
@@ -881,13 +989,13 @@ createServer(async (req, res) => {
   if (req.url?.startsWith('/api/events')) {
     const silent = req.url.includes('silent=1');
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
-    res.write(`event: hello\ndata: ${JSON.stringify({ seed: SEED, names: NAMES, history: events.slice(-200), councils: councils.slice(-30), structures })}\n\n`);
+    res.write(`event: hello\ndata: ${JSON.stringify({ seed: SEED, islet: ISLET, names: NAMES, history: events.slice(-200), councils: councils.slice(-30), structures })}\n\n`);
     clients.add(res); if (!silent) viewers.add(res);
     req.on('close', () => { clients.delete(res); viewers.delete(res); });
     return;
   }
   if (req.url === '/api/skills') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify([...skills.values()])); return; }
-  if (req.url === '/api/places') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ grid: GRID, size: world.size, regions: REGIONS.map(g => ({ id: g, x: nodes[regionCentre(g)].x, y: nodes[regionCentre(g)].y, z: nodes[regionCentre(g)].z, soil: soilOfRegion(g), name: placeNames[g]?.name ?? null, by: placeNames[g]?.by ?? null, explored: agents.some(a => (a.visited ?? []).includes(g)) })) })); return; }
+  if (req.url === '/api/places') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ islet: isletFacts(), agents: agents.map(a => ({ id: a.id, island: islandOf(a), atSea: !!a.voyage })), structures: structures.map(b => ({ id: b.id, kind: b.kind })), grid: GRID, size: world.size, regions: REGIONS.map(g => ({ id: g, x: nodes[regionCentre(g)].x, y: nodes[regionCentre(g)].y, z: nodes[regionCentre(g)].z, soil: soilOfRegion(g), name: placeNames[g]?.name ?? null, by: placeNames[g]?.by ?? null, explored: agents.some(a => (a.visited ?? []).includes(g)) })) })); return; }
   if (req.url === '/api/ideas') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(ideas)); return; }
   if (req.url === '/api/facts') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(facts)); return; }
   if (req.url === '/api/usage') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(usage())); return; }
@@ -905,16 +1013,22 @@ createServer(async (req, res) => {
     // council chaired by a reserved agent may recruit them, until the reservation ends.
     if (process.env.SANDBOX_TEST === '1' && b.cmd === 'reserve') {
       for (const k of Object.keys(lastDisagreement)) delete lastDisagreement[k];
-      const want = Math.max(0, Number(b.count) || 0), until = Date.now() + 15000;
+      const want = Math.max(0, Number(b.count) || 0), until = Date.now() + (Number(b.ms) || 15000);
       const free = agents.filter(a => a.council === null && !a.collapsedUntil && !a.thinking && !(a.reservedUntil && a.reservedUntil > Date.now()));
       // All or nothing: a partial reservation would strand agents the fixture cannot use.
       const picked = free.length >= want ? free.slice(0, want) : [];
       for (const a of picked) { a.reservedUntil = until; a.energy = 1; a.running = null; a.path = []; a.busyUntil = until; a.nextThink = until; }
       reply.reserved = picked.map(a => a.id);
     }
-    if (process.env.SANDBOX_TEST === '1' && b.cmd === 'goto') { const ag = agents[Number(b.agent)], i = nodes.findIndex(n => soilOf(n) === b.ground); if (ag && i >= 0) { const n = nodes[i]; ag.node = i; ag.x = n.x; ag.y = n.y; ag.z = n.z; ag.path = []; } }
+    if (process.env.SANDBOX_TEST === '1' && b.cmd === 'goto') {
+      const ag = agents[Number(b.agent)], land = b.island === 'islet' ? isletHabitable : habitable;
+      // facing: a spot with a sea-clear course to the other island, for tests that sail.
+      const i = land.find(id => soilOf(nodes[id]) === b.ground && (!b.facing || landingFrom(nodes[id].x, nodes[id].z, b.facing === 'islet' ? 'islet' : 'main') !== undefined));
+      if (ag && i !== undefined) { const n = nodes[i]; ag.node = i; ag.x = n.x; ag.y = n.y; ag.z = n.z; ag.path = []; ag.voyage = undefined; }
+    }
+    if (process.env.SANDBOX_TEST === '1' && b.cmd === 'storm') { if (b.on) storm = { until: simNow() + 600000 }; else { storm = null; nextStorm = simNow() + 600000; } }
     if (process.env.SANDBOX_TEST === '1' && b.cmd === 'hold') { const ag = agents[Number(b.agent)]; if (ag && Array.isArray(b.items)) { itemLedger += b.items.length - ag.inventory.length; ag.inventory = b.items.map(String).slice(0, 6); } }
-    if (process.env.SANDBOX_TEST === '1' && b.cmd === 'boar') { const ag = agents[Number(b.agent)]; if (ag) { boarForcedUntil = simNow() + 30000; boar.awake = true; boar.x = ag.x + 0.5; boar.z = ag.z; boar.nextHit = {}; boar.fleeUntil = 0; } }
+    if (process.env.SANDBOX_TEST === '1' && b.cmd === 'boar') { const ag = agents[Number(b.agent)]; if (ag) { const at = islandOf(ag) === 'islet' ? nodes[ground.nearest(ag.x, ag.z)] : ag; boarForcedUntil = simNow() + 30000; boar.awake = true; boar.x = at.x + 0.5; boar.z = at.z; boar.nextHit = {}; boar.fleeUntil = 0; } }
     if (process.env.SANDBOX_TEST === '1' && b.cmd === 'time' && typeof b.phase === 'number') simMs = Math.floor(simMs / DAY_MS) * DAY_MS + ((b.phase % 1) + 1) % 1 * DAY_MS;
     if (process.env.SANDBOX_TEST === '1' && b.cmd === 'act') { const ag = agents[Number(b.agent)]; if (ag) try { act(ag, cleanDecision(b.decision)); } catch (err) { console.error('act failed', (err as Error).message); } }
     if (b.cmd === 'council') {

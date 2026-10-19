@@ -62,7 +62,9 @@ export function lightingAt(phase: number, daylight: number, storm = false): Ligh
   return {
     dir, height, azimuth, colours,
     sunVis: up * (storm ? 0.2 : 1), halo: storm ? 0 : Math.max(0, 1 - Math.abs(height) / 0.3),
-    night: storm ? 0 : Math.max(0, Math.min(1, (-height - 0.05) / 0.2)), glint: up * gloom,
+    night: storm ? 0 : Math.max(0, Math.min(1, (-height - 0.05) / 0.2)),
+    // Glitter is a low sun's: overhead, the sharp highlight would sit under a downward view as white blots.
+    glint: up * gloom * (1 - 0.75 * Math.max(0, Math.min(1, (height - 0.3) / 0.5))),
     light: { dir: ldir, intensity, color, byDay },
     hemisphere: 3 * (0.12 + 0.88 * d) * gloom, exposure: 0.55 + 0.45 * d,
     fog: { color: storm ? new Color('#5d6a72') : keyColour('horizon', height), density: storm ? 0.006 : 0.0018 },
