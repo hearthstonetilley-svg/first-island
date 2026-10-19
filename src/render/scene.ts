@@ -22,8 +22,7 @@ import { Snapshot } from '../sim/types';
 import { AgentFigures } from './agents';
 import { StructureData, Structures } from './structures';
 import { LoadingProgress, paintLoading } from '../ui/loading';
-
-const SUN_DIRECTION = new Vector3(-0.82, 0.22, -0.53).normalize();
+import { lightingAt, NOON_AZIMUTH, SUN_DIRECTION } from './daycycle';
 
 // The day cycle (decision 58). Everything that follows the sun is a uniform, so the day turns
 // without rebuilding a shader. Until a time of day is set, the sky keeps the approved still look.
@@ -35,31 +34,6 @@ function skyUniforms() {
   };
 }
 type SkyUniforms = ReturnType<typeof skyUniforms>;
-// Sky colours by the sine of the sun's height: day, golden hour, sunset, twilight, night.
-const SKY_KEYS: { at: number; zenith: string; horizon: string; glow: string; water: string }[] = [
-  { at: -0.3, zenith: '#02060f', horizon: '#0a1428', glow: '#ff8a50', water: '#1a2540' },
-  { at: -0.14, zenith: '#0d1636', horizon: '#3a3f6a', glow: '#ff8a50', water: '#3a4766' },
-  { at: -0.02, zenith: '#2b3a6e', horizon: '#e0734a', glow: '#ff8a50', water: '#8f97b5' },
-  { at: 0.08, zenith: '#3b5c9e', horizon: '#f2a65e', glow: '#ffb070', water: '#d9d4d6' },
-  { at: 0.35, zenith: '#1054b9', horizon: '#83bddc', glow: '#ffdca2', water: '#ffffff' },
-];
-const keyColour = (k: 'zenith' | 'horizon' | 'glow' | 'water', h: number, out: ThreeColor) => {
-  if (h <= SKY_KEYS[0].at) return out.set(SKY_KEYS[0][k]);
-  for (let i = 1; i < SKY_KEYS.length; i++) {
-    const a = SKY_KEYS[i - 1], b = SKY_KEYS[i];
-    if (h <= b.at) return out.set(a[k]).lerp(new ThreeColor(b[k]), (h - a.at) / (b.at - a.at));
-  }
-  return out.set(SKY_KEYS[SKY_KEYS.length - 1][k]);
-};
-// Noon is phase 0, as on the server (daylight = 0.5 + 0.5 cos(2 pi phase)): the sun is highest at
-// noon, on the horizon at a quarter and three quarters, and lowest at midnight. It crosses the sky,
-// setting opposite to where it rose; noon keeps the approved light's compass bearing.
-const NOON_AZIMUTH = Math.atan2(SUN_DIRECTION.z, SUN_DIRECTION.x);
-export function sunAt(phase: number): { dir: Vector3; height: number; azimuth: number } {
-  const a = phase * Math.PI * 2, height = 0.92 * Math.cos(a), azimuth = NOON_AZIMUTH + a;
-  const flat = Math.sqrt(1 - height * height);
-  return { dir: new Vector3(flat * Math.cos(azimuth), height, flat * Math.sin(azimuth)), height, azimuth };
-}
 
 function addTerrain(scene: Scene, world: WorldData): void {
   // An extra submerged ring continues the seabed out past the view, with no square shelf.
@@ -259,7 +233,7 @@ export interface IslandScene {
   setTimeOfDay(phase: number, daylight: number, storm?: boolean): void;
   /** Where the sun stands, in degrees; phase is NaN until a time of day is set. */
   sunInfo(): { phase: number; elevation: number; azimuth: number };
-  /** Render pipelines built so far, for checking that the day turns without rebuilding a shader. */
+  /** Shader programs and render pipelines built so far, counted as they are created, for checking that the day turns without rebuilding one. */
   programCount(): number;
   /** The quality actually being drawn, which can lag a request while a path compiles. */
   appliedQuality(): string;
@@ -458,6 +432,13 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
   scene.add(sun);
   disposables.push(sun.shadow);
 
+  // Count every shader program and render pipeline the backend builds, so a rebuild can never hide in a cache.
+  let programsBuilt = 0;
+  const backend = renderer.backend as unknown as Record<string, (...args: unknown[]) => unknown>;
+  for (const name of ['createProgram', 'createRenderPipeline']) {
+    const original = backend[name]?.bind(backend);
+    if (original) backend[name] = (...args: unknown[]) => { programsBuilt++; return original(...args); };
+  }
   const label = (renderer.backend as { isWebGLBackend?: boolean }).isWebGLBackend ? 'WebGL2' : 'WebGPU';
   renderer.setPixelRatio(options.pixelRatio ?? Math.min(devicePixelRatio, 1.5));
   renderer.setSize(innerWidth, innerHeight);
@@ -637,37 +618,17 @@ async function buildIslandScene(placeholder: HTMLCanvasElement, world: WorldData
       if (scene.fog instanceof FogExp2) { scene.fog.color.set(storm ? '#5d6a72' : d < 0.35 ? '#1a2740' : '#9bc5d9'); scene.fog.density = storm ? 0.006 : 0.0018; }
     },
     setTimeOfDay: (phase, daylight, storm) => {
-      const { dir, height, azimuth } = sunAt(phase);
-      sunPhase = phase; sunHeight = height; sunAzimuth = azimuth;
-      const gloom = storm ? 0.55 : 1, grey = new ThreeColor('#5d6a72');
-      sky0.sunDir.value.copy(dir); sky0.moonDir.value.copy(dir).negate();
-      for (const k of ['zenith', 'horizon', 'glow', 'water'] as const) {
-        keyColour(k, height, sky0[k].value);
-        if (storm && k !== 'glow') sky0[k].value.lerp(grey.clone().multiplyScalar(k === 'water' ? 1.6 : Math.max(0.15, height + 0.3)), 0.6);
-      }
-      const up = Math.max(0, Math.min(1, (height + 0.08) / 0.1));
-      sky0.sunVis.value = up * (storm ? 0.2 : 1);
-      sky0.halo.value = storm ? 0 : Math.max(0, 1 - Math.abs(height) / 0.3);
-      sky0.night.value = storm ? 0 : Math.max(0, Math.min(1, (-height - 0.05) / 0.2));
-      sky0.glint.value = up * gloom;
-      // One light: the sun by day, the moon by night, never lower than about eight degrees so shadows stay sane.
-      const light = (height > -0.05 ? dir.clone() : dir.clone().negate());
-      light.y = Math.max(light.y, 0.14); light.normalize();
-      sun.position.copy(light).multiplyScalar(100);
-      const d = Math.max(0, Math.min(1, daylight));
-      sky.intensity = 3 * (0.12 + 0.88 * d) * gloom;
-      if (height > -0.05) {
-        sun.intensity = 3.2 * Math.max(0.05, Math.min(1, height * 3 + 0.15)) * gloom;
-        sun.color.set(storm ? '#c8ccd0' : height < 0.12 ? '#ffb070' : '#ffe1a6');
-      } else { sun.intensity = 0.45 * gloom; sun.color.set('#9fb4ff'); }
-      renderer.toneMappingExposure = 0.55 + 0.45 * d;
-      if (scene.fog instanceof FogExp2) {
-        if (storm) scene.fog.color.set('#5d6a72'); else keyColour('horizon', height, scene.fog.color);
-        scene.fog.density = storm ? 0.006 : 0.0018;
-      }
+      const l = lightingAt(phase, daylight, storm);
+      sunPhase = phase; sunHeight = l.height; sunAzimuth = l.azimuth;
+      sky0.sunDir.value.copy(l.dir); sky0.moonDir.value.copy(l.dir).negate();
+      for (const k of ['zenith', 'horizon', 'glow', 'water'] as const) sky0[k].value.copy(l.colours[k]);
+      sky0.sunVis.value = l.sunVis; sky0.halo.value = l.halo; sky0.night.value = l.night; sky0.glint.value = l.glint;
+      sun.position.copy(l.light.dir).multiplyScalar(100); sun.intensity = l.light.intensity; sun.color.copy(l.light.color);
+      sky.intensity = l.hemisphere; renderer.toneMappingExposure = l.exposure;
+      if (scene.fog instanceof FogExp2) { scene.fog.color.copy(l.fog.color); scene.fog.density = l.fog.density; }
     },
     sunInfo: () => ({ phase: sunPhase, elevation: Math.asin(sunHeight) * 180 / Math.PI, azimuth: ((sunAzimuth * 180 / Math.PI) % 360 + 360) % 360 }),
-    programCount: () => (renderer as unknown as { _pipelines?: { caches?: Map<unknown, unknown> } })._pipelines?.caches?.size ?? -1,
+    programCount: () => programsBuilt,
     addStructure: (structure) => structures.add(structure),
     frameAgents: (ids) => {
       const list = figures.update(performance.now(), 0).filter(a => !ids || ids.includes(a.id));

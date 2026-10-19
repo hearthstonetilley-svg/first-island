@@ -157,6 +157,10 @@ The owner's reaction: "that's the design equivalent of the Matrix."
   sun. The first run on the build failed three checks because the island's clock kept running while slow frames were
   measured; the checks now pause the clock, as Pause does. A first look showed brown water at dawn, now a dim blue.
   Local: 75/75, zero model calls. Screenshots: docs/iterations/058-day-*.png.
+- Astra audit 15 said not ready, with three real findings: shadows snapped from sun to moon at dusk and dawn, a
+  storm at night brightened the ocean, and the shader check counted a cache that could hide a rebuild. The lighting
+  became a pure function with unit tests that sweep the whole day; both failed on the old logic and pass now. The
+  shader check counts every pipeline as it is built. Local after the fixes: 109/109 unit tests, 75/75 sandbox eval.
 
 ## Next
 
