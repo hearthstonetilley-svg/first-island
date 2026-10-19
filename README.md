@@ -18,8 +18,9 @@ as a nucleus.
 
 Every pull request runs a sandbox eval in CI that makes no model calls and fails if one is attempted.
 
-Next: a play test, then rival societies on the islet, and the awakening, where agents
-earn the right to rewrite the island's laws.
+Parked since 20 Oct 2026 at v0.11.0, waiting for the owner's play test on a fresh island. Nothing runs and nothing
+spends while it is parked. After the play test: a final audit, then rival societies on the islet and the awakening,
+where agents earn the right to rewrite the island's laws.
 
 ## How it is built
 
